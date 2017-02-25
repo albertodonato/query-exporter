@@ -46,14 +46,17 @@ async def _metrics(registry, request):
     return response
 
 
-def _loop(metrics):
+def _loop(loop, metrics):
+    print('>>', datetime.now())
+    loop.create_task(_loop2(metrics))
 
-    from .db import DataBase
-    print(DataBase)
-
-    value = random.random() * 1000
-    print('>>', datetime.now(), value)
-    metrics['metric'].set(value)
+async def _loop2(metrics):
+    from .db import DataBase, Query
+    q = Query('test-query', 20, ['metric'], 'SELECT random() * 1000')
+    async with DataBase('db', 'dbname=ack') as db:
+        results = await db.execute(q)
+        for metric, value in results.items():
+            metrics[metric].set(value)
 
 
 def main():
@@ -62,10 +65,6 @@ def main():
     registry = CollectorRegistry(auto_describe=True)
     metrics = create_metrics(registry)
 
-    periodic_call = PeriodicCall(loop, _loop, metrics)
+    periodic_call = PeriodicCall(loop, _loop, loop, metrics)
     app = create_web_app(loop, registry, periodic_call)
     web.run_app(app, port=9090)
-
-
-if __name__ == '__main__':
-    main()
