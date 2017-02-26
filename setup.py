@@ -20,9 +20,10 @@ config = {
     'install_requires': [
         'aiohttp',
         'prometheus-client',
+        'prometheus-aioexporter',
         'PyYaml',
         'toolrack'],
-    'tests_require': ['asynctest', 'fixtures'],
+    'tests_require': ['asynctest'],
     'keywords': 'sql metric prometheus exporter'}
 
 setup(**config)
