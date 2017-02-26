@@ -2,9 +2,11 @@ import argparse
 from datetime import datetime
 
 from prometheus_aioexporter.script import PrometheusExporterScript
-from prometheus_aioexporter.metric import MetricConfig
 
 from toolrack.async import PeriodicCall
+
+from .config import load_config
+from .db import DataBase
 
 
 class QueryExporterScript(PrometheusExporterScript):
@@ -18,11 +20,10 @@ class QueryExporterScript(PrometheusExporterScript):
             help='configuration file')
 
     def configure(self, args):
-        metric_configs = [
-            MetricConfig('sample_metric1', 'Sample metric 1', 'gauge', {}),
-            MetricConfig('sample_metric2', 'Sample metric 2', 'gauge', {})]
-        metrics = self.create_metrics(metric_configs)
-        self.periodic_call = PeriodicCall(self.loop, _loop, self.loop, metrics)
+        config = self._load_config(args.config)
+        metrics = self.create_metrics(config.metrics)
+        self.periodic_call = PeriodicCall(
+            self.loop, _loop, self.loop, config, metrics)
 
     def on_application_startup(self, application):
         self.periodic_call.start(10)
@@ -30,19 +31,25 @@ class QueryExporterScript(PrometheusExporterScript):
     async def on_application_shutdown(self, application):
         await self.periodic_call.stop()
 
+    def _load_config(self, config_file):
+        '''Load the application configuration.'''
+        config = load_config(config_file)
+        config_file.close()
+        return config
 
-def _loop(loop, metrics):
+
+def _loop(loop, config, metrics):
     print('>>', datetime.now())
-    loop.create_task(_loop2(metrics))
+    loop.create_task(_loop2(config, metrics))
 
 
-async def _loop2(metrics):
-    from .db import DataBase, Query
-    q = Query('test-query', 20, ['sample_metric1'], 'SELECT random() * 1000')
-    async with DataBase('db', 'dbname=ack') as db:
-        results = await db.execute(q)
-        for metric, value in results.items():
-            metrics[metric].set(value)
+async def _loop2(config, metrics):
+    [database] = config.databases  # XXX
+    for query in config.queries:
+        async with database:
+            results = await database.execute(query)
+            for metric, value in results.items():
+                metrics[metric].set(value)
 
 
 script = QueryExporterScript()
