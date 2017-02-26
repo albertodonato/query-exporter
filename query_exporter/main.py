@@ -6,13 +6,14 @@ from prometheus_aioexporter.script import PrometheusExporterScript
 from toolrack.async import PeriodicCall
 
 from .config import load_config
-from .db import DataBase
 
 
 class QueryExporterScript(PrometheusExporterScript):
-    '''Export Prometheus metrics generated from SQL queries.'''
+    '''Periodically run database queries and export results to Prometheus.'''
 
     name = 'query-exporter'
+
+    description = __doc__
 
     def configure_argument_parser(self, parser):
         parser.add_argument(
@@ -20,10 +21,9 @@ class QueryExporterScript(PrometheusExporterScript):
             help='configuration file')
 
     def configure(self, args):
-        config = self._load_config(args.config)
-        metrics = self.create_metrics(config.metrics)
-        self.periodic_call = PeriodicCall(
-            self.loop, _loop, self.loop, config, metrics)
+        self.config = self._load_config(args.config)
+        self.metrics = self.create_metrics(self.config.metrics)
+        self.periodic_call = PeriodicCall(self.loop, self._main_loop)
 
     def on_application_startup(self, application):
         self.periodic_call.start(10)
@@ -37,19 +37,16 @@ class QueryExporterScript(PrometheusExporterScript):
         config_file.close()
         return config
 
+    def _main_loop(self):
+        self.loop.create_task(self._main_loop_task())
 
-def _loop(loop, config, metrics):
-    print('>>', datetime.now())
-    loop.create_task(_loop2(config, metrics))
-
-
-async def _loop2(config, metrics):
-    [database] = config.databases  # XXX
-    for query in config.queries:
-        async with database:
-            results = await database.execute(query)
-            for metric, value in results.items():
-                metrics[metric].set(value)
+    async def _main_loop_task(self):
+        [database] = self.config.databases  # XXX
+        for query in self.config.queries:
+            async with database:
+                results = await database.execute(query)
+                for metric, value in results.items():
+                    self.metrics[metric].set(value)
 
 
 script = QueryExporterScript()
