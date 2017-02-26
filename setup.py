@@ -15,10 +15,11 @@ config = {
     'packages': find_packages(),
     'include_package_data': True,
     'entry_points': {'console_scripts': [
-        'query-exporter = query_exporter.main:main']},
+        'query-exporter = query_exporter.main:script']},
     'test_suite': 'lmetrics',
     'install_requires': [
         'aiohttp',
+        'aiopg',
         'prometheus-client',
         'prometheus-aioexporter',
         'PyYaml',

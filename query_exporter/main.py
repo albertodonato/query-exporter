@@ -1,70 +1,48 @@
-from functools import partial
-import asyncio
+import argparse
 from datetime import datetime
-import random
 
-from aiohttp import web
-from prometheus_client import (
-    CollectorRegistry,
-    Gauge,
-    CONTENT_TYPE_LATEST,
-    generate_latest)
+from prometheus_aioexporter.script import PrometheusExporterScript
+from prometheus_aioexporter.metric import MetricConfig
+
 from toolrack.async import PeriodicCall
 
 
-def create_metrics(registry):
-    '''Create metrics.'''
-    return {'metric': Gauge('metric', 'sample metric', registry=registry)}
+class QueryExporterScript(PrometheusExporterScript):
+    '''Export Prometheus metrics generated from SQL queries.'''
 
+    name = 'query-exporter'
 
-def create_web_app(loop, registry, periodic_call):
-    '''Create an aiohttp web application to export metrics.'''
-    app = web.Application(loop=loop)
-    app.router.add_get('/', _home)
-    app.router.add_get('/metrics', partial(_metrics, registry))
+    def configure_argument_parser(self, parser):
+        parser.add_argument(
+            'config', type=argparse.FileType('r'),
+            help='configuration file')
 
-    def start_periodic(_):
-        periodic_call.start(10)
+    def configure(self, args):
+        metric_configs = [
+            MetricConfig('sample_metric1', 'Sample metric 1', 'gauge', {}),
+            MetricConfig('sample_metric2', 'Sample metric 2', 'gauge', {})]
+        metrics = self.create_metrics(metric_configs)
+        self.periodic_call = PeriodicCall(self.loop, _loop, self.loop, metrics)
 
-    async def stop_periodic(_):
-        await periodic_call.stop()
+    def on_application_startup(self, application):
+        self.periodic_call.start(10)
 
-    app.on_startup.append(start_periodic)
-    app.on_shutdown.append(stop_periodic)
-    return app
-
-
-async def _home(request):
-    '''Home page request handler.'''
-    return web.Response(body=b'Export metrics from SQL queries.')
-
-async def _metrics(registry, request):
-    '''Handler for metrics.'''
-    body = generate_latest(registry)
-    response = web.Response(body=body)
-    response.content_type = CONTENT_TYPE_LATEST
-    return response
+    async def on_application_shutdown(self, application):
+        await self.periodic_call.stop()
 
 
 def _loop(loop, metrics):
     print('>>', datetime.now())
     loop.create_task(_loop2(metrics))
 
+
 async def _loop2(metrics):
     from .db import DataBase, Query
-    q = Query('test-query', 20, ['metric'], 'SELECT random() * 1000')
+    q = Query('test-query', 20, ['sample_metric1'], 'SELECT random() * 1000')
     async with DataBase('db', 'dbname=ack') as db:
         results = await db.execute(q)
         for metric, value in results.items():
             metrics[metric].set(value)
 
 
-def main():
-    loop = asyncio.get_event_loop()
-
-    registry = CollectorRegistry(auto_describe=True)
-    metrics = create_metrics(registry)
-
-    periodic_call = PeriodicCall(loop, _loop, loop, metrics)
-    app = create_web_app(loop, registry, periodic_call)
-    web.run_app(app, port=9090)
+script = QueryExporterScript()
