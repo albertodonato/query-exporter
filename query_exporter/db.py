@@ -1,6 +1,6 @@
 from collections import namedtuple
 
-from psycopg2 import ProgrammingError
+from psycopg2 import ProgrammingError, OperationalError
 
 import aiopg
 
@@ -56,8 +56,11 @@ class DataBaseConnection(namedtuple('DataBaseConnection', ['name', 'dsn'])):
 
     async def connect(self):
         '''Connect to the database.'''
-        self._pool = await aiopg.create_pool(self.dsn)
-        self._conn = await self._pool.acquire()
+        try:
+            self._pool = await aiopg.create_pool(self.dsn)
+            self._conn = await self._pool.acquire()
+        except OperationalError as error:
+            raise QueryError(str(error))
 
     async def close(self):
         '''Close the database connection.'''

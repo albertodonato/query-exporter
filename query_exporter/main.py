@@ -70,12 +70,12 @@ class QueryExporterScript(PrometheusExporterScript):
         ''''Run a Query on a DataBase.'''
         self.logger.debug(
             "running query '{}' on database '{}'".format(query.name, dbname))
-        async with self.databases[dbname].connect() as conn:
-            try:
+        try:
+            async with self.databases[dbname].connect() as conn:
                 results = await conn.execute(query)
-            except QueryError as error:
-                self._log_query_error(query.name, error)
-                return
+        except QueryError as error:
+            self._log_query_error(query.name, error)
+            return
 
         for name, value in results.items():
             self._update_metric(name, value)
