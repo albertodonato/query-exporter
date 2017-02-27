@@ -52,8 +52,8 @@ def _get_queries(configs):
         try:
             queries.append(
                 Query(
-                    name, config['interval'], config['metrics'],
-                    config['sql'].strip()))
+                    name, config['interval'], config['databases'],
+                    config['metrics'], config['sql'].strip()))
         except KeyError as e:
             _raise_missing_key(e, 'query', name)
     return queries

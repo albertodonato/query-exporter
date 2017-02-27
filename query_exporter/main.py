@@ -1,5 +1,5 @@
 import argparse
-from datetime import datetime
+from time import time
 
 from prometheus_aioexporter.script import PrometheusExporterScript
 
@@ -21,9 +21,8 @@ class QueryExporterScript(PrometheusExporterScript):
             help='configuration file')
 
     def configure(self, args):
-        self.config = self._load_config(args.config)
-        self.metrics = self.create_metrics(self.config.metrics)
-        self.periodic_call = PeriodicCall(self.loop, self._main_loop)
+        self._setup_config(args.config)
+        self.periodic_call = PeriodicCall(self.loop, self._call)
 
     def on_application_startup(self, application):
         self.periodic_call.start(10)
@@ -31,22 +30,56 @@ class QueryExporterScript(PrometheusExporterScript):
     async def on_application_shutdown(self, application):
         await self.periodic_call.stop()
 
+    def _setup_config(self, config_file):
+        '''Setup attribute with different configuration components.'''
+        config = self._load_config(config_file)
+        self.metrics = self.create_metrics(config.metrics)
+        self.metric_configs = {
+            metric_config.name: metric_config
+            for metric_config in config.metrics}
+        self.databases = {
+            database.name: database for database in config.databases}
+        self.queries = config.queries
+        # Track last execution time of each query on each database
+        keys = (
+            (query.name, db)
+            for query in self.queries for db in query.databases)
+        self.queries_db_last_time = dict.fromkeys(keys, 0)
+
     def _load_config(self, config_file):
         '''Load the application configuration.'''
         config = load_config(config_file)
         config_file.close()
         return config
 
-    def _main_loop(self):
-        self.loop.create_task(self._main_loop_task())
+    def _call(self):
+        '''The periodic task function.'''
+        now = time()
+        for query in self.queries:
+            name = query.name
+            for dbname in query.databases:
+                last_time = self.queries_db_last_time[name, dbname]
+                if last_time + query.interval <= now:
+                    self.loop.create_task(self._run_query(query, dbname))
 
-    async def _main_loop_task(self):
-        [database] = self.config.databases  # XXX
-        for query in self.config.queries:
-            async with database:
-                results = await database.execute(query)
-                for metric, value in results.items():
-                    self.metrics[metric].set(value)
+    async def _run_query(self, query, dbname):
+        self.logger.debug(
+            'running query "{}" on database "{}"'.format(query.name, dbname))
+        async with self.databases[dbname].connect() as conn:
+            results = await conn.execute(query)
+        for name, value in results.items():
+            self._update_metric(name, value)
+        self.queries_db_last_time[(query.name, dbname)] = time()
+
+    def _update_metric(self, name, value):
+        '''Update value for a metric.'''
+        metric_methods = {
+            'counter': 'inc',
+            'gauge': 'set',
+            'histogram': 'observe',
+            'summary': 'observe'}
+        method = metric_methods[self.metric_configs[name].type]
+        getattr(self.metrics[name], method)(value)
 
 
 script = QueryExporterScript()
