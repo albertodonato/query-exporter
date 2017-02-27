@@ -61,5 +61,5 @@ def _get_queries(configs):
 
 def _raise_missing_key(key_error, entry_type, entry_name):
     raise ConfigError(
-        'Missing key "{}" for {} "{}"'.format(
+        'Missing key {} for {} \'{}\''.format(
             str(key_error), entry_type, entry_name))

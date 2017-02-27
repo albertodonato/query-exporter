@@ -64,7 +64,7 @@ class QueryExporterScript(PrometheusExporterScript):
 
     async def _run_query(self, query, dbname):
         self.logger.debug(
-            'running query "{}" on database "{}"'.format(query.name, dbname))
+            "running query '{}' on database '{}'".format(query.name, dbname))
         async with self.databases[dbname].connect() as conn:
             results = await conn.execute(query)
         for name, value in results.items():
@@ -80,7 +80,7 @@ class QueryExporterScript(PrometheusExporterScript):
             'summary': 'observe'}
         method = metric_methods[self.metric_configs[name].type]
         self.logger.debug(
-            'metric update for "{}": {} {}'.format(name, method, value))
+            "metric update for '{}': {} {}".format(name, method, value))
         getattr(self.metrics[name], method)(value)
 
 
