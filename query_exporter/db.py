@@ -30,7 +30,7 @@ class DataBase(namedtuple('DataBase', ['name', 'dsn'])):
 class DataBaseConnection(namedtuple('DataBaseConnection', ['name', 'dsn'])):
     '''A database connection.
 
-    It support context manager protocol.
+    It supports the context manager protocol.
 
     '''
 
