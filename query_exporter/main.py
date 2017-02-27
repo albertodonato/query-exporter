@@ -6,6 +6,7 @@ from prometheus_aioexporter.script import PrometheusExporterScript
 from toolrack.async import PeriodicCall
 
 from .config import load_config
+from .db import QueryError
 
 
 class QueryExporterScript(PrometheusExporterScript):
@@ -66,13 +67,26 @@ class QueryExporterScript(PrometheusExporterScript):
                     self.loop.create_task(self._run_query(query, dbname))
 
     async def _run_query(self, query, dbname):
+        ''''Run a Query on a DataBase.'''
         self.logger.debug(
             "running query '{}' on database '{}'".format(query.name, dbname))
         async with self.databases[dbname].connect() as conn:
-            results = await conn.execute(query)
+            try:
+                results = await conn.execute(query)
+            except QueryError as error:
+                self._log_query_error(query.name, error)
+                return
+
         for name, value in results.items():
             self._update_metric(name, value)
         self.queries_db_last_time[(query.name, dbname)] = time()
+
+    def _log_query_error(self, name, error):
+        '''Log a failed Query.'''
+        prefix = "query '{}' failed:".format(name)
+        self.logger.error('{} {}'.format(prefix, error))
+        for line in error.details:
+            self.logger.debug(line)
 
     def _update_metric(self, name, value):
         '''Update value for a metric.'''

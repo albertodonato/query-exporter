@@ -1,6 +1,16 @@
 from collections import namedtuple
 
+from psycopg2 import ProgrammingError
+
 import aiopg
+
+
+class QueryError(Exception):
+    '''A Query failed.'''
+
+    def __init__(self, error):
+        message, *self.details = error.splitlines()
+        super().__init__(message)
 
 
 Query = namedtuple(
@@ -59,5 +69,8 @@ class DataBaseConnection(namedtuple('DataBaseConnection', ['name', 'dsn'])):
     async def execute(self, query):
         '''Execute a query.'''
         async with self._conn.cursor() as cursor:
-            await cursor.execute(query.sql)
-            return query.results(await cursor.fetchone())
+            try:
+                await cursor.execute(query.sql)
+                return query.results(await cursor.fetchone())
+            except ProgrammingError as error:
+                raise QueryError(str(error))
