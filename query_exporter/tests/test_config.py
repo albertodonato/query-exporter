@@ -66,6 +66,12 @@ class LoadConfigTests(TestCase):
     def test_load_queries_section(self):
         '''The 'queries section is loaded from the config file.'''
         config = {
+            'databases': {
+                'db1': {'dsn': 'dbname=foo'},
+                'db2': {'dsn': 'dbname=bar'}},
+            'metrics': {
+                'm1': {'type': 'summary'},
+                'm2': {'type': 'histogram'}},
             'queries': {
                 'q1': {
                     'interval': 10,
@@ -89,6 +95,40 @@ class LoadConfigTests(TestCase):
         self.assertEqual(query2.databases, ['db2'])
         self.assertEqual(query2.metrics, ['m2'])
         self.assertEqual(query2.sql, 'SELECT 2')
+
+    def test_load_queries_unknown_databases(self):
+        '''An error is raised if database names in query config are unknown.'''
+        config = {
+            'metrics': {
+                'm': {'type': 'summary'}},
+            'queries': {
+                'q': {
+                    'interval': 10,
+                    'databases': ['db1', 'db2'],
+                    'metrics': ['m'],
+                    'sql': 'SELECT 1'}}}
+        config_file = self.tempdir.mkfile(content=yaml.dump(config))
+        with self.assertRaises(ConfigError) as cm, open(config_file) as fd:
+            load_config(fd)
+        self.assertEqual(
+            str(cm.exception), "Unknown databases for query 'q': db1, db2")
+
+    def test_load_queries_unknown_metrics(self):
+        '''An error is raised if metric names in query config are unknown.'''
+        config = {
+            'databases': {
+                'db': {'dsn': 'dbname=foo'}},
+            'queries': {
+                'q': {
+                    'interval': 10,
+                    'databases': ['db'],
+                    'metrics': ['m1', 'm2'],
+                    'sql': 'SELECT 1'}}}
+        config_file = self.tempdir.mkfile(content=yaml.dump(config))
+        with self.assertRaises(ConfigError) as cm, open(config_file) as fd:
+            load_config(fd)
+        self.assertEqual(
+            str(cm.exception), "Unknown metrics for query 'q': m1, m2")
 
     def test_load_databases_missing_key(self):
         '''An error is raised if keys are missing in the queries section.'''

@@ -20,7 +20,10 @@ def load_config(config_fd):
     config = yaml.load(config_fd)
     databases = _get_databases(config.get('databases', {}))
     metrics = _get_metrics(config.get('metrics', {}))
-    queries = _get_queries(config.get('queries', {}))
+    database_names = frozenset(database.name for database in databases)
+    metric_names = frozenset(metric.name for metric in metrics)
+    queries = _get_queries(
+        config.get('queries', {}), database_names, metric_names)
     return Config(databases, metrics, queries)
 
 
@@ -45,11 +48,12 @@ def _get_metrics(metrics):
     return configs
 
 
-def _get_queries(configs):
+def _get_queries(configs, database_names, metric_names):
     '''Return a list of Queries from config.'''
     queries = []
     for name, config in configs.items():
         try:
+            _validate_query_config(name, config, database_names, metric_names)
             queries.append(
                 Query(
                     name, config['interval'], config['databases'],
@@ -57,6 +61,20 @@ def _get_queries(configs):
         except KeyError as e:
             _raise_missing_key(e, 'query', name)
     return queries
+
+
+def _validate_query_config(name, config, database_names, metric_names):
+    '''Validate a query configuration stanza.'''
+    unknown_databases = set(config['databases']) - database_names
+    if unknown_databases:
+        raise ConfigError(
+            "Unknown databases for query '{}': {}".format(
+                name, ', '.join(sorted(unknown_databases))))
+    unknown_metrics = set(config['metrics']) - metric_names
+    if unknown_metrics:
+        raise ConfigError(
+            "Unknown metrics for query '{}': {}".format(
+                name, ', '.join(sorted(unknown_metrics))))
 
 
 def _raise_missing_key(key_error, entry_type, entry_name):
