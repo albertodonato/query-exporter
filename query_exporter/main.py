@@ -15,6 +15,9 @@ class QueryExporterScript(PrometheusExporterScript):
 
     description = __doc__
 
+    # The interval at which the loop is run, in seconds
+    LOOP_INTERVAL = 10
+
     def configure_argument_parser(self, parser):
         parser.add_argument(
             'config', type=argparse.FileType('r'),
@@ -25,7 +28,7 @@ class QueryExporterScript(PrometheusExporterScript):
         self.periodic_call = PeriodicCall(self.loop, self._call)
 
     def on_application_startup(self, application):
-        self.periodic_call.start(10)
+        self.periodic_call.start(self.LOOP_INTERVAL)
 
     async def on_application_shutdown(self, application):
         await self.periodic_call.stop()

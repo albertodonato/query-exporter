@@ -54,6 +54,7 @@ def _get_queries(configs, database_names, metric_names):
     for name, config in configs.items():
         try:
             _validate_query_config(name, config, database_names, metric_names)
+            _convert_interval(name, config)
             queries.append(
                 Query(
                     name, config['interval'], config['databases'],
@@ -75,6 +76,24 @@ def _validate_query_config(name, config, database_names, metric_names):
         raise ConfigError(
             "Unknown metrics for query '{}': {}".format(
                 name, ', '.join(sorted(unknown_metrics))))
+
+
+def _convert_interval(name, config):
+    '''Convert query intervals in seconds.'''
+    interval = config['interval']
+    multiplier = 1
+
+    if isinstance(interval, str):
+        multipliers = {'m': 1, 'h': 60, 'd': 60 * 24}  # convert to minutes
+        suffix = interval[-1]
+        if suffix in multipliers:
+            interval = interval[:-1]
+            multiplier = multipliers[suffix]
+
+    try:
+        config['interval'] = int(interval) * multiplier * 60
+    except ValueError:
+        raise ConfigError("Invalid interval for query '{}'".format(name))
 
 
 def _raise_missing_key(key_error, entry_type, entry_name):
