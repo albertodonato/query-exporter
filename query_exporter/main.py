@@ -13,9 +13,6 @@ class QueryExporterScript(PrometheusExporterScript):
 
     description = __doc__
 
-    # The interval at which the loop is run, in seconds
-    LOOP_INTERVAL = 10
-
     def configure_argument_parser(self, parser):
         parser.add_argument(
             'config', type=argparse.FileType('r'),

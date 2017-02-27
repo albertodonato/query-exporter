@@ -8,19 +8,17 @@ from .db import QueryError
 class QueryLoop:
     '''Periodically performs queries.'''
 
-    # The interval at which the check for queries to run is performed
-    CHECK_INTERVAL = 10
-
-    def __init__(self, config, metrics, logger, loop):
+    def __init__(self, config, metrics, logger, loop, interval=10):
         self.loop = loop
         self.logger = logger
+        self.interval = interval
         self._metrics = metrics
         self._setup(config)
         self._periodic_call = PeriodicCall(self.loop, self._call)
 
     def start(self):
         '''Start the periodic check.'''
-        self._periodic_call.start(self.CHECK_INTERVAL)
+        self._periodic_call.start(self.interval)
 
     async def stop(self):
         '''Stop the periodic check.'''
@@ -80,5 +78,5 @@ class QueryLoop:
             'summary': 'observe'}
         method = metric_methods[self._metric_configs[name].type]
         self.logger.debug(
-            "metric update for '{}': {} {}".format(name, method, value))
+            "updating metric '{}': {} {}".format(name, method, value))
         getattr(self._metrics[name], method)(value)
