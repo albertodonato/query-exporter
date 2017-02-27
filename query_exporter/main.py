@@ -79,6 +79,8 @@ class QueryExporterScript(PrometheusExporterScript):
             'histogram': 'observe',
             'summary': 'observe'}
         method = metric_methods[self.metric_configs[name].type]
+        self.logger.debug(
+            'metric update for "{}": {} {}'.format(name, method, value))
         getattr(self.metrics[name], method)(value)
 
 
