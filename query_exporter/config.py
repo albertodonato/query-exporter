@@ -44,6 +44,8 @@ def _get_metrics(metrics):
     for name, config in metrics.items():
         metric_type = config.pop('type', '')
         description = config.pop('description', '')
+        # add a 'database' label to have different series for sharded databases
+        config['labels'] = ['database']
         configs.append(MetricConfig(name, description, metric_type, config))
     return configs
 

@@ -56,10 +56,12 @@ class LoadConfigTests(TestCase):
         metric1, metric2 = sorted(result.metrics, key=attrgetter('name'))
         self.assertEqual(metric1.type, 'summary')
         self.assertEqual(metric1.description, 'metric one')
-        self.assertEqual(metric1.config, {})
+        self.assertEqual(metric1.config, {'labels': ['database']})
         self.assertEqual(metric2.type, 'histogram')
         self.assertEqual(metric2.description, 'metric two')
-        self.assertEqual(metric2.config, {'buckets': [10, 100, 1000]})
+        self.assertEqual(
+            metric2.config,
+            {'labels': ['database'], 'buckets': [10, 100, 1000]})
 
     def test_load_queries_section(self):
         '''The 'queries section is loaded from the config file.'''

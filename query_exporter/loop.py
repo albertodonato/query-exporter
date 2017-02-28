@@ -59,7 +59,7 @@ class QueryLoop:
             return
 
         for name, value in results.items():
-            self._update_metric(name, value)
+            self._update_metric(name, value, dbname)
         self._queries_db_last_time[(query.name, dbname)] = time()
 
     def _log_query_error(self, name, error):
@@ -69,7 +69,7 @@ class QueryLoop:
         for line in error.details:
             self.logger.debug(line)
 
-    def _update_metric(self, name, value):
+    def _update_metric(self, name, value, dbname):
         '''Update value for a metric.'''
         metric_methods = {
             'counter': 'inc',
@@ -79,4 +79,5 @@ class QueryLoop:
         method = metric_methods[self._metric_configs[name].type]
         self.logger.debug(
             "updating metric '{}': {} {}".format(name, method, value))
-        getattr(self._metrics[name], method)(value)
+        metric = self._metrics[name].labels(database=dbname)
+        getattr(metric, method)(value)
