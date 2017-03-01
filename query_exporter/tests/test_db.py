@@ -11,27 +11,25 @@ class FakeAiopg:
 
     dsn = None
 
-    def __init__(self, connect_error=None, query_error=None):
+    def __init__(self, connect_error=None):
         self.connect_error = connect_error
-        self.query_error = query_error
 
     async def create_pool(self, dsn):
         self.dsn = dsn
         if self.connect_error:
             raise OperationalError(self.connect_error)
-        return FakePool(dsn, query_error=self.query_error)
+        return FakePool(dsn)
 
 
 class FakePool:
 
     closed = False
 
-    def __init__(self, dsn, query_error=None):
+    def __init__(self, dsn):
         self.dsn = dsn
-        self.query_error = query_error
 
     async def acquire(self):
-        return FakeConnection(query_error=self.query_error)
+        return FakeConnection()
 
     def close(self):
         self.closed = True
@@ -41,9 +39,6 @@ class FakeConnection:
 
     closed = False
     curr = None
-
-    def __init__(self, query_error=None):
-        self.query_error = query_error
 
     async def close(self):
         self.closed = True
@@ -58,8 +53,9 @@ class FakeCursor:
 
     sql = None
 
-    def __init__(self, results=None):
+    def __init__(self, results=None, query_error=None):
         self.results = results
+        self.query_error = query_error
 
     async def __aenter__(self):
         return self
@@ -68,6 +64,8 @@ class FakeCursor:
         pass
 
     async def execute(self, sql):
+        if self.query_error:
+            raise ProgrammingError(self.query_error)
         self.sql = sql
 
     async def fetchone(self):
@@ -179,7 +177,20 @@ class DataBaseConnectionTests(LoopTestCase):
     async def test_execute(self):
         '''The execute method executes a query.'''
         query = Query('query', 20, ['db'], ['metric1', 'metric2'], 'SELECT 1')
+        cursor = FakeCursor(results=(10, 20))
         async with self.connection:
-            self.connection._conn.curr = FakeCursor(results=(10, 20))
+            self.connection._conn.curr = cursor
             result = await self.connection.execute(query)
         self.assertEqual(result, {'metric1': 10, 'metric2': 20})
+        self.assertEqual(cursor.sql, 'SELECT 1')
+
+    async def test_execute_query_error(self):
+        '''The execute method executes a query.'''
+        query = Query('query', 20, ['db'], ['metric'], 'WRONG')
+        cursor = FakeCursor(query_error='wrong query\nmore details')
+        with self.assertRaises(DBError) as cm:
+            async with self.connection:
+                self.connection._conn.curr = cursor
+                await self.connection.execute(query)
+        self.assertEqual(str(cm.exception), 'wrong query')
+        self.assertEqual(cm.exception.details, ['more details'])
