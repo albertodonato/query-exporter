@@ -38,6 +38,8 @@ class QueryLoopTests(LoopTestCase):
         metrics = create_metrics(config.metrics, registry)
         self.query_loop = QueryLoop(config, metrics, logging, self.loop)
 
+    def mock_run_query(self):
+        '''Don't actually run queries.'''
         async def _run_query(*args):
             return
 
@@ -46,12 +48,14 @@ class QueryLoopTests(LoopTestCase):
 
     async def test_start(self):
         '''The start method starts the periodic call.'''
+        self.mock_run_query()
         self.query_loop.start()
         self.assertTrue(self.query_loop._periodic_call.running)
         await self.query_loop.stop()
 
     async def test_stop(self):
         '''The stop method stops the periodic call.'''
+        self.mock_run_query()
         self.query_loop.start()
         await self.query_loop.stop()
         self.assertFalse(self.query_loop._periodic_call.running)

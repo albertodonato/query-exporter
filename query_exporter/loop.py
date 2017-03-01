@@ -2,7 +2,7 @@ from time import time
 
 from toolrack.async import PeriodicCall
 
-from .db import DBError
+from .db import DataBaseError
 
 
 class QueryLoop:
@@ -54,7 +54,7 @@ class QueryLoop:
         try:
             async with self._databases[dbname].connect() as conn:
                 results = await conn.execute(query)
-        except DBError as error:
+        except DataBaseError as error:
             self._log_db_error(query.name, error)
             return
 
@@ -65,6 +65,7 @@ class QueryLoop:
     def _log_db_error(self, name, error):
         '''Log a failed database query.'''
         prefix = "query '{}' failed:".format(name)
+        print('here')
         self.logger.error('{} {}'.format(prefix, error))
         for line in error.details:
             self.logger.debug(line)

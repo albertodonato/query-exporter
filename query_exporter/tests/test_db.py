@@ -4,7 +4,7 @@ from psycopg2 import OperationalError, ProgrammingError
 
 from toolrack.testing.async import LoopTestCase
 
-from ..db import DBError, Query, DataBase, DataBaseConnection
+from ..db import DataBaseError, Query, DataBase, DataBaseConnection
 
 
 class FakeAiopg:
@@ -72,12 +72,12 @@ class FakeCursor:
         return self.results
 
 
-class DBErrorTests(TestCase):
+class DataBaseErrorTests(TestCase):
 
     def test_message(self):
-        '''The DBError splits error message and details.'''
+        '''The DataBaseError splits error message and details.'''
         error = 'an error happened\nsome more\ndetails here'
-        exception = DBError(error)
+        exception = DataBaseError(error)
         self.assertEqual(str(exception), 'an error happened')
         self.assertEqual(
             exception.details, ['some more', 'details here'])
@@ -155,10 +155,10 @@ class DataBaseConnectionTests(LoopTestCase):
         self.assertIsInstance(self.connection._conn, FakeConnection)
 
     async def test_connect_error(self):
-        '''A DBError is raise if database connection fails.'''
+        '''A DataBaseError is raise if database connection fails.'''
         self.connection.aiopg = FakeAiopg(
             connect_error='some error\nmore details')
-        with self.assertRaises(DBError) as cm:
+        with self.assertRaises(DataBaseError) as cm:
             await self.connection.connect()
         self.assertEqual(str(cm.exception), 'some error')
         self.assertEqual(cm.exception.details, ['more details'])
@@ -188,7 +188,7 @@ class DataBaseConnectionTests(LoopTestCase):
         '''The execute method executes a query.'''
         query = Query('query', 20, ['db'], ['metric'], 'WRONG')
         cursor = FakeCursor(query_error='wrong query\nmore details')
-        with self.assertRaises(DBError) as cm:
+        with self.assertRaises(DataBaseError) as cm:
             async with self.connection:
                 self.connection._conn.curr = cursor
                 await self.connection.execute(query)
