@@ -65,7 +65,6 @@ class QueryLoop:
     def _log_db_error(self, name, error):
         '''Log a failed database query.'''
         prefix = "query '{}' failed:".format(name)
-        print('here')
         self.logger.error('{} {}'.format(prefix, error))
         for line in error.details:
             self.logger.debug(line)
@@ -78,6 +77,9 @@ class QueryLoop:
             'histogram': 'observe',
             'summary': 'observe'}
         method = metric_methods[self._metric_configs[name].type]
+        if value is None:
+            # don't fail is queries that count return NULL
+            value = 0.0
         self.logger.debug(
             "updating metric '{}': {} {}".format(name, method, value))
         metric = self._metrics[name].labels(database=dbname)

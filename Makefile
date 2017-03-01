@@ -21,7 +21,7 @@ test:
 coverage:
 	@coverage run -m unittest
 	@coverage report --show-missing --skip-covered --fail-under=100 \
-		--include=query_exporter/\* --omit=**/test_\*.py
+		--include=query_exporter/\* --omit=\*\*/tests/\*
 
 lint:
 	@$(LINT) setup.py query_exporter
