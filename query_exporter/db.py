@@ -5,8 +5,8 @@ from psycopg2 import ProgrammingError, OperationalError
 import aiopg
 
 
-class QueryError(Exception):
-    '''A Query failed.'''
+class DBError(Exception):
+    '''A database error.'''
 
     def __init__(self, error):
         message, *self.details = error.splitlines()
@@ -44,6 +44,8 @@ class DataBaseConnection(namedtuple('DataBaseConnection', ['name', 'dsn'])):
 
     '''
 
+    aiopg = aiopg   # for testing
+
     _pool = None
     _conn = None
 
@@ -57,10 +59,10 @@ class DataBaseConnection(namedtuple('DataBaseConnection', ['name', 'dsn'])):
     async def connect(self):
         '''Connect to the database.'''
         try:
-            self._pool = await aiopg.create_pool(self.dsn)
+            self._pool = await self.aiopg.create_pool(self.dsn)
             self._conn = await self._pool.acquire()
         except OperationalError as error:
-            raise QueryError(str(error))
+            raise DBError(str(error))
 
     async def close(self):
         '''Close the database connection.'''
@@ -76,4 +78,4 @@ class DataBaseConnection(namedtuple('DataBaseConnection', ['name', 'dsn'])):
                 await cursor.execute(query.sql)
                 return query.results(await cursor.fetchone())
             except ProgrammingError as error:
-                raise QueryError(str(error))
+                raise DBError(str(error))
