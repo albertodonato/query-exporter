@@ -19,9 +19,9 @@ Query = namedtuple(
 
 class Query(Query):
 
-    def results(self, row):
-        '''Return a dict with metric values from a result row.'''
-        return dict(zip(self.metrics, row))
+    def results(self, rows):
+        '''Return a list of dicts with metric values from result rows.'''
+        return [dict(zip(self.metrics, row)) for row in rows]
 
 
 class DataBase(namedtuple('DataBase', ['name', 'dsn'])):
@@ -80,6 +80,6 @@ class DataBaseConnection(namedtuple('DataBaseConnection', ['name', 'dsn'])):
         async with self._conn.cursor() as cursor:
             try:
                 await cursor.execute(query.sql)
-                return query.results(await cursor.fetchone())
+                return query.results(await cursor.fetchmany())
             except ProgrammingError as error:
                 raise DataBaseError(str(error))

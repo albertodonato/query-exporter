@@ -66,7 +66,7 @@ class QueryLoopTests(LoopTestCase):
     async def test_run_query(self):
         '''Queries are run and update metrics.'''
         database = self.query_loop._databases['db']
-        database.aiopg = FakeAiopg(query_results=[100.0])
+        database.aiopg = FakeAiopg(query_results=[(100.0,)])
         self.query_loop.start()
         await self.query_loop.stop()
         metric = self.query_loop._metrics['m']
@@ -77,7 +77,7 @@ class QueryLoopTests(LoopTestCase):
     async def test_run_query_null_value(self):
         '''A null value in query results is treated like a zero.'''
         database = self.query_loop._databases['db']
-        database.aiopg = FakeAiopg(query_results=[None])
+        database.aiopg = FakeAiopg(query_results=[(None,)])
         self.query_loop.start()
         await self.query_loop.stop()
         metric = self.query_loop._metrics['m']
@@ -87,7 +87,7 @@ class QueryLoopTests(LoopTestCase):
     async def test_run_query_log(self):
         '''Debug messages are logged on query execution.'''
         database = self.query_loop._databases['db']
-        database.aiopg = FakeAiopg(query_results=[100.0])
+        database.aiopg = FakeAiopg(query_results=[(100.0,)])
         self.query_loop.start()
         await self.query_loop.stop()
         self.assertIn("running query 'q' on database 'db'", self.logger.output)

@@ -32,8 +32,10 @@ class QueryTests(TestCase):
     def test_results(self):
         '''The results method returns a dict mapping metrics to results.'''
         query = Query('query', 20, ['db'], ['metric1', 'metric2'], 'SELECT 1')
+        rows = [(11, 22), (33, 44)]
         self.assertEqual(
-            query.results((11, 22)), {'metric1': 11, 'metric2': 22})
+            query.results(rows),
+            [{'metric1': 11, 'metric2': 22}, {'metric1': 33, 'metric2': 44}])
 
 
 class DataBaseTests(TestCase):
@@ -111,11 +113,11 @@ class DataBaseConnectionTests(LoopTestCase):
     async def test_execute(self):
         '''The execute method executes a query.'''
         query = Query('query', 20, ['db'], ['metric1', 'metric2'], 'SELECT 1')
-        cursor = FakeCursor(results=(10, 20))
+        cursor = FakeCursor(results=[(10, 20)])
         async with self.connection:
             self.connection._conn.curr = cursor
             result = await self.connection.execute(query)
-        self.assertEqual(result, {'metric1': 10, 'metric2': 20})
+        self.assertEqual(result, [{'metric1': 10, 'metric2': 20}])
         self.assertEqual(cursor.sql, 'SELECT 1')
 
     async def test_execute_query_error(self):

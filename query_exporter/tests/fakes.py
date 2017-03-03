@@ -69,5 +69,5 @@ class FakeCursor:
             raise ProgrammingError(self.query_error)
         self.sql = sql
 
-    async def fetchone(self):
+    async def fetchmany(self):
         return self.results

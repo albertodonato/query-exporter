@@ -56,8 +56,9 @@ class QueryLoop:
             self._log_db_error(query.name, error)
             return
 
-        for name, value in results.items():
-            self._update_metric(name, value, dbname)
+        for result in results:
+            for name, value in result.items():
+                self._update_metric(name, value, dbname)
         self._queries_db_last_time[(query.name, dbname)] = self.loop.time()
 
     def _log_db_error(self, name, error):
