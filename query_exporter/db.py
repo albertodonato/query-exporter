@@ -27,6 +27,8 @@ class Query(Query):
 class DataBase(namedtuple('DataBase', ['name', 'dsn'])):
     '''A database to perform Queries.'''
 
+    aiopg = aiopg  # for testing
+
     def connect(self):
         '''Connect to the database.
 
@@ -34,7 +36,9 @@ class DataBase(namedtuple('DataBase', ['name', 'dsn'])):
         DataBaseConnection.
 
         '''
-        return DataBaseConnection(self.name, self.dsn)
+        connection = DataBaseConnection(self.name, self.dsn)
+        connection.aiopg = self.aiopg
+        return connection
 
 
 class DataBaseConnection(namedtuple('DataBaseConnection', ['name', 'dsn'])):

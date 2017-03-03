@@ -3,7 +3,6 @@ from unittest import TestCase
 from toolrack.testing.async import LoopTestCase
 
 from .fakes import FakeAiopg, FakePool, FakeConnection, FakeCursor
-
 from ..db import DataBaseError, Query, DataBase, DataBaseConnection
 
 

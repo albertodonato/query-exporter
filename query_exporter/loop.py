@@ -1,5 +1,3 @@
-from time import time
-
 from toolrack.async import PeriodicCall
 
 from .db import DataBaseError
@@ -9,11 +7,11 @@ class QueryLoop:
     '''Periodically performs queries.'''
 
     def __init__(self, config, metrics, logger, loop, interval=10):
+        self._setup(config)
         self.loop = loop
         self.logger = logger
         self.interval = interval
         self._metrics = metrics
-        self._setup(config)
         self._periodic_call = PeriodicCall(self.loop, self._call)
 
     def start(self):
@@ -39,12 +37,12 @@ class QueryLoop:
 
     def _call(self):
         '''The periodic task function.'''
-        now = time()
+        now = self.loop.time()
         for query in self._queries:
             name = query.name
             for dbname in query.databases:
                 last_time = self._queries_db_last_time[name, dbname]
-                if last_time + query.interval <= now:
+                if not last_time or last_time + query.interval <= now:
                     self.loop.create_task(self._run_query(query, dbname))
 
     async def _run_query(self, query, dbname):
@@ -60,7 +58,7 @@ class QueryLoop:
 
         for name, value in results.items():
             self._update_metric(name, value, dbname)
-        self._queries_db_last_time[(query.name, dbname)] = time()
+        self._queries_db_last_time[(query.name, dbname)] = self.loop.time()
 
     def _log_db_error(self, name, error):
         '''Log a failed database query.'''
