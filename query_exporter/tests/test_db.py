@@ -3,7 +3,12 @@ from unittest import TestCase
 from toolrack.testing.async import LoopTestCase
 
 from .fakes import FakeAiopg, FakePool, FakeConnection, FakeCursor
-from ..db import DataBaseError, Query, DataBase, DataBaseConnection
+from ..db import (
+    DataBaseError,
+    Query,
+    DataBase,
+    DataBaseConnection,
+    InvalidResultCount)
 
 
 class DataBaseErrorTests(TestCase):
@@ -129,3 +134,11 @@ class DataBaseConnectionTests(LoopTestCase):
                 await self.connection.execute(query)
         self.assertEqual(str(cm.exception), 'wrong query')
         self.assertEqual(cm.exception.details, ['more details'])
+
+    async def test_execute_query_wrong_result_count(self):
+        query = Query('query', 20, ['db'], ['metric'], 'SELECT 1, 2')
+        cursor = FakeCursor(results=[(1, 2)])
+        with self.assertRaises(InvalidResultCount):
+            async with self.connection:
+                self.connection._conn.curr = cursor
+                await self.connection.execute(query)

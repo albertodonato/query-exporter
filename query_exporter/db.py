@@ -13,6 +13,13 @@ class DataBaseError(Exception):
         super().__init__(message)
 
 
+class InvalidResultCount(Exception):
+    '''Number of results from a query don't match metrics count.'''
+
+    def __init__(self):
+        super().__init__('Wrong result count from the query')
+
+
 Query = namedtuple(
     'Query', ['name', 'interval', 'databases', 'metrics', 'sql'])
 
@@ -21,6 +28,8 @@ class Query(Query):
 
     def results(self, rows):
         '''Return a dict with a tuple of values for each metric.'''
+        if len(self.metrics) != len(rows[0]):
+            raise InvalidResultCount()
         return dict(zip(self.metrics, zip(*rows)))
 
 

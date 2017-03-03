@@ -1,6 +1,6 @@
 from toolrack.async import PeriodicCall
 
-from .db import DataBaseError
+from .db import DataBaseError, InvalidResultCount
 
 
 class QueryLoop:
@@ -55,16 +55,23 @@ class QueryLoop:
         except DataBaseError as error:
             self._log_db_error(query.name, error)
             return
+        except InvalidResultCount as error:
+            self._log_query_error(query.name, error)
+            return
 
         for name, values in results.items():
             for value in values:
                 self._update_metric(name, value, dbname)
         self._queries_db_last_time[(query.name, dbname)] = self.loop.time()
 
-    def _log_db_error(self, name, error):
-        '''Log a failed database query.'''
+    def _log_query_error(self, name, error):
+        '''Log an error related to database query.'''
         prefix = "query '{}' failed:".format(name)
         self.logger.error('{} {}'.format(prefix, error))
+
+    def _log_db_error(self, name, error):
+        '''Log a failed database query.'''
+        self._log_query_error(name, error)
         for line in error.details:
             self.logger.debug(line)
 

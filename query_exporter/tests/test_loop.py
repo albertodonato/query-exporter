@@ -101,3 +101,13 @@ class QueryLoopTests(LoopTestCase):
         await self.query_loop.stop()
         self.assertIn(
             "query 'q' failed: error\nconnect failed\n", self.logger.output)
+
+    async def test_run_query_log_invalid_result_count(self):
+        '''An error is logged if result count doesn't match metrics count.'''
+        database = self.query_loop._databases['db']
+        database.aiopg = FakeAiopg(query_results=[(100.0, 200.0)])
+        self.query_loop.start()
+        await self.query_loop.stop()
+        self.assertIn(
+            "query 'q' failed: Wrong result count from the query",
+            self.logger.output)
