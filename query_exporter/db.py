@@ -20,8 +20,8 @@ Query = namedtuple(
 class Query(Query):
 
     def results(self, rows):
-        '''Return a list of dicts with metric values from result rows.'''
-        return [dict(zip(self.metrics, row)) for row in rows]
+        '''Return a dict with a tuple of values for each metric.'''
+        return dict(zip(self.metrics, zip(*rows)))
 
 
 class DataBase(namedtuple('DataBase', ['name', 'dsn'])):
