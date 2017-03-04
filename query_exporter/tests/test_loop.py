@@ -39,29 +39,30 @@ class QueryLoopTests(LoopTestCase):
         metrics = create_metrics(config.metrics, registry)
         self.query_loop = QueryLoop(config, metrics, logging, self.loop)
 
-    def mock_run_query(self):
-        '''Don't actually run queries.'''
-        self.query_runs = []
+    def mock_execute_query(self):
+        '''Don't actually execute queries.'''
+        self.query_exec = []
 
-        async def _run_query(*args):
-            self.query_runs.append(args)
+        async def _execute_query(*args):
+            self.query_exec.append(args)
 
-        # don't actually run queries
-        self.query_loop._run_query = _run_query
+        self.query_loop._execute_query = _execute_query
 
     async def test_start(self):
-        '''The start method starts the periodic call.'''
-        self.mock_run_query()
+        '''The start method starts periodic calls for queries.'''
+        self.mock_execute_query()
         self.query_loop.start()
-        self.assertTrue(self.query_loop._periodic_call.running)
+        [periodic_call] = self.query_loop._periodic_calls
+        self.assertTrue(periodic_call.running)
         await self.query_loop.stop()
 
     async def test_stop(self):
-        '''The stop method stops the periodic call.'''
-        self.mock_run_query()
+        '''The stop method stops periodic calls for queries.'''
+        self.mock_execute_query()
         self.query_loop.start()
         await self.query_loop.stop()
-        self.assertFalse(self.query_loop._periodic_call.running)
+        [periodic_call] = self.query_loop._periodic_calls
+        self.assertFalse(periodic_call.running)
 
     async def test_run_query(self):
         '''Queries are run and update metrics.'''
