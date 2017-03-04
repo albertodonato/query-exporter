@@ -27,7 +27,7 @@ class QueryLoopTests(LoopTestCase):
             'metrics': {'m': {'type': 'gauge'}},
             'queries': {
                 'q': {
-                    'interval': 1,
+                    'interval': 10,
                     'databases': ['db'],
                     'metrics': ['m'],
                     'sql': 'SELECT 1'}}}
@@ -112,3 +112,19 @@ class QueryLoopTests(LoopTestCase):
         self.assertIn(
             "query 'q' failed: Wrong result count from the query",
             self.logger.output)
+
+    async def test_run_query_periodically(self):
+        '''Queies are run at the specified time interval.'''
+        self.mock_execute_query()
+        database = self.query_loop._databases['db']
+        database.aiopg = FakeAiopg(query_results=[(100.0,)])
+        self.query_loop.start()
+        # the query has been run once
+        self.assertEqual(len(self.query_exec), 1)
+        self.loop.advance(5)
+        # no more runs yet
+        self.assertEqual(len(self.query_exec), 1)
+        # now the query runs again
+        self.loop.advance(5)
+        self.assertEqual(len(self.query_exec), 2)
+        await self.query_loop.stop()
