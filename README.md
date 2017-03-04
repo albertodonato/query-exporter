@@ -3,6 +3,9 @@
 `query-exporter` is a [Prometheus](https://prometheus.io/) exporter which
 allows collecting metrics from database queries, at specified time intervals.
 
+It currently supports [PostgreSQL](https://www.postgresql.org/) as a backend
+database.
+
 Each query can be run on multiple databases, and update multiple metrics.
 
 The application is called with a configuration file that looks like this:
