@@ -81,21 +81,33 @@ def _validate_query_config(name, config, database_names, metric_names):
 
 
 def _convert_interval(name, config):
-    '''Convert query intervals in seconds.'''
+    '''Convert query intervals to seconds.'''
     interval = config['interval']
     multiplier = 1
 
+    config_error = ConfigError(
+        "Invalid interval for query '{}'".format(name))
+
     if isinstance(interval, str):
-        multipliers = {'m': 1, 'h': 60, 'd': 60 * 24}  # convert to minutes
+        # convert to seconds
+        multipliers = {'s': 1, 'm': 60, 'h': 3600, 'd': 3600 * 24}
         suffix = interval[-1]
         if suffix in multipliers:
             interval = interval[:-1]
             multiplier = multipliers[suffix]
 
+        if '.' in interval:
+            raise config_error
+
     try:
-        config['interval'] = int(interval) * multiplier * 60
+        interval = int(interval)
     except ValueError:
-        raise ConfigError("Invalid interval for query '{}'".format(name))
+        raise config_error
+
+    if interval <= 0:
+        raise config_error
+
+    config['interval'] = interval * multiplier
 
 
 def _raise_missing_key(key_error, entry_type, entry_name):
