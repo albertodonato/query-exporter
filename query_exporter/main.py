@@ -5,7 +5,7 @@ from toolrack.script import ErrorExitMessage
 from prometheus_aioexporter.script import PrometheusExporterScript
 from prometheus_aioexporter.metric import InvalidMetricType
 
-from .config import load_config
+from .config import load_config, ConfigError
 from .loop import QueryLoop
 
 
@@ -36,7 +36,7 @@ class QueryExporterScript(PrometheusExporterScript):
         '''Load the application configuration.'''
         try:
             config = load_config(config_file)
-        except InvalidMetricType as error:
+        except (InvalidMetricType, ConfigError) as error:
             raise ErrorExitMessage(str(error))
         finally:
             config_file.close()
