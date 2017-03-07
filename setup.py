@@ -17,7 +17,7 @@ config = {
     'include_package_data': True,
     'entry_points': {'console_scripts': [
         'query-exporter = query_exporter.main:script']},
-    'test_suite': 'query-exporter',
+    'test_suite': 'query_exporter',
     'install_requires': [
         'aiohttp',
         'aiopg',
