@@ -1,5 +1,8 @@
 # query-exporter - Export Prometheus metrics from SQL queries
 
+[![Build Status](https://travis-ci.org/albertodonato/query-exporter.svg?branch=master)](https://travis-ci.org/albertodonato/query-exporter)
+[![Coverage Status](https://codecov.io/gh/albertodonato/query-exporter/branch/master/graph/badge.svg)](https://codecov.io/gh/albertodonato/query-exporter)
+
 `query-exporter` is a [Prometheus](https://prometheus.io/) exporter which
 allows collecting metrics from database queries, at specified time intervals.
 
