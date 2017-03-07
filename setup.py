@@ -12,6 +12,7 @@ config = {
     'author_email': 'alberto.donato@gmail.com',
     'maintainer': 'Alberto Donato',
     'maintainer_email': 'alberto.donato@gmail.com',
+    'url': 'https://github.com/albertodonato/query-exporter',
     'packages': find_packages(),
     'include_package_data': True,
     'entry_points': {'console_scripts': [
@@ -25,6 +26,13 @@ config = {
         'PyYaml',
         'toolrack'],
     'tests_require': ['asynctest'],
-    'keywords': 'sql metric prometheus exporter'}
+    'keywords': 'sql metric prometheus exporter',
+    'classifiers': [
+        'Development Status :: 3 - Alpha',
+        'Intended Audience :: System Administrators',
+        'License :: OSI Approved :: GNU General Public License (GPL)',
+        'Operating System :: POSIX :: Linux',
+        'Programming Language :: Python :: 3.5',
+        'Topic :: Utilities']}
 
 setup(**config)
