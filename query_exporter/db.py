@@ -28,6 +28,9 @@ class Query(Query):
 
     def results(self, rows):
         '''Return a dict with a tuple of values for each metric.'''
+        if not rows:
+            return {}
+
         if len(self.metrics) != len(rows[0]):
             raise InvalidResultCount()
         return dict(zip(self.metrics, zip(*rows)))

@@ -41,6 +41,19 @@ class QueryTests(TestCase):
         self.assertEqual(
             query.results(rows), {'metric1': (11, 33), 'metric2': (22, 44)})
 
+    def test_results_wrong_result_count(self):
+        '''An error is raised if the result column count is wrong.'''
+        query = Query('query', 20, ['db'], ['metric'], 'SELECT 1, 2')
+        rows = [(1, 2)]
+        with self.assertRaises(InvalidResultCount):
+            query.results(rows)
+
+    def test_results_empty(self):
+        '''No error is raised if the result set is empty'''
+        query = Query('query', 20, ['db'], ['metric'], 'SELECT 1, 2')
+        rows = []
+        self.assertEqual(query.results(rows), {})
+
 
 class DataBaseTests(TestCase):
 
@@ -134,11 +147,3 @@ class DataBaseConnectionTests(LoopTestCase):
                 await self.connection.execute(query)
         self.assertEqual(str(cm.exception), 'wrong query')
         self.assertEqual(cm.exception.details, ['more details'])
-
-    async def test_execute_query_wrong_result_count(self):
-        query = Query('query', 20, ['db'], ['metric'], 'SELECT 1, 2')
-        cursor = FakeCursor(results=[(1, 2)])
-        with self.assertRaises(InvalidResultCount):
-            async with self.connection:
-                self.connection._conn.curr = cursor
-                await self.connection.execute(query)
