@@ -2,6 +2,8 @@ from setuptools import setup, find_packages
 
 from query_exporter import __version__, __doc__ as description
 
+tests_require = ['asynctest']
+
 config = {
     'name': 'query-exporter',
     'version': __version__,
@@ -25,7 +27,8 @@ config = {
         'prometheus-aioexporter',
         'PyYaml',
         'toolrack'],
-    'tests_require': ['asynctest'],
+    'tests_require': tests_require,
+    'extras_require': {'testing': tests_require},
     'keywords': 'sql metric prometheus exporter',
     'classifiers': [
         'Development Status :: 3 - Alpha',

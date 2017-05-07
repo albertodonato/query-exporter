@@ -1,0 +1,3 @@
+# Dependencies are specified in setup.py
+-e .
+-e .[testing]
