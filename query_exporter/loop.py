@@ -2,7 +2,7 @@ import asyncio
 
 from toolrack.async import PeriodicCall
 
-from .db import DataBaseError, InvalidResultCount
+from .db import DataBaseError
 
 
 class QueryLoop:
