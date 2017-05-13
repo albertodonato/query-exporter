@@ -51,9 +51,6 @@ class QueryLoop:
         except DataBaseError as error:
             self._log_db_error(query.name, error)
             return
-        except InvalidResultCount as error:
-            self._log_query_error(query.name, error)
-            return
 
         for name, values in results.items():
             for value in values:
