@@ -22,7 +22,7 @@ config = {
     'test_suite': 'query_exporter',
     'install_requires': [
         'aiohttp',
-        'aiopg',
+        'asyncpg',
         'prometheus-client',
         'prometheus-aioexporter',
         'PyYaml',

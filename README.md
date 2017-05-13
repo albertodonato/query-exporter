@@ -18,9 +18,9 @@ The application is called with a configuration file that looks like this:
 
 databases:
   db1:
-    dsn: dbname=sampledb1
+    dsn: postgres:///sampledb1
   db2:
-    dsn: dbname=sampledb2
+    dsn: postgres:///sampledb2
 
 metrics:
   metric1:
@@ -48,6 +48,12 @@ queries:
 
 ```
 
+The `dsn` connection string has the following format:
+
+```
+postgres://user:pass@host:port/database?option=value
+```
+
 The `metrics` list in the query configuration must match values returned by the
 query defined in `sql`.
 
@@ -55,7 +61,9 @@ The `interval` value is interpreted as seconds if no suffix is specified; valid
 suffix are `s`, `m`, `h`, `d`. Only integer values can be specified.
 
 Queries will usually return a single row, but multiple rows are supported, and
-each row will cause an update of the related metrics.
+each row will cause an update of the related metrics.  This is relevant for any
+kind of metric except gauges, which will be effectively updated to the value
+from the last row.
 
 For the configuration above, exported metrics look like this:
 

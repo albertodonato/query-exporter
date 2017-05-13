@@ -11,7 +11,7 @@ from prometheus_aioexporter.metric import create_metrics
 from toolrack.testing import TempDirFixture
 from toolrack.testing.async import LoopTestCase
 
-from .fakes import FakeAiopg
+from .fakes import FakeAsyncpg
 from ..config import load_config
 from ..loop import QueryLoop
 
@@ -67,7 +67,7 @@ class QueryLoopTests(LoopTestCase):
     async def test_run_query(self):
         '''Queries are run and update metrics.'''
         database = self.query_loop._databases['db']
-        database.aiopg = FakeAiopg(query_results=[(100.0,)])
+        database.asyncpg = FakeAsyncpg(query_results=[(100.0,)])
         self.query_loop.start()
         await self.query_loop.stop()
         metric = self.query_loop._metrics['m']
@@ -78,7 +78,7 @@ class QueryLoopTests(LoopTestCase):
     async def test_run_query_null_value(self):
         '''A null value in query results is treated like a zero.'''
         database = self.query_loop._databases['db']
-        database.aiopg = FakeAiopg(query_results=[(None,)])
+        database.asyncpg = FakeAsyncpg(query_results=[(None,)])
         self.query_loop.start()
         await self.query_loop.stop()
         metric = self.query_loop._metrics['m']
@@ -88,7 +88,7 @@ class QueryLoopTests(LoopTestCase):
     async def test_run_query_log(self):
         '''Debug messages are logged on query execution.'''
         database = self.query_loop._databases['db']
-        database.aiopg = FakeAiopg(query_results=[(100.0,)])
+        database.asyncpg = FakeAsyncpg(query_results=[(100.0,)])
         self.query_loop.start()
         await self.query_loop.stop()
         self.assertIn("running query 'q' on database 'db'", self.logger.output)
@@ -97,7 +97,7 @@ class QueryLoopTests(LoopTestCase):
     async def test_run_query_log_error(self):
         '''Query errors are logged.'''
         database = self.query_loop._databases['db']
-        database.aiopg = FakeAiopg(connect_error='error\nconnect failed')
+        database.asyncpg = FakeAsyncpg(connect_error='error\nconnect failed')
         self.query_loop.start()
         await self.query_loop.stop()
         self.assertIn(
@@ -106,7 +106,7 @@ class QueryLoopTests(LoopTestCase):
     async def test_run_query_log_invalid_result_count(self):
         '''An error is logged if result count doesn't match metrics count.'''
         database = self.query_loop._databases['db']
-        database.aiopg = FakeAiopg(query_results=[(100.0, 200.0)])
+        database.asyncpg = FakeAsyncpg(query_results=[(100.0, 200.0)])
         self.query_loop.start()
         await self.query_loop.stop()
         self.assertIn(
@@ -117,7 +117,7 @@ class QueryLoopTests(LoopTestCase):
         '''Queies are run at the specified time interval.'''
         self.mock_execute_query()
         database = self.query_loop._databases['db']
-        database.aiopg = FakeAiopg(query_results=[(100.0,)])
+        database.asyncpg = FakeAsyncpg(query_results=[(100.0,)])
         self.query_loop.start()
         # the query has been run once
         self.assertEqual(len(self.query_exec), 1)

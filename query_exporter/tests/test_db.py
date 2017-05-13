@@ -2,7 +2,10 @@ from unittest import TestCase
 
 from toolrack.testing.async import LoopTestCase
 
-from .fakes import FakeAiopg, FakePool, FakeConnection, FakeCursor
+from .fakes import (
+    FakeAsyncpg,
+    FakePool,
+    FakeConnection)
 from ..db import (
     DataBaseError,
     Query,
@@ -77,7 +80,7 @@ class DataBaseConnectionTests(LoopTestCase):
     def setUp(self):
         super().setUp()
         self.connection = DataBaseConnection('db', 'dbname=foo')
-        self.connection.aiopg = FakeAiopg()
+        self.connection.asyncpg = FakeAsyncpg()
 
     def test_instantiate(self):
         '''A DataBaseConnection can be instantiated.'''
@@ -109,7 +112,7 @@ class DataBaseConnectionTests(LoopTestCase):
 
     async def test_connect_error(self):
         '''A DataBaseError is raise if database connection fails.'''
-        self.connection.aiopg = FakeAiopg(
+        self.connection.asyncpg = FakeAsyncpg(
             connect_error='some error\nmore details')
         with self.assertRaises(DataBaseError) as cm:
             await self.connection.connect()
@@ -130,20 +133,20 @@ class DataBaseConnectionTests(LoopTestCase):
     async def test_execute(self):
         '''The execute method executes a query.'''
         query = Query('query', 20, ['db'], ['metric1', 'metric2'], 'SELECT 1')
-        cursor = FakeCursor(results=[(10, 20), (30, 40)])
+        asyncpg = FakeAsyncpg(query_results=[(10, 20), (30, 40)])
+        self.connection.asyncpg = asyncpg
         async with self.connection:
-            self.connection._conn.curr = cursor
             result = await self.connection.execute(query)
         self.assertEqual(result, {'metric1': (10, 30), 'metric2': (20, 40)})
-        self.assertEqual(cursor.sql, 'SELECT 1')
+        self.assertEqual(asyncpg.pool.connection.sql, 'SELECT 1')
 
     async def test_execute_query_error(self):
         '''The execute method executes a query.'''
         query = Query('query', 20, ['db'], ['metric'], 'WRONG')
-        cursor = FakeCursor(query_error='wrong query\nmore details')
+        asyncpg = FakeAsyncpg(query_error='wrong query\nmore details')
+        self.connection.asyncpg = asyncpg
         with self.assertRaises(DataBaseError) as cm:
             async with self.connection:
-                self.connection._conn.curr = cursor
                 await self.connection.execute(query)
         self.assertEqual(str(cm.exception), 'wrong query')
         self.assertEqual(cm.exception.details, ['more details'])

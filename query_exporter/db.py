@@ -1,8 +1,6 @@
 from collections import namedtuple
 
-from psycopg2 import ProgrammingError, OperationalError
-
-import aiopg
+import asyncpg
 
 
 class DataBaseError(Exception):
@@ -26,20 +24,20 @@ Query = namedtuple(
 
 class Query(Query):
 
-    def results(self, rows):
+    def results(self, records):
         '''Return a dict with a tuple of values for each metric.'''
-        if not rows:
+        if not records:
             return {}
 
-        if len(self.metrics) != len(rows[0]):
+        if len(self.metrics) != len(records[0]):
             raise InvalidResultCount()
-        return dict(zip(self.metrics, zip(*rows)))
+        return dict(zip(self.metrics, zip(*records)))
 
 
 class DataBase(namedtuple('DataBase', ['name', 'dsn'])):
     '''A database to perform Queries.'''
 
-    aiopg = aiopg  # for testing
+    asyncpg = asyncpg  # for testing
 
     def connect(self):
         '''Connect to the database.
@@ -49,7 +47,7 @@ class DataBase(namedtuple('DataBase', ['name', 'dsn'])):
 
         '''
         connection = DataBaseConnection(self.name, self.dsn)
-        connection.aiopg = self.aiopg
+        connection.asyncpg = self.asyncpg
         return connection
 
 
@@ -60,7 +58,7 @@ class DataBaseConnection(namedtuple('DataBaseConnection', ['name', 'dsn'])):
 
     '''
 
-    aiopg = aiopg   # for testing
+    asyncpg = asyncpg   # for testing
 
     _pool = None
     _conn = None
@@ -75,23 +73,23 @@ class DataBaseConnection(namedtuple('DataBaseConnection', ['name', 'dsn'])):
     async def connect(self):
         '''Connect to the database.'''
         try:
-            self._pool = await self.aiopg.create_pool(self.dsn)
+            self._pool = await self.asyncpg.create_pool(self.dsn)
             self._conn = await self._pool.acquire()
-        except OperationalError as error:
+        except Exception as error:
             raise DataBaseError(str(error))
 
     async def close(self):
         '''Close the database connection.'''
-        self._pool.close()
+        await self._pool.close()
         self._pool = None
         await self._conn.close()
         self._conn = None
 
     async def execute(self, query):
         '''Execute a query.'''
-        async with self._conn.cursor() as cursor:
+        async with self._conn.transaction():
             try:
-                await cursor.execute(query.sql)
-                return query.results(await cursor.fetchmany())
-            except ProgrammingError as error:
+                records = await self._conn.fetch(query.sql)
+                return query.results(records)
+            except Exception as error:
                 raise DataBaseError(str(error))
