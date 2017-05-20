@@ -1,3 +1,5 @@
+"""Configuration management functions."""
+
 from collections import namedtuple
 
 import yaml

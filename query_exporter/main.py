@@ -1,3 +1,5 @@
+"""Script entry point."""
+
 import argparse
 
 from toolrack.script import ErrorExitMessage
@@ -26,8 +28,8 @@ class QueryExporterScript(PrometheusExporterScript):
         metrics = self.create_metrics(config.metrics)
         self.query_loop = QueryLoop(config, metrics, self.logger, self.loop)
 
-    def on_application_startup(self, application):
-        self.query_loop.start()
+    async def on_application_startup(self, application):
+        await self.query_loop.start()
 
     async def on_application_shutdown(self, application):
         await self.query_loop.stop()

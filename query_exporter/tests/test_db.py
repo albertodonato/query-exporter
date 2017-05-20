@@ -4,25 +4,12 @@ from toolrack.testing.async import LoopTestCase
 
 from .fakes import (
     FakeAsyncpg,
-    FakePool,
-    FakeConnection)
+    FakePool)
 from ..db import (
-    DataBaseError,
     Query,
     DataBase,
-    DataBaseConnection,
+    DataBaseError,
     InvalidResultCount)
-
-
-class DataBaseErrorTests(TestCase):
-
-    def test_message(self):
-        '''The DataBaseError splits error message and details.'''
-        error = 'an error happened\nsome more\ndetails here'
-        exception = DataBaseError(error)
-        self.assertEqual(str(exception), 'an error happened')
-        self.assertEqual(
-            exception.details, ['some more', 'details here'])
 
 
 class QueryTests(TestCase):
@@ -58,95 +45,71 @@ class QueryTests(TestCase):
         self.assertEqual(query.results(rows), {})
 
 
-class DataBaseTests(TestCase):
-
-    def test_instantiate(self):
-        '''A DataBase can be instantiated with the specified arguments.'''
-        db = DataBase('db', 'postgres:///foo')
-        self.assertEqual(db.name, 'db')
-        self.assertEqual(db.dsn, 'postgres:///foo')
-
-    def test_connect(self):
-        '''The connect method returns a DatabaseConnection with same config.'''
-        db = DataBase('db', 'postgres:///foo')
-        connection = db.connect()
-        self.assertIsInstance(connection, DataBaseConnection)
-        self.assertEqual(connection.name, 'db')
-        self.assertEqual(connection.dsn, 'postgres:///foo')
-
-
-class DataBaseConnectionTests(LoopTestCase):
+class DataBaseTests(LoopTestCase):
 
     def setUp(self):
         super().setUp()
-        self.connection = DataBaseConnection('db', 'postgres:///foo')
-        self.connection.asyncpg = FakeAsyncpg()
+        self.db = DataBase('db', 'postgres:///foo')
+        self.db.asyncpg = FakeAsyncpg()
 
     def test_instantiate(self):
-        '''A DataBaseConnection can be instantiated.'''
-        self.assertEqual(self.connection.name, 'db')
-        self.assertEqual(self.connection.dsn, 'postgres:///foo')
-
-    async def test_context_manager(self):
-        '''The DataBaseConnection can be used as context manager.'''
-        calls = []
-
-        async def connect():
-            calls.append('connect')
-
-        async def close():
-            calls.append('close')
-
-        self.connection.connect = connect
-        self.connection.close = close
-        async with self.connection:
-            self.assertEqual(calls, ['connect'])
-        self.assertEqual(calls, ['connect', 'close'])
+        '''A DataBase can be instantiated with the specified arguments.'''
+        self.assertEqual(self.db.name, 'db')
+        self.assertEqual(self.db.dsn, 'postgres:///foo')
 
     async def test_connect(self):
-        '''The connect method connects to the database.'''
-        await self.connection.connect()
-        self.assertIsInstance(self.connection._pool, FakePool)
-        self.assertEqual(self.connection._pool.dsn, 'postgres:///foo')
-        self.assertIsInstance(self.connection._conn, FakeConnection)
+        '''The connect connects to the database.'''
+        await self.db.connect()
+        self.assertIsInstance(self.db._pool, FakePool)
+        self.assertEqual(self.db.asyncpg.dsn, 'postgres:///foo')
 
     async def test_connect_error(self):
-        '''A DataBaseError is raise if database connection fails.'''
-        self.connection.asyncpg = FakeAsyncpg(
-            connect_error='some error\nmore details')
+        '''A DataBaseError is raised if database connection fails.'''
+        self.db.asyncpg = FakeAsyncpg(
+            connect_error='some error')
         with self.assertRaises(DataBaseError) as cm:
-            await self.connection.connect()
+            await self.db.connect()
         self.assertEqual(str(cm.exception), 'some error')
-        self.assertEqual(cm.exception.details, ['more details'])
 
     async def test_close(self):
-        '''The close method closes database connection and pool.'''
-        await self.connection.connect()
-        pool = self.connection._pool
-        conn = self.connection._conn
-        await self.connection.close()
+        '''The close method closes database pool.'''
+        await self.db.connect()
+        pool = self.db._pool
+        await self.db.close()
         self.assertTrue(pool.closed)
-        self.assertTrue(conn.closed)
-        self.assertIsNone(self.connection._pool)
-        self.assertIsNone(self.connection._conn)
+        self.assertIsNone(self.db._pool)
 
     async def test_execute(self):
         '''The execute method executes a query.'''
         query = Query('query', 20, ['db'], ['metric1', 'metric2'], 'SELECT 1')
         asyncpg = FakeAsyncpg(query_results=[(10, 20), (30, 40)])
-        self.connection.asyncpg = asyncpg
-        async with self.connection:
-            result = await self.connection.execute(query)
+        self.db.asyncpg = asyncpg
+
+        await self.db.connect()
+        result = await self.db.execute(query)
         self.assertEqual(result, {'metric1': (10, 30), 'metric2': (20, 40)})
         self.assertEqual(asyncpg.pool.connection.sql, 'SELECT 1')
 
     async def test_execute_query_error(self):
-        '''The execute method executes a query.'''
+        """If the query fails an error is raised."""
         query = Query('query', 20, ['db'], ['metric'], 'WRONG')
-        asyncpg = FakeAsyncpg(query_error='wrong query\nmore details')
-        self.connection.asyncpg = asyncpg
+        asyncpg = FakeAsyncpg(query_error='wrong query')
+        self.db.asyncpg = asyncpg
+
+        await self.db.connect()
         with self.assertRaises(DataBaseError) as cm:
-            async with self.connection:
-                await self.connection.execute(query)
+            await self.db.execute(query)
         self.assertEqual(str(cm.exception), 'wrong query')
-        self.assertEqual(cm.exception.details, ['more details'])
+
+    async def test_execute_not_connected(self):
+        """The execute recconnects to the database if not connected."""
+        query = Query('query', 20, ['db'], ['metric1', 'metric2'], 'SELECT 1')
+        asyncpg = FakeAsyncpg(query_results=[(10, 20), (30, 40)])
+        self.db.asyncpg = asyncpg
+
+        result = await self.db.execute(query)
+        self.assertEqual(result, {'metric1': (10, 30), 'metric2': (20, 40)})
+        self.assertEqual(asyncpg.pool.connection.sql, 'SELECT 1')
+        # the pool is kept for reuse
+        self.assertFalse(asyncpg.pool.closed)
+        self.assertTrue(asyncpg.pool.connection.closed)

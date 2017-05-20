@@ -1,7 +1,8 @@
-'''Fakes for testing.'''
+"""Fakes for testing."""
 
 
 class FakeAsyncpg:
+    """Fake asyncpg module."""
 
     dsn = None
     pool = None
@@ -23,6 +24,7 @@ class FakeAsyncpg:
 
 
 class FakePool:
+    """Fake connection pool."""
 
     closed = False
     connection = None
@@ -32,7 +34,7 @@ class FakePool:
         self.query_results = query_results
         self.query_error = query_error
 
-    async def acquire(self):
+    def acquire(self):
         self.connection = FakeConnection(
             query_results=self.query_results, query_error=self.query_error)
         return self.connection
@@ -42,26 +44,26 @@ class FakePool:
 
 
 class FakeConnection:
+    """Fake connection."""
 
     closed = False
-    curr = None
     sql = None
 
     def __init__(self, query_results=None, query_error=None):
         self.query_results = query_results
         self.query_error = query_error
 
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc_value, traceback):
+        await self.close()
+
     async def close(self):
         self.closed = True
 
     def transaction(self):
         return self
-
-    async def __aenter__(self):
-        return self
-
-    async def __aexit__(self, exc_type, exc_value, traceback):
-        pass
 
     async def fetch(self, sql):
         if self.query_error:

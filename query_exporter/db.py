@@ -1,3 +1,5 @@
+"""Database wrapper."""
+
 from collections import namedtuple
 
 import asyncpg
@@ -5,10 +7,6 @@ import asyncpg
 
 class DataBaseError(Exception):
     '''A database error.'''
-
-    def __init__(self, error):
-        message, *self.details = error.splitlines()
-        super().__init__(message)
 
 
 class InvalidResultCount(Exception):
@@ -39,57 +37,31 @@ class DataBase(namedtuple('DataBase', ['name', 'dsn'])):
 
     asyncpg = asyncpg  # for testing
 
-    def connect(self):
-        '''Connect to the database.
-
-        It should be used as a context manager and returns a
-        DataBaseConnection.
-
-        '''
-        connection = DataBaseConnection(self.name, self.dsn)
-        connection.asyncpg = self.asyncpg
-        return connection
-
-
-class DataBaseConnection(namedtuple('DataBaseConnection', ['name', 'dsn'])):
-    '''A database connection.
-
-    It supports the context manager protocol.
-
-    '''
-
-    asyncpg = asyncpg   # for testing
-
     _pool = None
-    _conn = None
-
-    async def __aenter__(self):
-        await self.connect()
-        return self
-
-    async def __aexit__(self, exc_type, exc_value, traceback):
-        await self.close()
 
     async def connect(self):
         '''Connect to the database.'''
         try:
             self._pool = await self.asyncpg.create_pool(self.dsn)
-            self._conn = await self._pool.acquire()
         except Exception as error:
             raise DataBaseError(str(error))
 
     async def close(self):
         '''Close the database connection.'''
+        if self._pool is None:
+            return
         await self._pool.close()
         self._pool = None
-        await self._conn.close()
-        self._conn = None
 
     async def execute(self, query):
         '''Execute a query.'''
-        async with self._conn.transaction():
-            try:
-                records = await self._conn.fetch(query.sql)
-                return query.results(records)
-            except Exception as error:
-                raise DataBaseError(str(error))
+        if self._pool is None:
+            await self.connect()
+
+        async with self._pool.acquire() as connection:
+            async with connection.transaction():
+                try:
+                    rows = await connection.fetch(query.sql)
+                    return query.results(rows)
+                except Exception as error:
+                    raise DataBaseError(str(error))

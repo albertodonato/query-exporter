@@ -1,3 +1,5 @@
 [run]
 source =
   query_exporter
+omit =
+  query_exporter/main.py

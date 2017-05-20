@@ -38,6 +38,7 @@ class QueryLoopTests(LoopTestCase):
         registry = CollectorRegistry(auto_describe=True)
         metrics = create_metrics(config.metrics, registry)
         self.query_loop = QueryLoop(config, metrics, logging, self.loop)
+        self.query_loop._databases['db'].asyncpg = FakeAsyncpg()
 
     def mock_execute_query(self):
         '''Don't actually execute queries.'''
@@ -51,7 +52,7 @@ class QueryLoopTests(LoopTestCase):
     async def test_start(self):
         '''The start method starts periodic calls for queries.'''
         self.mock_execute_query()
-        self.query_loop.start()
+        await self.query_loop.start()
         [periodic_call] = self.query_loop._periodic_calls
         self.assertTrue(periodic_call.running)
         await self.query_loop.stop()
@@ -59,16 +60,16 @@ class QueryLoopTests(LoopTestCase):
     async def test_stop(self):
         '''The stop method stops periodic calls for queries.'''
         self.mock_execute_query()
-        self.query_loop.start()
-        await self.query_loop.stop()
+        await self.query_loop.start()
         [periodic_call] = self.query_loop._periodic_calls
+        await self.query_loop.stop()
         self.assertFalse(periodic_call.running)
 
     async def test_run_query(self):
         '''Queries are run and update metrics.'''
         database = self.query_loop._databases['db']
         database.asyncpg = FakeAsyncpg(query_results=[(100.0,)])
-        self.query_loop.start()
+        await self.query_loop.start()
         await self.query_loop.stop()
         metric = self.query_loop._metrics['m']
         # the metric is updated
@@ -79,7 +80,7 @@ class QueryLoopTests(LoopTestCase):
         '''A null value in query results is treated like a zero.'''
         database = self.query_loop._databases['db']
         database.asyncpg = FakeAsyncpg(query_results=[(None,)])
-        self.query_loop.start()
+        await self.query_loop.start()
         await self.query_loop.stop()
         metric = self.query_loop._metrics['m']
         [(_, _, value)] = metric._samples()
@@ -89,28 +90,30 @@ class QueryLoopTests(LoopTestCase):
         '''Debug messages are logged on query execution.'''
         database = self.query_loop._databases['db']
         database.asyncpg = FakeAsyncpg(query_results=[(100.0,)])
-        self.query_loop.start()
+        await self.query_loop.start()
         await self.query_loop.stop()
         self.assertIn("running query 'q' on database 'db'", self.logger.output)
-        self.assertIn("updating metric 'm': set 100.0", self.logger.output)
+        self.assertIn("updating metric 'm' set(100.0)", self.logger.output)
 
     async def test_run_query_log_error(self):
         '''Query errors are logged.'''
         database = self.query_loop._databases['db']
         database.asyncpg = FakeAsyncpg(connect_error='error\nconnect failed')
-        self.query_loop.start()
+        await self.query_loop.start()
         await self.query_loop.stop()
         self.assertIn(
-            "query 'q' failed: error\nconnect failed\n", self.logger.output)
+            "query 'q' on database 'db' failed: error\nconnect failed\n",
+            self.logger.output)
 
     async def test_run_query_log_invalid_result_count(self):
         '''An error is logged if result count doesn't match metrics count.'''
         database = self.query_loop._databases['db']
         database.asyncpg = FakeAsyncpg(query_results=[(100.0, 200.0)])
-        self.query_loop.start()
+        await self.query_loop.start()
         await self.query_loop.stop()
         self.assertIn(
-            "query 'q' failed: Wrong result count from the query",
+            "query 'q' on database 'db' failed: Wrong result count from the"
+            ' query',
             self.logger.output)
 
     async def test_run_query_periodically(self):
@@ -118,7 +121,7 @@ class QueryLoopTests(LoopTestCase):
         self.mock_execute_query()
         database = self.query_loop._databases['db']
         database.asyncpg = FakeAsyncpg(query_results=[(100.0,)])
-        self.query_loop.start()
+        await self.query_loop.start()
         # the query has been run once
         self.assertEqual(len(self.query_exec), 1)
         self.loop.advance(5)

@@ -15,7 +15,6 @@ Each query can be run on multiple databases, and update multiple metrics.
 The application is called with a configuration file that looks like this:
 
 ```yaml
-
 databases:
   db1:
     dsn: postgres:///sampledb1
@@ -45,7 +44,6 @@ queries:
     databases: [db1, db2]
     metrics: [metric2, metric3]
     sql: SELECT random() * 1000, random() * 10000
-
 ```
 
 The `dsn` connection string has the following format:
