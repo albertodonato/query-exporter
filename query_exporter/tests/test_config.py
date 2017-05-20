@@ -15,7 +15,7 @@ class LoadConfigTests(TestCase):
         super().setUp()
         self.tempdir = self.useFixture(TempDirFixture())
         self.config = {
-            'databases': {'db': {'dsn': 'dbname=foo'}},
+            'databases': {'db': {'dsn': 'postgres:///foo'}},
             'metrics': {'m': {'type': 'gauge'}},
             'queries': {
                 'q': {
@@ -28,16 +28,16 @@ class LoadConfigTests(TestCase):
         '''The 'databases' section is loaded from the config file.'''
         config = {
             'databases': {
-                'db1': {'dsn': 'dbname=foo'},
-                'db2': {'dsn': 'dbname=bar'}}}
+                'db1': {'dsn': 'postgres:///foo'},
+                'db2': {'dsn': 'postgres:///bar'}}}
         config_file = self.tempdir.mkfile(content=yaml.dump(config))
         with open(config_file) as fd:
             result = load_config(fd)
         database1, database2 = sorted(result.databases, key=attrgetter('name'))
         self.assertEqual(database1.name, 'db1')
-        self.assertEqual(database1.dsn, 'dbname=foo')
+        self.assertEqual(database1.dsn, 'postgres:///foo')
         self.assertEqual(database2.name, 'db2')
-        self.assertEqual(database2.dsn, 'dbname=bar')
+        self.assertEqual(database2.dsn, 'postgres:///bar')
 
     def test_load_databases_missing_dsn(self):
         '''An error is raised if the 'dsn' key is missing for a database.'''
@@ -76,8 +76,8 @@ class LoadConfigTests(TestCase):
         '''The 'queries section is loaded from the config file.'''
         config = {
             'databases': {
-                'db1': {'dsn': 'dbname=foo'},
-                'db2': {'dsn': 'dbname=bar'}},
+                'db1': {'dsn': 'postgres:///foo'},
+                'db2': {'dsn': 'postgres:///bar'}},
             'metrics': {
                 'm1': {'type': 'summary'},
                 'm2': {'type': 'histogram'}},
@@ -125,7 +125,7 @@ class LoadConfigTests(TestCase):
         '''An error is raised if metric names in query config are unknown.'''
         config = {
             'databases': {
-                'db': {'dsn': 'dbname=foo'}},
+                'db': {'dsn': 'postgres:///foo'}},
             'queries': {
                 'q': {
                     'interval': 10,

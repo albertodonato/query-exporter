@@ -62,30 +62,30 @@ class DataBaseTests(TestCase):
 
     def test_instantiate(self):
         '''A DataBase can be instantiated with the specified arguments.'''
-        db = DataBase('db', 'dbname=foo')
+        db = DataBase('db', 'postgres:///foo')
         self.assertEqual(db.name, 'db')
-        self.assertEqual(db.dsn, 'dbname=foo')
+        self.assertEqual(db.dsn, 'postgres:///foo')
 
     def test_connect(self):
         '''The connect method returns a DatabaseConnection with same config.'''
-        db = DataBase('db', 'dbname=foo')
+        db = DataBase('db', 'postgres:///foo')
         connection = db.connect()
         self.assertIsInstance(connection, DataBaseConnection)
         self.assertEqual(connection.name, 'db')
-        self.assertEqual(connection.dsn, 'dbname=foo')
+        self.assertEqual(connection.dsn, 'postgres:///foo')
 
 
 class DataBaseConnectionTests(LoopTestCase):
 
     def setUp(self):
         super().setUp()
-        self.connection = DataBaseConnection('db', 'dbname=foo')
+        self.connection = DataBaseConnection('db', 'postgres:///foo')
         self.connection.asyncpg = FakeAsyncpg()
 
     def test_instantiate(self):
         '''A DataBaseConnection can be instantiated.'''
         self.assertEqual(self.connection.name, 'db')
-        self.assertEqual(self.connection.dsn, 'dbname=foo')
+        self.assertEqual(self.connection.dsn, 'postgres:///foo')
 
     async def test_context_manager(self):
         '''The DataBaseConnection can be used as context manager.'''
@@ -107,7 +107,7 @@ class DataBaseConnectionTests(LoopTestCase):
         '''The connect method connects to the database.'''
         await self.connection.connect()
         self.assertIsInstance(self.connection._pool, FakePool)
-        self.assertEqual(self.connection._pool.dsn, 'dbname=foo')
+        self.assertEqual(self.connection._pool.dsn, 'postgres:///foo')
         self.assertIsInstance(self.connection._conn, FakeConnection)
 
     async def test_connect_error(self):

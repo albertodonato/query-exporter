@@ -23,7 +23,7 @@ class QueryLoopTests(LoopTestCase):
         self.tempdir = self.useFixture(TempDirFixture())
         self.logger = self.useFixture(LoggerFixture(level=logging.DEBUG))
         config_struct = {
-            'databases': {'db': {'dsn': 'dbname=foo'}},
+            'databases': {'db': {'dsn': 'postgres:///foo'}},
             'metrics': {'m': {'type': 'gauge'}},
             'queries': {
                 'q': {
