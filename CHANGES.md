@@ -1,3 +1,8 @@
+# v1.1.0 - 2017-05-21
+
+- Use connection pools for queries.
+
+
 # v1.0.0 - 2017-05-13
 
 - Replace aiopg with asyncpg. The database dsn string is now specified as a
