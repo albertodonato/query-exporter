@@ -10,7 +10,7 @@ from .db import Query, DataBase
 
 
 class ConfigError(Exception):
-    '''Configuration is invalid.'''
+    """Configuration is invalid."""
 
 
 # Top-level configuration
@@ -18,7 +18,7 @@ Config = namedtuple('Config', ['databases', 'metrics', 'queries'])
 
 
 def load_config(config_fd):
-    '''Load YAML config from file.'''
+    """Load YAML config from file."""
     config = yaml.load(config_fd)
     databases = _get_databases(config.get('databases', {}))
     metrics = _get_metrics(config.get('metrics', {}))
@@ -30,7 +30,7 @@ def load_config(config_fd):
 
 
 def _get_databases(configs):
-    '''Return a dict mapping names to DataBases names.'''
+    """Return a dict mapping names to DataBases names."""
     databases = []
     for name, config in configs.items():
         try:
@@ -41,7 +41,7 @@ def _get_databases(configs):
 
 
 def _get_metrics(metrics):
-    '''Return metrics configuration.'''
+    """Return metrics configuration."""
     configs = []
     for name, config in metrics.items():
         metric_type = config.pop('type', '')
@@ -53,7 +53,7 @@ def _get_metrics(metrics):
 
 
 def _get_queries(configs, database_names, metric_names):
-    '''Return a list of Queries from config.'''
+    """Return a list of Queries from config."""
     queries = []
     for name, config in configs.items():
         try:
@@ -69,7 +69,7 @@ def _get_queries(configs, database_names, metric_names):
 
 
 def _validate_query_config(name, config, database_names, metric_names):
-    '''Validate a query configuration stanza.'''
+    """Validate a query configuration stanza."""
     unknown_databases = set(config['databases']) - database_names
     if unknown_databases:
         raise ConfigError(
@@ -83,7 +83,7 @@ def _validate_query_config(name, config, database_names, metric_names):
 
 
 def _convert_interval(name, config):
-    '''Convert query intervals to seconds.'''
+    """Convert query intervals to seconds."""
     interval = config['interval']
     multiplier = 1
 

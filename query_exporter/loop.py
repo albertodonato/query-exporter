@@ -8,7 +8,7 @@ from .db import DataBaseError
 
 
 class QueryLoop:
-    '''Periodically performs queries.'''
+    """Periodically performs queries."""
 
     def __init__(self, config, metrics, logger, loop):
         self.loop = loop
@@ -18,7 +18,7 @@ class QueryLoop:
         self._setup(config)
 
     async def start(self):
-        '''Start periodic queries execution.'''
+        """Start periodic queries execution."""
         for db in self._databases.values():
             try:
                 await db.connect()
@@ -34,7 +34,7 @@ class QueryLoop:
             call.start(query.interval)
 
     async def stop(self):
-        '''Stop periodic query execution.'''
+        """Stop periodic query execution."""
         coroutines = (call.stop() for call in self._periodic_calls)
         await asyncio.gather(*coroutines, loop=self.loop)
         self._periodic_calls = []
@@ -42,7 +42,7 @@ class QueryLoop:
         await asyncio.gather(*coroutines, loop=self.loop)
 
     def _setup(self, config):
-        '''Initialize instance attributes.'''
+        """Initialize instance attributes."""
         self._metric_configs = {
             metric_config.name: metric_config
             for metric_config in config.metrics}
@@ -51,12 +51,12 @@ class QueryLoop:
         self._queries = config.queries
 
     def _run_query(self, query):
-        '''Periodic task to run a query.'''
+        """Periodic task to run a query."""
         for dbname in query.databases:
             self.loop.create_task(self._execute_query(query, dbname))
 
     async def _execute_query(self, query, dbname):
-        ''''Execute a Query on a DataBase.'''
+        """'Execute a Query on a DataBase."""
         self._logger.debug(
             'running query "{}" on database "{}"'.format(query.name, dbname))
         try:
@@ -70,17 +70,17 @@ class QueryLoop:
                 self._update_metric(name, value, dbname)
 
     def _log_query_error(self, name, dbname, error):
-        '''Log an error related to database query.'''
+        """Log an error related to database query."""
         prefix = 'query "{}" on database "{}" failed:'.format(name, dbname)
         self._logger.error('{} {}'.format(prefix, error))
 
     def _log_db_error(self, name, error):
-        '''Log a failed database query.'''
+        """Log a failed database query."""
         prefix = 'error from database "{}":'.format(name)
         self._logger.error('{} {}'.format(prefix, error))
 
     def _update_metric(self, name, value, dbname):
-        '''Update value for a metric.'''
+        """Update value for a metric."""
         metric_methods = {
             'counter': 'inc',
             'gauge': 'set',

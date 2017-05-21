@@ -12,7 +12,7 @@ from .loop import QueryLoop
 
 
 class QueryExporterScript(PrometheusExporterScript):
-    '''Periodically run database queries and export results to Prometheus.'''
+    """Periodically run database queries and export results to Prometheus."""
 
     name = 'query-exporter'
 
@@ -35,7 +35,7 @@ class QueryExporterScript(PrometheusExporterScript):
         await self.query_loop.stop()
 
     def _load_config(self, config_file):
-        '''Load the application configuration.'''
+        """Load the application configuration."""
         try:
             config = load_config(config_file)
         except (InvalidMetricType, ConfigError) as error:

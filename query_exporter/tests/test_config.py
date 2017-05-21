@@ -25,7 +25,7 @@ class LoadConfigTests(TestCase):
                     'sql': 'SELECT 1'}}}
 
     def test_load_databases_section(self):
-        '''The 'databases' section is loaded from the config file.'''
+        """The 'databases' section is loaded from the config file."""
         config = {
             'databases': {
                 'db1': {'dsn': 'postgres:///foo'},
@@ -40,7 +40,7 @@ class LoadConfigTests(TestCase):
         self.assertEqual(database2.dsn, 'postgres:///bar')
 
     def test_load_databases_missing_dsn(self):
-        '''An error is raised if the 'dsn' key is missing for a database.'''
+        """An error is raised if the 'dsn' key is missing for a database."""
         config = {'databases': {'db1': {}}}
         config_file = self.tempdir.mkfile(content=yaml.dump(config))
         with self.assertRaises(ConfigError) as cm, open(config_file) as fd:
@@ -49,7 +49,7 @@ class LoadConfigTests(TestCase):
             str(cm.exception), "Missing key 'dsn' for database 'db1'")
 
     def test_load_metrics_section(self):
-        '''The 'metrics' section is loaded from the config file.'''
+        """The 'metrics' section is loaded from the config file."""
         config = {
             'metrics': {
                 'metric1': {
@@ -73,7 +73,7 @@ class LoadConfigTests(TestCase):
             {'labels': ['database'], 'buckets': [10, 100, 1000]})
 
     def test_load_queries_section(self):
-        '''The 'queries section is loaded from the config file.'''
+        """The 'queries section is loaded from the config file."""
         config = {
             'databases': {
                 'db1': {'dsn': 'postgres:///foo'},
@@ -106,7 +106,7 @@ class LoadConfigTests(TestCase):
         self.assertEqual(query2.sql, 'SELECT 2')
 
     def test_load_queries_unknown_databases(self):
-        '''An error is raised if database names in query config are unknown.'''
+        """An error is raised if database names in query config are unknown."""
         config = {
             'metrics': {'m': {'type': 'summary'}},
             'queries': {
@@ -122,7 +122,7 @@ class LoadConfigTests(TestCase):
             str(cm.exception), "Unknown databases for query 'q': db1, db2")
 
     def test_load_queries_unknown_metrics(self):
-        '''An error is raised if metric names in query config are unknown.'''
+        """An error is raised if metric names in query config are unknown."""
         config = {
             'databases': {
                 'db': {'dsn': 'postgres:///foo'}},
@@ -139,7 +139,7 @@ class LoadConfigTests(TestCase):
             str(cm.exception), "Unknown metrics for query 'q': m1, m2")
 
     def test_load_queries_missing_key(self):
-        '''An error is raised if keys are missing in the queries section.'''
+        """An error is raised if keys are missing in the queries section."""
         config = {'queries': {'q1': {'interval': 10}}}
         config_file = self.tempdir.mkfile(content=yaml.dump(config))
         with self.assertRaises(ConfigError) as cm, open(config_file) as fd:
@@ -148,7 +148,7 @@ class LoadConfigTests(TestCase):
             str(cm.exception), "Missing key 'databases' for query 'q1'")
 
     def test_load_queries_interval_seconds(self):
-        ''' The query interval is stored as seconds.'''
+        """ The query interval is stored as seconds."""
         config_file = self.tempdir.mkfile(content=yaml.dump(self.config))
         with open(config_file) as fd:
             config = load_config(fd)
@@ -156,7 +156,7 @@ class LoadConfigTests(TestCase):
         self.assertEqual(query.interval, 10)
 
     def test_load_queries_interval_as_string(self):
-        ''' The interval can be passed as string.'''
+        """ The interval can be passed as string."""
         self.config['queries']['q']['interval'] = '10'
         config_file = self.tempdir.mkfile(content=yaml.dump(self.config))
         with open(config_file) as fd:
@@ -165,7 +165,7 @@ class LoadConfigTests(TestCase):
         self.assertEqual(query.interval, 10)
 
     def test_load_queries_interval_second_suffix(self):
-        ''' The 's' suffix can be used in interval values for seconds.'''
+        """ The 's' suffix can be used in interval values for seconds."""
         self.config['queries']['q']['interval'] = '10s'
         config_file = self.tempdir.mkfile(content=yaml.dump(self.config))
         with open(config_file) as fd:
@@ -174,7 +174,7 @@ class LoadConfigTests(TestCase):
         self.assertEqual(query.interval, 10)
 
     def test_load_queries_interval_minute_suffix(self):
-        ''' The 'm' suffix can be used in interval values for minutes.'''
+        """ The 'm' suffix can be used in interval values for minutes."""
         self.config['queries']['q']['interval'] = '10m'
         config_file = self.tempdir.mkfile(content=yaml.dump(self.config))
         with open(config_file) as fd:
@@ -183,7 +183,7 @@ class LoadConfigTests(TestCase):
         self.assertEqual(query.interval, 600)
 
     def test_load_queries_interval_hour(self):
-        ''' The 'h' suffix can be used in interval values for hours.'''
+        """ The 'h' suffix can be used in interval values for hours."""
         self.config['queries']['q']['interval'] = '1h'
         config_file = self.tempdir.mkfile(content=yaml.dump(self.config))
         with open(config_file) as fd:
@@ -192,7 +192,7 @@ class LoadConfigTests(TestCase):
         self.assertEqual(query.interval, 3600)
 
     def test_load_queries_interval_day(self):
-        ''' The 'd' suffix can be used in interval values for days.'''
+        """ The 'd' suffix can be used in interval values for days."""
         self.config['queries']['q']['interval'] = '1d'
         config_file = self.tempdir.mkfile(content=yaml.dump(self.config))
         with open(config_file) as fd:
@@ -201,7 +201,7 @@ class LoadConfigTests(TestCase):
         self.assertEqual(query.interval, 3600 * 24)
 
     def test_invalid_interval_suffix(self):
-        '''An invalid suffix for query interval raises an error.'''
+        """An invalid suffix for query interval raises an error."""
         self.config['queries']['q']['interval'] = '1x'
         config_file = self.tempdir.mkfile(content=yaml.dump(self.config))
         with self.assertRaises(ConfigError) as cm, open(config_file) as fd:
@@ -209,7 +209,7 @@ class LoadConfigTests(TestCase):
         self.assertEqual(str(cm.exception), "Invalid interval for query 'q'")
 
     def test_invalid_interval_not_number(self):
-        '''An query interval that is not a number raises an error.'''
+        """An query interval that is not a number raises an error."""
         self.config['queries']['q']['interval'] = 'wrong'
         config_file = self.tempdir.mkfile(content=yaml.dump(self.config))
         with self.assertRaises(ConfigError) as cm, open(config_file) as fd:
@@ -217,7 +217,7 @@ class LoadConfigTests(TestCase):
         self.assertEqual(str(cm.exception), "Invalid interval for query 'q'")
 
     def test_invalid_interval_not_integer(self):
-        '''An query interval that is not an integer raises an error.'''
+        """An query interval that is not an integer raises an error."""
         self.config['queries']['q']['interval'] = '1.5m'
         config_file = self.tempdir.mkfile(content=yaml.dump(self.config))
         with self.assertRaises(ConfigError) as cm, open(config_file) as fd:
@@ -225,7 +225,7 @@ class LoadConfigTests(TestCase):
         self.assertEqual(str(cm.exception), "Invalid interval for query 'q'")
 
     def test_invalid_interval_zero(self):
-        '''An query interval of zero raises an error.'''
+        """An query interval of zero raises an error."""
         self.config['queries']['q']['interval'] = 0
         config_file = self.tempdir.mkfile(content=yaml.dump(self.config))
         with self.assertRaises(ConfigError) as cm, open(config_file) as fd:
@@ -233,7 +233,7 @@ class LoadConfigTests(TestCase):
         self.assertEqual(str(cm.exception), "Invalid interval for query 'q'")
 
     def test_invalid_interval_negative(self):
-        '''An negative query interval raises an error.'''
+        """An negative query interval raises an error."""
         self.config['queries']['q']['interval'] = -20
         config_file = self.tempdir.mkfile(content=yaml.dump(self.config))
         with self.assertRaises(ConfigError) as cm, open(config_file) as fd:

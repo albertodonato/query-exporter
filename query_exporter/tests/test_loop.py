@@ -41,7 +41,7 @@ class QueryLoopTests(LoopTestCase):
         self.query_loop._databases['db'].asyncpg = FakeAsyncpg()
 
     def mock_execute_query(self):
-        '''Don't actually execute queries.'''
+        """Don't actually execute queries."""
         self.query_exec = []
 
         async def _execute_query(*args):
@@ -50,7 +50,7 @@ class QueryLoopTests(LoopTestCase):
         self.query_loop._execute_query = _execute_query
 
     async def test_start(self):
-        '''The start method starts periodic calls for queries.'''
+        """The start method starts periodic calls for queries."""
         self.mock_execute_query()
         await self.query_loop.start()
         [periodic_call] = self.query_loop._periodic_calls
@@ -58,7 +58,7 @@ class QueryLoopTests(LoopTestCase):
         await self.query_loop.stop()
 
     async def test_stop(self):
-        '''The stop method stops periodic calls for queries.'''
+        """The stop method stops periodic calls for queries."""
         self.mock_execute_query()
         await self.query_loop.start()
         [periodic_call] = self.query_loop._periodic_calls
@@ -66,7 +66,7 @@ class QueryLoopTests(LoopTestCase):
         self.assertFalse(periodic_call.running)
 
     async def test_run_query(self):
-        '''Queries are run and update metrics.'''
+        """Queries are run and update metrics."""
         database = self.query_loop._databases['db']
         database.asyncpg = FakeAsyncpg(query_results=[(100.0,)])
         await self.query_loop.start()
@@ -77,7 +77,7 @@ class QueryLoopTests(LoopTestCase):
         self.assertEqual(value, 100.0)
 
     async def test_run_query_null_value(self):
-        '''A null value in query results is treated like a zero.'''
+        """A null value in query results is treated like a zero."""
         database = self.query_loop._databases['db']
         database.asyncpg = FakeAsyncpg(query_results=[(None,)])
         await self.query_loop.start()
@@ -87,7 +87,7 @@ class QueryLoopTests(LoopTestCase):
         self.assertEqual(value, 0)
 
     async def test_run_query_log(self):
-        '''Debug messages are logged on query execution.'''
+        """Debug messages are logged on query execution."""
         database = self.query_loop._databases['db']
         database.asyncpg = FakeAsyncpg(query_results=[(100.0,)])
         await self.query_loop.start()
@@ -96,7 +96,7 @@ class QueryLoopTests(LoopTestCase):
         self.assertIn('updating metric "m" set(100.0)', self.logger.output)
 
     async def test_run_query_log_error(self):
-        '''Query errors are logged.'''
+        """Query errors are logged."""
         database = self.query_loop._databases['db']
         database.asyncpg = FakeAsyncpg(connect_error='error')
         await self.query_loop.start()
@@ -105,7 +105,7 @@ class QueryLoopTests(LoopTestCase):
             'query "q" on database "db" failed: error', self.logger.output)
 
     async def test_run_query_log_invalid_result_count(self):
-        '''An error is logged if result count doesn't match metrics count.'''
+        """An error is logged if result count doesn't match metrics count."""
         database = self.query_loop._databases['db']
         database.asyncpg = FakeAsyncpg(query_results=[(100.0, 200.0)])
         await self.query_loop.start()
@@ -116,7 +116,7 @@ class QueryLoopTests(LoopTestCase):
             self.logger.output)
 
     async def test_run_query_periodically(self):
-        '''Queies are run at the specified time interval.'''
+        """Queies are run at the specified time interval."""
         self.mock_execute_query()
         database = self.query_loop._databases['db']
         database.asyncpg = FakeAsyncpg(query_results=[(100.0,)])

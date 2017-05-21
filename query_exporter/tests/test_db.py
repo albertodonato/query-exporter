@@ -15,7 +15,7 @@ from ..db import (
 class QueryTests(TestCase):
 
     def test_instantiate(self):
-        '''A query can be instantiated with the specified arguments.'''
+        """A query can be instantiated with the specified arguments."""
         query = Query(
             'query', 20, ['db1', 'db2'], ['metric1', 'metric2'], 'SELECT 1')
         self.assertEqual(query.name, 'query')
@@ -25,21 +25,21 @@ class QueryTests(TestCase):
         self.assertEqual(query.sql, 'SELECT 1')
 
     def test_results(self):
-        '''The results method returns a dict mapping metrics to results.'''
+        """The results method returns a dict mapping metrics to results."""
         query = Query('query', 20, ['db'], ['metric1', 'metric2'], 'SELECT 1')
         rows = [(11, 22), (33, 44)]
         self.assertEqual(
             query.results(rows), {'metric1': (11, 33), 'metric2': (22, 44)})
 
     def test_results_wrong_result_count(self):
-        '''An error is raised if the result column count is wrong.'''
+        """An error is raised if the result column count is wrong."""
         query = Query('query', 20, ['db'], ['metric'], 'SELECT 1, 2')
         rows = [(1, 2)]
         with self.assertRaises(InvalidResultCount):
             query.results(rows)
 
     def test_results_empty(self):
-        '''No error is raised if the result set is empty'''
+        """No error is raised if the result set is empty"""
         query = Query('query', 20, ['db'], ['metric'], 'SELECT 1, 2')
         rows = []
         self.assertEqual(query.results(rows), {})
@@ -53,18 +53,18 @@ class DataBaseTests(LoopTestCase):
         self.db.asyncpg = FakeAsyncpg()
 
     def test_instantiate(self):
-        '''A DataBase can be instantiated with the specified arguments.'''
+        """A DataBase can be instantiated with the specified arguments."""
         self.assertEqual(self.db.name, 'db')
         self.assertEqual(self.db.dsn, 'postgres:///foo')
 
     async def test_connect(self):
-        '''The connect connects to the database.'''
+        """The connect connects to the database."""
         await self.db.connect()
         self.assertIsInstance(self.db._pool, FakePool)
         self.assertEqual(self.db.asyncpg.dsn, 'postgres:///foo')
 
     async def test_connect_error(self):
-        '''A DataBaseError is raised if database connection fails.'''
+        """A DataBaseError is raised if database connection fails."""
         self.db.asyncpg = FakeAsyncpg(
             connect_error='some error')
         with self.assertRaises(DataBaseError) as cm:
@@ -72,7 +72,7 @@ class DataBaseTests(LoopTestCase):
         self.assertEqual(str(cm.exception), 'some error')
 
     async def test_close(self):
-        '''The close method closes database pool.'''
+        """The close method closes database pool."""
         await self.db.connect()
         pool = self.db._pool
         await self.db.close()
@@ -80,7 +80,7 @@ class DataBaseTests(LoopTestCase):
         self.assertIsNone(self.db._pool)
 
     async def test_execute(self):
-        '''The execute method executes a query.'''
+        """The execute method executes a query."""
         query = Query('query', 20, ['db'], ['metric1', 'metric2'], 'SELECT 1')
         asyncpg = FakeAsyncpg(query_results=[(10, 20), (30, 40)])
         self.db.asyncpg = asyncpg
