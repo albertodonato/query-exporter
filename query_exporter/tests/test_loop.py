@@ -92,18 +92,17 @@ class QueryLoopTests(LoopTestCase):
         database.asyncpg = FakeAsyncpg(query_results=[(100.0,)])
         await self.query_loop.start()
         await self.query_loop.stop()
-        self.assertIn("running query 'q' on database 'db'", self.logger.output)
-        self.assertIn("updating metric 'm' set(100.0)", self.logger.output)
+        self.assertIn('running query "q" on database "db"', self.logger.output)
+        self.assertIn('updating metric "m" set(100.0)', self.logger.output)
 
     async def test_run_query_log_error(self):
         '''Query errors are logged.'''
         database = self.query_loop._databases['db']
-        database.asyncpg = FakeAsyncpg(connect_error='error\nconnect failed')
+        database.asyncpg = FakeAsyncpg(connect_error='error')
         await self.query_loop.start()
         await self.query_loop.stop()
         self.assertIn(
-            "query 'q' on database 'db' failed: error\nconnect failed\n",
-            self.logger.output)
+            'query "q" on database "db" failed: error', self.logger.output)
 
     async def test_run_query_log_invalid_result_count(self):
         '''An error is logged if result count doesn't match metrics count.'''
@@ -112,7 +111,7 @@ class QueryLoopTests(LoopTestCase):
         await self.query_loop.start()
         await self.query_loop.stop()
         self.assertIn(
-            "query 'q' on database 'db' failed: Wrong result count from the"
+            'query "q" on database "db" failed: Wrong result count from the'
             ' query',
             self.logger.output)
 

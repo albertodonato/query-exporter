@@ -26,7 +26,7 @@ class QueryLoop:
                 self._log_db_error(db.name, error)
             else:
                 self._logger.debug(
-                    "connected to database '{}'".format(db.name))
+                    'connected to database "{}"'.format(db.name))
 
         for query in self._queries:
             call = PeriodicCall(self.loop, self._run_query, query)
@@ -58,7 +58,7 @@ class QueryLoop:
     async def _execute_query(self, query, dbname):
         ''''Execute a Query on a DataBase.'''
         self._logger.debug(
-            "running query '{}' on database '{}'".format(query.name, dbname))
+            'running query "{}" on database "{}"'.format(query.name, dbname))
         try:
             results = await self._databases[dbname].execute(query)
         except DataBaseError as error:
@@ -71,12 +71,12 @@ class QueryLoop:
 
     def _log_query_error(self, name, dbname, error):
         '''Log an error related to database query.'''
-        prefix = "query '{}' on database '{}' failed:".format(name, dbname)
+        prefix = 'query "{}" on database "{}" failed:'.format(name, dbname)
         self._logger.error('{} {}'.format(prefix, error))
 
     def _log_db_error(self, name, error):
         '''Log a failed database query.'''
-        prefix = "error from database '{}':".format(name)
+        prefix = 'error from database "{}":'.format(name)
         self._logger.error('{} {}'.format(prefix, error))
 
     def _update_metric(self, name, value, dbname):
@@ -91,6 +91,6 @@ class QueryLoop:
             # don't fail is queries that count return NULL
             value = 0.0
         self._logger.debug(
-            "updating metric '{}' {}({})".format(name, method, value))
+            'updating metric "{}" {}({})'.format(name, method, value))
         metric = self._metrics[name].labels(database=dbname)
         getattr(metric, method)(value)
