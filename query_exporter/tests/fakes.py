@@ -1,46 +1,51 @@
 """Fakes for testing."""
 
 
-class FakeAsyncpg:
-    """Fake asyncpg module."""
+class FakeSQLAlchemy:
+    """Fake sqlalchemy module."""
 
     dsn = None
-    pool = None
+    strategy = None
+    engine = None
 
     def __init__(self, connect_error=None, query_results=None,
-                 query_error=None):
+                 query_error=None, missing_module=None):
         self.connect_error = connect_error
         self.query_results = query_results
         self.query_error = query_error
+        self.missing_module = missing_module
 
-    async def create_pool(self, dsn):
+    def create_engine(self, dsn, strategy=None):
         self.dsn = dsn
-        if self.connect_error:
-            raise Exception(self.connect_error)
-        self.pool = FakePool(
+        self.strategy = strategy
+        if self.missing_module is not None:
+            raise ImportError(
+                'Failed to import module "{}"'.format(self.missing_module),
+                name=self.missing_module)
+        self.engine = FakeEngine(
             dsn, query_results=self.query_results,
-            query_error=self.query_error)
-        return self.pool
+            query_error=self.query_error, connect_error=self.connect_error)
+        return self.engine
 
 
-class FakePool:
-    """Fake connection pool."""
+class FakeEngine:
+    """Fake database engine."""
 
-    closed = False
     connection = None
 
-    def __init__(self, dsn, query_results=None, query_error=None):
+    def __init__(self, dsn, query_results=None, query_error=None,
+                 connect_error=None):
         self.dsn = dsn
         self.query_results = query_results
         self.query_error = query_error
+        self.connect_error = connect_error
 
-    def acquire(self):
+    async def connect(self):
+        if self.connect_error:
+            raise Exception(self.connect_error)
         self.connection = FakeConnection(
             query_results=self.query_results, query_error=self.query_error)
         return self.connection
-
-    async def close(self):
-        self.closed = True
 
 
 class FakeConnection:
@@ -53,20 +58,21 @@ class FakeConnection:
         self.query_results = query_results
         self.query_error = query_error
 
-    async def __aenter__(self):
-        return self
-
-    async def __aexit__(self, exc_type, exc_value, traceback):
-        await self.close()
-
     async def close(self):
         self.closed = True
 
-    def transaction(self):
-        return self
-
-    async def fetch(self, sql):
+    async def execute(self, sql):
         if self.query_error:
             raise Exception(self.query_error)
         self.sql = sql
+        return FakeQueryResult(self.query_results)
+
+
+class FakeQueryResult:
+    """Fake query result."""
+
+    def __init__(self, query_results):
+        self.query_results = query_results
+
+    async def fetchall(self):
         return self.query_results

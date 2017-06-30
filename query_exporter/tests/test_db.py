@@ -3,8 +3,8 @@ from unittest import TestCase
 from toolrack.testing.async import LoopTestCase
 
 from .fakes import (
-    FakeAsyncpg,
-    FakePool)
+    FakeSQLAlchemy,
+    FakeConnection)
 from ..db import (
     Query,
     DataBase,
@@ -50,7 +50,7 @@ class DataBaseTests(LoopTestCase):
     def setUp(self):
         super().setUp()
         self.db = DataBase('db', 'postgres:///foo')
-        self.db.asyncpg = FakeAsyncpg()
+        self.db.sqlalchemy = FakeSQLAlchemy()
 
     def test_instantiate(self):
         """A DataBase can be instantiated with the specified arguments."""
@@ -60,41 +60,47 @@ class DataBaseTests(LoopTestCase):
     async def test_connect(self):
         """The connect connects to the database."""
         await self.db.connect()
-        self.assertIsInstance(self.db._pool, FakePool)
-        self.assertEqual(self.db.asyncpg.dsn, 'postgres:///foo')
+        self.assertIsInstance(self.db._conn, FakeConnection)
+        self.assertEqual(self.db.sqlalchemy.dsn, 'postgres:///foo')
+
+    async def test_connect_missing_engine_module(self):
+        """An error is raised if a module for the engine is missing."""
+        self.db.sqlalchemy = FakeSQLAlchemy(missing_module='psycopg2')
+        with self.assertRaises(DataBaseError) as cm:
+            await self.db.connect()
+        self.assertEqual(str(cm.exception), 'module "psycopg2" not found')
 
     async def test_connect_error(self):
         """A DataBaseError is raised if database connection fails."""
-        self.db.asyncpg = FakeAsyncpg(
-            connect_error='some error')
+        self.db.sqlalchemy = FakeSQLAlchemy(connect_error='some error')
         with self.assertRaises(DataBaseError) as cm:
             await self.db.connect()
         self.assertEqual(str(cm.exception), 'some error')
 
     async def test_close(self):
-        """The close method closes database pool."""
+        """The close method closes database connection."""
         await self.db.connect()
-        pool = self.db._pool
+        connection = self.db._conn
         await self.db.close()
-        self.assertTrue(pool.closed)
-        self.assertIsNone(self.db._pool)
+        self.assertTrue(connection.closed)
+        self.assertIsNone(self.db._conn)
 
     async def test_execute(self):
         """The execute method executes a query."""
         query = Query('query', 20, ['db'], ['metric1', 'metric2'], 'SELECT 1')
-        asyncpg = FakeAsyncpg(query_results=[(10, 20), (30, 40)])
-        self.db.asyncpg = asyncpg
+        sqlalchemy = FakeSQLAlchemy(query_results=[(10, 20), (30, 40)])
+        self.db.sqlalchemy = sqlalchemy
 
         await self.db.connect()
         result = await self.db.execute(query)
         self.assertEqual(result, {'metric1': (10, 30), 'metric2': (20, 40)})
-        self.assertEqual(asyncpg.pool.connection.sql, 'SELECT 1')
+        self.assertEqual(sqlalchemy.engine.connection.sql, 'SELECT 1')
 
     async def test_execute_query_error(self):
         """If the query fails an error is raised."""
         query = Query('query', 20, ['db'], ['metric'], 'WRONG')
-        asyncpg = FakeAsyncpg(query_error='wrong query')
-        self.db.asyncpg = asyncpg
+        sqlalchemy = FakeSQLAlchemy(query_error='wrong query')
+        self.db.sqlalchemy = sqlalchemy
 
         await self.db.connect()
         with self.assertRaises(DataBaseError) as cm:
@@ -104,12 +110,11 @@ class DataBaseTests(LoopTestCase):
     async def test_execute_not_connected(self):
         """The execute recconnects to the database if not connected."""
         query = Query('query', 20, ['db'], ['metric1', 'metric2'], 'SELECT 1')
-        asyncpg = FakeAsyncpg(query_results=[(10, 20), (30, 40)])
-        self.db.asyncpg = asyncpg
+        sqlalchemy = FakeSQLAlchemy(query_results=[(10, 20), (30, 40)])
+        self.db.sqlalchemy = sqlalchemy
 
         result = await self.db.execute(query)
         self.assertEqual(result, {'metric1': (10, 30), 'metric2': (20, 40)})
-        self.assertEqual(asyncpg.pool.connection.sql, 'SELECT 1')
-        # the pool is kept for reuse
-        self.assertFalse(asyncpg.pool.closed)
-        self.assertTrue(asyncpg.pool.connection.closed)
+        self.assertEqual(sqlalchemy.engine.connection.sql, 'SELECT 1')
+        # the connection is kept for reuse
+        self.assertFalse(sqlalchemy.engine.connection.closed)

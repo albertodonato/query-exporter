@@ -22,20 +22,22 @@ config = {
     'test_suite': 'query_exporter',
     'install_requires': [
         'aiohttp',
-        'asyncpg',
         'prometheus-client',
         'prometheus-aioexporter',
         'PyYaml',
+        'SQLAlchemy',
+        'sqlalchemy_aio',
         'toolrack'],
     'tests_require': tests_require,
     'extras_require': {'testing': tests_require},
     'keywords': 'sql metric prometheus exporter',
     'classifiers': [
-        'Development Status :: 3 - Alpha',
+        'Development Status :: 4 - Beta',
         'Intended Audience :: System Administrators',
         'License :: OSI Approved :: GNU General Public License (GPL)',
         'Operating System :: POSIX :: Linux',
         'Programming Language :: Python :: 3.5',
+        'Programming Language :: Python :: 3.6',
         'Topic :: Utilities']}
 
 setup(**config)

@@ -2,7 +2,9 @@
 
 from collections import namedtuple
 
-import asyncpg
+import sqlalchemy
+
+from sqlalchemy_aio import ASYNCIO_STRATEGY
 
 
 class DataBaseError(Exception):
@@ -35,33 +37,37 @@ class Query(Query):
 class DataBase(namedtuple('DataBase', ['name', 'dsn'])):
     """A database to perform Queries."""
 
-    asyncpg = asyncpg  # for testing
+    sqlalchemy = sqlalchemy  # for testing
 
-    _pool = None
+    _conn = None
 
     async def connect(self):
         """Connect to the database."""
         try:
-            self._pool = await self.asyncpg.create_pool(self.dsn)
+            engine = self.sqlalchemy.create_engine(
+                self.dsn, strategy=ASYNCIO_STRATEGY)
+        except ImportError as error:
+            raise DataBaseError('module "{}" not found'.format(error.name))
+
+        try:
+            self._conn = await engine.connect()
         except Exception as error:
-            raise DataBaseError(str(error))
+            raise DataBaseError(str(error).strip())
 
     async def close(self):
         """Close the database connection."""
-        if self._pool is None:
+        if self._conn is None:
             return
-        await self._pool.close()
-        self._pool = None
+        await self._conn.close()
+        self._conn = None
 
     async def execute(self, query):
         """Execute a query."""
-        if self._pool is None:
+        if self._conn is None:
             await self.connect()
 
-        async with self._pool.acquire() as connection:
-            async with connection.transaction():
-                try:
-                    rows = await connection.fetch(query.sql)
-                    return query.results(rows)
-                except Exception as error:
-                    raise DataBaseError(str(error))
+        try:
+            result = await self._conn.execute(query.sql)
+            return query.results(await result.fetchall())
+        except Exception as error:
+            raise DataBaseError(str(error).strip())

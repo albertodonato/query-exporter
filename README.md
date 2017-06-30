@@ -7,8 +7,8 @@
 `query-exporter` is a [Prometheus](https://prometheus.io/) exporter which
 allows collecting metrics from database queries, at specified time intervals.
 
-It currently supports [PostgreSQL](https://www.postgresql.org/) as a backend
-database.
+It uses [SQLAlchemy](https://www.sqlalchemy.org/) to connect to different
+database engines, including PostgreSQL, MySQL, Oracle and Microsoft SQL Server.
 
 Each query can be run on multiple databases, and update multiple metrics.
 
@@ -19,7 +19,7 @@ databases:
   db1:
     dsn: postgres:///sampledb1
   db2:
-    dsn: postgres:///sampledb2
+    dsn: mysql:///sampledb2
 
 metrics:
   metric1:
@@ -49,8 +49,12 @@ queries:
 The `dsn` connection string has the following format:
 
 ```
-postgres://user:pass@host:port/database?option=value
+dialect[+driver]://[username:password][@host:port]/database
 ```
+
+(see
+[SQLAlchemy documentation](http://docs.sqlalchemy.org/en/latest/core/engines.html#database-urls) for
+details on the available options):
 
 The `metrics` list in the query configuration must match values returned by the
 query defined in `sql`.
@@ -97,3 +101,13 @@ metric3_sum{database="db2"} 9923.82999043912
 
 Metrics are automatically tagged with the `database` label so that indipendent
 series are generated for each database.
+
+
+## Database engines
+
+SQLAlchemy doesn't depend on specific Python database modules at installation.
+This means additional modules might need to be installed for engines in use
+(e.g. `psycopg2` for PostgreSQL or `MySQL-python` for MySQL).
+
+See
+[supported databases](http://docs.sqlalchemy.org/en/latest/core/engines.html#supported-databases) for details.
