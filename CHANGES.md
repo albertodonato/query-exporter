@@ -1,3 +1,10 @@
+# v1.2.0 - 2017-06-30
+
+- Switch to SQLAlchemy. Multiple database engines are now supported.
+- Needed database libraries must now be installed separately, as there is no
+  explicit dependency in SQLAlchemy.
+
+
 # v1.1.0 - 2017-05-21
 
 - Use connection pools for queries.
