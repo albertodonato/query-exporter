@@ -54,7 +54,7 @@ dialect[+driver]://[username:password][@host:port]/database
 
 (see
 [SQLAlchemy documentation](http://docs.sqlalchemy.org/en/latest/core/engines.html#database-urls) for
-details on the available options):
+details on the available options).
 
 The `metrics` list in the query configuration must match values returned by the
 query defined in `sql`.
