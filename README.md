@@ -17,9 +17,9 @@ The application is called with a configuration file that looks like this:
 ```yaml
 databases:
   db1:
-    dsn: postgres:///sampledb1
+    dsn: sqlite://
   db2:
-    dsn: mysql:///sampledb2
+    dsn: sqlite://
 
 metrics:
   metric1:
@@ -35,15 +35,17 @@ metrics:
 
 queries:
   query1:
-    interval: 30
+    interval: 5
     databases: [db1]
     metrics: [metric1]
-    sql: SELECT random() * 100
+    sql: SELECT random() / 1000000000000000
   query2:
-    interval: 1m
+    interval: 20
     databases: [db1, db2]
     metrics: [metric2, metric3]
-    sql: SELECT random() * 1000, random() * 10000
+    sql: |
+      SELECT abs(random() / 1000000000000000),
+             abs(random() / 10000000000000000)
 ```
 
 The `dsn` connection string has the following format:
@@ -72,31 +74,31 @@ For the configuration above, exported metrics look like this:
 ```
 # HELP metric1 A sample gauge
 # TYPE metric1 gauge
-metric1{database="db1"} 13.8291064184159
+metric1{database="db1"} 1549.0
 # HELP metric2 A sample summary
 # TYPE metric2 summary
-metric2_count{database="db1"} 1.0
-metric2_sum{database="db1"} 889.48124460876
-metric2_count{database="db2"} 1.0
-metric2_sum{database="db2"} 665.63375480473
+metric2_count{database="db2"} 6.0
+metric2_sum{database="db2"} 25329.0
+metric2_count{database="db1"} 6.0
+metric2_sum{database="db1"} 30170.0
 # HELP metric3 A sample histogram
 # TYPE metric3 histogram
-metric3_bucket{database="db1",le="10.0"} 0.0
-metric3_bucket{database="db1",le="20.0"} 0.0
-metric3_bucket{database="db1",le="50.0"} 0.0
-metric3_bucket{database="db1",le="100.0"} 0.0
-metric3_bucket{database="db1",le="1000.0"} 0.0
-metric3_bucket{database="db1",le="+Inf"} 1.0
-metric3_count{database="db1"} 1.0
-metric3_sum{database="db1"} 9988.39943669736
 metric3_bucket{database="db2",le="10.0"} 0.0
-metric3_bucket{database="db2",le="20.0"} 0.0
-metric3_bucket{database="db2",le="50.0"} 0.0
-metric3_bucket{database="db2",le="100.0"} 0.0
-metric3_bucket{database="db2",le="1000.0"} 0.0
-metric3_bucket{database="db2",le="+Inf"} 1.0
-metric3_count{database="db2"} 1.0
-metric3_sum{database="db2"} 9923.82999043912
+metric3_bucket{database="db2",le="20.0"} 1.0
+metric3_bucket{database="db2",le="50.0"} 2.0
+metric3_bucket{database="db2",le="100.0"} 2.0
+metric3_bucket{database="db2",le="1000.0"} 6.0
+metric3_bucket{database="db2",le="+Inf"} 6.0
+metric3_count{database="db2"} 6.0
+metric3_sum{database="db2"} 2542.0
+metric3_bucket{database="db1",le="10.0"} 1.0
+metric3_bucket{database="db1",le="20.0"} 1.0
+metric3_bucket{database="db1",le="50.0"} 1.0
+metric3_bucket{database="db1",le="100.0"} 2.0
+metric3_bucket{database="db1",le="1000.0"} 6.0
+metric3_bucket{database="db1",le="+Inf"} 6.0
+metric3_count{database="db1"} 6.0
+metric3_sum{database="db1"} 2901.0
 ```
 
 Metrics are automatically tagged with the `database` label so that indipendent
