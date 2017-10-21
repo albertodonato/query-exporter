@@ -9,7 +9,7 @@ config = {
     'version': __version__,
     'license': 'GPLv3+',
     'description': description,
-    'long_description': open('README.md').read(),
+    'long_description': open('README.rst').read(),
     'author': 'Alberto Donato',
     'author_email': 'alberto.donato@gmail.com',
     'maintainer': 'Alberto Donato',
