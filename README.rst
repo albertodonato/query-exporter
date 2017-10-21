@@ -107,7 +107,7 @@ installation. This means additional modules might need to be installed for
 engines in use (e.g. ``psycopg2`` for PostgreSQL or ``MySQL-python`` for
 MySQL).
 
-See `supported databases` for details.
+See `supported databases`_ for details.
 
 
 .. _Prometheus: https://prometheus.io/
