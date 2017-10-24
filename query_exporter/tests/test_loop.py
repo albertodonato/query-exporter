@@ -4,9 +4,7 @@ import yaml
 
 from fixtures import LoggerFixture
 
-from prometheus_client import CollectorRegistry
-
-from prometheus_aioexporter.metric import create_metrics
+from prometheus_aioexporter.metric import MetricsRegistry
 
 from toolrack.testing import TempDirFixture
 from toolrack.testing.async import LoopTestCase
@@ -35,8 +33,7 @@ class QueryLoopTests(LoopTestCase):
         with open(config_file) as fh:
             config = load_config(fh)
 
-        registry = CollectorRegistry(auto_describe=True)
-        metrics = create_metrics(config.metrics, registry)
+        metrics = MetricsRegistry().create_metrics(config.metrics)
         self.query_loop = QueryLoop(config, metrics, logging, self.loop)
         self.query_loop._databases['db'].sqlalchemy = FakeSQLAlchemy()
 
