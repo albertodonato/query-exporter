@@ -1,7 +1,14 @@
+v1.2.2 - 2017-10-25
+===================
+
+- Fix tests for latest prometheus_aioexporter.
+
+
 v1.2.1 - 2017-10-25
 ===================
 
 - Documentation cleanups (and conversion to reST).
+
 
 v1.2.0 - 2017-06-30
 ===================
