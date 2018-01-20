@@ -29,7 +29,12 @@ class QueryLoopTests(LoopTestCase):
                     'interval': 10,
                     'databases': ['db'],
                     'metrics': ['m'],
-                    'sql': 'SELECT 1'}}}
+                    'sql': 'SELECT 1'},
+                'q-no-interval': {
+                    'databases': ['db'],
+                    'metrics': ['m'],
+                    'sql': 'SELECT 2'}
+            }}
         config_file = self.tempdir.mkfile(content=yaml.dump(config_struct))
         with open(config_file) as fh:
             config = load_config(fh)
@@ -114,7 +119,7 @@ class QueryLoopTests(LoopTestCase):
             self.logger.output)
 
     async def test_run_query_periodically(self):
-        """Queies are run at the specified time interval."""
+        """Queries are run at the specified time interval."""
         self.mock_execute_query()
         database = self.query_loop._databases['db']
         database.sqlalchemy = FakeSQLAlchemy(query_results=[(100.0,)])
@@ -127,4 +132,16 @@ class QueryLoopTests(LoopTestCase):
         # now the query runs again
         self.loop.advance(5)
         self.assertEqual(len(self.query_exec), 2)
+        await self.query_loop.stop()
+
+    async def test_run_aperiodic_queries(self):
+        """Queries with null interval can be run explicitly."""
+        self.mock_execute_query()
+        database = self.query_loop._databases['db']
+        database.sqlalchemy = FakeSQLAlchemy(query_results=[(100.0,)])
+        await self.query_loop.start()
+        await self.query_loop.run_aperiodic_queries()
+        self.assertEqual(len(self.query_exec), 2)
+        await self.query_loop.run_aperiodic_queries()
+        self.assertEqual(len(self.query_exec), 3)
         await self.query_loop.stop()

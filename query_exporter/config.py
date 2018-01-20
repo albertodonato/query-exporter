@@ -1,6 +1,8 @@
 """Configuration management functions."""
 
-from collections import namedtuple
+from collections import (
+    defaultdict,
+    namedtuple)
 
 import yaml
 
@@ -18,14 +20,13 @@ Config = namedtuple('Config', ['databases', 'metrics', 'queries'])
 
 
 def load_config(config_fd):
-    """Load YAML config from file."""
-    config = yaml.load(config_fd)
-    databases = _get_databases(config.get('databases', {}))
-    metrics = _get_metrics(config.get('metrics', {}))
+    """Load YaML config from file."""
+    config = defaultdict(dict, yaml.load(config_fd))
+    databases = _get_databases(config['databases'])
+    metrics = _get_metrics(config['metrics'])
     database_names = frozenset(database.name for database in databases)
     metric_names = frozenset(metric.name for metric in metrics)
-    queries = _get_queries(
-        config.get('queries', {}), database_names, metric_names)
+    queries = _get_queries(config['queries'], database_names, metric_names)
     return Config(databases, metrics, queries)
 
 
@@ -84,7 +85,11 @@ def _validate_query_config(name, config, database_names, metric_names):
 
 def _convert_interval(name, config):
     """Convert query intervals to seconds."""
-    interval = config['interval']
+    interval = config.setdefault('interval', None)
+    if interval is None:
+        # the query should be run at every request
+        return
+
     multiplier = 1
 
     config_error = ConfigError(

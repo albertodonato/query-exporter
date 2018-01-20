@@ -30,10 +30,16 @@ class QueryExporterScript(PrometheusExporterScript):
             config, self.registry, self.logger, self.loop)
 
     async def on_application_startup(self, application):
+        application.set_metric_update_handler(
+            self._update_handler)
         await self.query_loop.start()
 
     async def on_application_shutdown(self, application):
         await self.query_loop.stop()
+
+    async def _update_handler(self, metrics):
+        """Run queries with no specified interval on each request."""
+        await self.query_loop.run_aperiodic_queries()
 
     def _load_config(self, config_file):
         """Load the application configuration."""

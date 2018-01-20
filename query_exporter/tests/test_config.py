@@ -147,8 +147,25 @@ class LoadConfigTests(TestCase):
         self.assertEqual(
             str(cm.exception), "Missing key 'databases' for query 'q1'")
 
+    def test_load_queries_missing_interval_default_to_none(self):
+        """If the interval is not specified, it defaults to None."""
+        config = {
+            'databases': {
+                'db': {'dsn': 'postgres:///foo'}},
+            'metrics': {
+                'm': {'type': 'summary'}},
+            'queries': {
+                'q': {
+                    'databases': ['db'],
+                    'metrics': ['m'],
+                    'sql': 'SELECT 1'}}}
+        config_file = self.tempdir.mkfile(content=yaml.dump(config))
+        with open(config_file) as fd:
+            config = load_config(fd)
+        self.assertIsNone(config.queries[0].interval)
+
     def test_load_queries_interval_seconds(self):
-        """ The query interval is stored as seconds."""
+        """The query interval is stored as seconds."""
         config_file = self.tempdir.mkfile(content=yaml.dump(self.config))
         with open(config_file) as fd:
             config = load_config(fd)
@@ -156,7 +173,7 @@ class LoadConfigTests(TestCase):
         self.assertEqual(query.interval, 10)
 
     def test_load_queries_interval_as_string(self):
-        """ The interval can be passed as string."""
+        """The interval can be passed as string."""
         self.config['queries']['q']['interval'] = '10'
         config_file = self.tempdir.mkfile(content=yaml.dump(self.config))
         with open(config_file) as fd:
@@ -165,7 +182,7 @@ class LoadConfigTests(TestCase):
         self.assertEqual(query.interval, 10)
 
     def test_load_queries_interval_second_suffix(self):
-        """ The 's' suffix can be used in interval values for seconds."""
+        """The 's' suffix can be used in interval values for seconds."""
         self.config['queries']['q']['interval'] = '10s'
         config_file = self.tempdir.mkfile(content=yaml.dump(self.config))
         with open(config_file) as fd:
@@ -174,7 +191,7 @@ class LoadConfigTests(TestCase):
         self.assertEqual(query.interval, 10)
 
     def test_load_queries_interval_minute_suffix(self):
-        """ The 'm' suffix can be used in interval values for minutes."""
+        """The 'm' suffix can be used in interval values for minutes."""
         self.config['queries']['q']['interval'] = '10m'
         config_file = self.tempdir.mkfile(content=yaml.dump(self.config))
         with open(config_file) as fd:
@@ -183,7 +200,7 @@ class LoadConfigTests(TestCase):
         self.assertEqual(query.interval, 600)
 
     def test_load_queries_interval_hour(self):
-        """ The 'h' suffix can be used in interval values for hours."""
+        """The 'h' suffix can be used in interval values for hours."""
         self.config['queries']['q']['interval'] = '1h'
         config_file = self.tempdir.mkfile(content=yaml.dump(self.config))
         with open(config_file) as fd:
@@ -192,13 +209,31 @@ class LoadConfigTests(TestCase):
         self.assertEqual(query.interval, 3600)
 
     def test_load_queries_interval_day(self):
-        """ The 'd' suffix can be used in interval values for days."""
+        """The 'd' suffix can be used in interval values for days."""
         self.config['queries']['q']['interval'] = '1d'
         config_file = self.tempdir.mkfile(content=yaml.dump(self.config))
         with open(config_file) as fd:
             config = load_config(fd)
         [query] = config.queries
         self.assertEqual(query.interval, 3600 * 24)
+
+    def test_load_queries_interval_none(self):
+        """The interval can be None."""
+        self.config['queries']['q']['interval'] = None
+        config_file = self.tempdir.mkfile(content=yaml.dump(self.config))
+        with open(config_file) as fd:
+            config = load_config(fd)
+        [query] = config.queries
+        self.assertIsNone(query.interval)
+
+    def test_load_queries_interval_not_specified(self):
+        """If the interval is not specified, it's set to None."""
+        del self.config['queries']['q']['interval']
+        config_file = self.tempdir.mkfile(content=yaml.dump(self.config))
+        with open(config_file) as fd:
+            config = load_config(fd)
+        [query] = config.queries
+        self.assertIsNone(query.interval)
 
     def test_invalid_interval_suffix(self):
         """An invalid suffix for query interval raises an error."""

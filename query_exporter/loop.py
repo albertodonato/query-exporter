@@ -10,10 +10,18 @@ from .db import DataBaseError
 class QueryLoop:
     """Periodically performs queries."""
 
+    _METRIC_METHODS = {
+        'counter': 'inc',
+        'gauge': 'set',
+        'histogram': 'observe',
+        'summary': 'observe'}
+
     def __init__(self, config, registry, logger, loop):
         self.loop = loop
         self._logger = logger
         self._registry = registry
+        self._periodic_queries = []
+        self._aperiodic_queries = []
         self._periodic_calls = []
         self._setup(config)
 
@@ -28,18 +36,25 @@ class QueryLoop:
                 self._logger.debug(
                     'connected to database "{}"'.format(db.name))
 
-        for query in self._queries:
+        for query in self._periodic_queries:
             call = PeriodicCall(self.loop, self._run_query, query)
             self._periodic_calls.append(call)
             call.start(query.interval)
 
     async def stop(self):
         """Stop periodic query execution."""
-        coroutines = (call.stop() for call in self._periodic_calls)
-        await asyncio.gather(*coroutines, loop=self.loop)
+        coros = (call.stop() for call in self._periodic_calls)
+        await asyncio.gather(*coros, loop=self.loop)
         self._periodic_calls = []
-        coroutines = (db.close() for db in self._databases.values())
-        await asyncio.gather(*coroutines, loop=self.loop)
+        coros = (db.close() for db in self._databases.values())
+        await asyncio.gather(*coros, loop=self.loop)
+
+    async def run_aperiodic_queries(self):
+        coros = (
+            self._execute_query(query, dbname)
+            for query in self._aperiodic_queries
+            for dbname in query.databases)
+        await asyncio.gather(*coros, loop=self.loop)
 
     def _setup(self, config):
         """Initialize instance attributes."""
@@ -48,7 +63,12 @@ class QueryLoop:
             for metric_config in config.metrics}
         self._databases = {
             database.name: database for database in config.databases}
-        self._queries = config.queries
+
+        for query in config.queries:
+            if query.interval is None:
+                self._aperiodic_queries.append(query)
+            else:
+                self._periodic_queries.append(query)
 
     def _run_query(self, query):
         """Periodic task to run a query."""
@@ -81,15 +101,10 @@ class QueryLoop:
 
     def _update_metric(self, name, value, dbname):
         """Update value for a metric."""
-        metric_methods = {
-            'counter': 'inc',
-            'gauge': 'set',
-            'histogram': 'observe',
-            'summary': 'observe'}
-        method = metric_methods[self._metric_configs[name].type]
         if value is None:
             # don't fail is queries that count return NULL
             value = 0.0
+        method = self._METRIC_METHODS[self._metric_configs[name].type]
         self._logger.debug(
             'updating metric "{}" {}({})'.format(name, method, value))
         metric = self._registry.get_metric(name, labels={'database': dbname})
