@@ -23,7 +23,7 @@ config = {
     'install_requires': [
         'aiohttp',
         'prometheus-client',
-        'prometheus-aioexporter >= 1.1.0',
+        'prometheus-aioexporter >= 1.2.0',
         'PyYaml',
         'SQLAlchemy',
         'sqlalchemy_aio',

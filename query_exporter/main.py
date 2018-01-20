@@ -25,8 +25,9 @@ class QueryExporterScript(PrometheusExporterScript):
 
     def configure(self, args):
         config = self._load_config(args.config)
-        metrics = self.create_metrics(config.metrics)
-        self.query_loop = QueryLoop(config, metrics, self.logger, self.loop)
+        self.create_metrics(config.metrics)
+        self.query_loop = QueryLoop(
+            config, self.registry, self.logger, self.loop)
 
     async def on_application_startup(self, application):
         await self.query_loop.start()

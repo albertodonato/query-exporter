@@ -20,6 +20,7 @@ class QueryLoopTests(LoopTestCase):
         super().setUp()
         self.tempdir = self.useFixture(TempDirFixture())
         self.logger = self.useFixture(LoggerFixture(level=logging.DEBUG))
+        self.registry = MetricsRegistry()
         config_struct = {
             'databases': {'db': {'dsn': 'postgres:///foo'}},
             'metrics': {'m': {'type': 'gauge'}},
@@ -33,8 +34,8 @@ class QueryLoopTests(LoopTestCase):
         with open(config_file) as fh:
             config = load_config(fh)
 
-        metrics = MetricsRegistry().create_metrics(config.metrics)
-        self.query_loop = QueryLoop(config, metrics, logging, self.loop)
+        self.registry.create_metrics(config.metrics)
+        self.query_loop = QueryLoop(config, self.registry, logging, self.loop)
         self.query_loop._databases['db'].sqlalchemy = FakeSQLAlchemy()
 
     def mock_execute_query(self):
@@ -68,7 +69,7 @@ class QueryLoopTests(LoopTestCase):
         database.sqlalchemy = FakeSQLAlchemy(query_results=[(100.0,)])
         await self.query_loop.start()
         await self.query_loop.stop()
-        metric = self.query_loop._metrics['m']
+        metric = self.registry.get_metric('m')
         # the metric is updated
         [(_, _, value)] = metric._samples()
         self.assertEqual(value, 100.0)
@@ -79,7 +80,7 @@ class QueryLoopTests(LoopTestCase):
         database.sqlalchemy = FakeSQLAlchemy(query_results=[(None,)])
         await self.query_loop.start()
         await self.query_loop.stop()
-        metric = self.query_loop._metrics['m']
+        metric = self.registry.get_metric('m')
         [(_, _, value)] = metric._samples()
         self.assertEqual(value, 0)
 

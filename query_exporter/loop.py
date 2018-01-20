@@ -10,10 +10,10 @@ from .db import DataBaseError
 class QueryLoop:
     """Periodically performs queries."""
 
-    def __init__(self, config, metrics, logger, loop):
+    def __init__(self, config, registry, logger, loop):
         self.loop = loop
         self._logger = logger
-        self._metrics = metrics
+        self._registry = registry
         self._periodic_calls = []
         self._setup(config)
 
@@ -92,5 +92,5 @@ class QueryLoop:
             value = 0.0
         self._logger.debug(
             'updating metric "{}" {}({})'.format(name, method, value))
-        metric = self._metrics[name].labels(database=dbname)
+        metric = self._registry.get_metric(name, labels={'database': dbname})
         getattr(metric, method)(value)
