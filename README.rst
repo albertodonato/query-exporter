@@ -58,7 +58,8 @@ the query defined in ``sql``.
 
 The ``interval`` value is interpreted as seconds if no suffix is specified;
 valid suffix are ``s``, ``m``, ``h``, ``d``. Only integer values can be
-specified.
+specified. If no value is specified (or specified as ``null``), the query is
+executed at every HTTP request.
 
 Queries will usually return a single row, but multiple rows are supported, and
 each row will cause an update of the related metrics.  This is relevant for any
