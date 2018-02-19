@@ -1,3 +1,10 @@
+v1.3.0 - 2018-02-20
+===================
+
+- Support aperiodic queries, which are run at every request for the metrics
+  endpoint.
+
+
 v1.2.2 - 2017-10-25
 ===================
 

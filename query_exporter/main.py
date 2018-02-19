@@ -30,7 +30,7 @@ class QueryExporterScript(PrometheusExporterScript):
             config, self.registry, self.logger, self.loop)
 
     async def on_application_startup(self, application):
-        application.set_metric_update_handler(
+        application['exporter'].set_metric_update_handler(
             self._update_handler)
         await self.query_loop.start()
 
