@@ -239,7 +239,7 @@ class LoadConfigTests(TestCase):
         """An invalid suffix for query interval raises an error."""
         self.config['queries']['q']['interval'] = '1x'
         config_file = self.tempdir.mkfile(content=yaml.dump(self.config))
-        with self.assertRaises(ConfigError) as cm, open(config_file) as fd:
+        with self.assertRaises(ConfigError) as cm, config_file.open() as fd:
             load_config(fd)
         self.assertEqual(str(cm.exception), "Invalid interval for query 'q'")
 
