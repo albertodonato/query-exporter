@@ -36,7 +36,7 @@ class QueryLoopTests(LoopTestCase):
                     'sql': 'SELECT 2'}
             }}
         config_file = self.tempdir.mkfile(content=yaml.dump(config_struct))
-        with open(config_file) as fh:
+        with config_file.open() as fh:
             config = load_config(fh)
 
         self.registry.create_metrics(config.metrics)
