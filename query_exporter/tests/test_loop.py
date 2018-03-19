@@ -1,20 +1,20 @@
 import logging
 
-import yaml
-
-from fixtures import LoggerFixture
-
+from asynctest import ClockedTestCase
+from fixtures import (
+    LoggerFixture,
+    TestWithFixtures,
+)
 from prometheus_aioexporter.metric import MetricsRegistry
-
 from toolrack.testing import TempDirFixture
-from toolrack.testing.async import LoopTestCase
+import yaml
 
 from .fakes import FakeSQLAlchemy
 from ..config import load_config
 from ..loop import QueryLoop
 
 
-class QueryLoopTests(LoopTestCase):
+class QueryLoopTests(ClockedTestCase, TestWithFixtures):
 
     def setUp(self):
         super().setUp()
@@ -56,9 +56,9 @@ class QueryLoopTests(LoopTestCase):
         """The start method starts periodic calls for queries."""
         self.mock_execute_query()
         await self.query_loop.start()
+        self.addCleanup(self.query_loop.stop)
         [periodic_call] = self.query_loop._periodic_calls
         self.assertTrue(periodic_call.running)
-        await self.query_loop.stop()
 
     async def test_stop(self):
         """The stop method stops periodic calls for queries."""
@@ -124,15 +124,16 @@ class QueryLoopTests(LoopTestCase):
         database = self.query_loop._databases['db']
         database.sqlalchemy = FakeSQLAlchemy(query_results=[(100.0,)])
         await self.query_loop.start()
+        await self.advance(0)  # kick the first run
+        self.addCleanup(self.query_loop.stop)
         # the query has been run once
         self.assertEqual(len(self.query_exec), 1)
-        self.loop.advance(5)
+        await self.advance(5)
         # no more runs yet
         self.assertEqual(len(self.query_exec), 1)
         # now the query runs again
-        self.loop.advance(5)
+        await self.advance(5)
         self.assertEqual(len(self.query_exec), 2)
-        await self.query_loop.stop()
 
     async def test_run_aperiodic_queries(self):
         """Queries with null interval can be run explicitly."""
@@ -140,8 +141,8 @@ class QueryLoopTests(LoopTestCase):
         database = self.query_loop._databases['db']
         database.sqlalchemy = FakeSQLAlchemy(query_results=[(100.0,)])
         await self.query_loop.start()
+        self.addCleanup(self.query_loop.stop)
         await self.query_loop.run_aperiodic_queries()
         self.assertEqual(len(self.query_exec), 2)
         await self.query_loop.run_aperiodic_queries()
         self.assertEqual(len(self.query_exec), 3)
-        await self.query_loop.stop()

@@ -6,6 +6,7 @@ from query_exporter import (
     __version__,
 )
 
+
 tests_require = ['asynctest']
 
 config = {
@@ -31,7 +32,7 @@ config = {
         'PyYaml',
         'SQLAlchemy',
         'sqlalchemy_aio',
-        'toolrack'],
+        'toolrack >= 2.1.0'],
     'tests_require': tests_require,
     'extras_require': {'testing': tests_require},
     'keywords': 'sql metric prometheus exporter',

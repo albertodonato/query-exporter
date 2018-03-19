@@ -2,7 +2,7 @@
 
 import asyncio
 
-from toolrack.async import PeriodicCall
+from toolrack.aio import PeriodicCall
 
 from .db import DataBaseError
 

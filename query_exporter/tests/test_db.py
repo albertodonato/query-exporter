@@ -1,6 +1,6 @@
 from unittest import TestCase
 
-from toolrack.testing.async import LoopTestCase
+from asynctest import TestCase as AsyncTestCase
 
 from .fakes import (
     FakeSQLAlchemy,
@@ -45,7 +45,7 @@ class QueryTests(TestCase):
         self.assertEqual(query.results(rows), {})
 
 
-class DataBaseTests(LoopTestCase):
+class DataBaseTests(AsyncTestCase):
 
     def setUp(self):
         super().setUp()
