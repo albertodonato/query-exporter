@@ -116,7 +116,7 @@ See `supported databases`_ for details.
 .. _`SQLAlchemy documentation`:
    http://docs.sqlalchemy.org/en/latest/core/engines.html#database-urls
 .. _`supported databases`:
-   http://docs.sqlalchemy.org/en/latest/core/engines.html#supported-databases>
+   http://docs.sqlalchemy.org/en/latest/core/engines.html#supported-databases
 
 .. |Latest Version| image:: https://img.shields.io/pypi/v/query-exporter.svg
    :target: https://pypi.python.org/pypi/query-exporter
