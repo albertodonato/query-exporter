@@ -1,3 +1,11 @@
+v1.4.0 - 2018-06-08
+===================
+
+- Support for python3.7.
+- Use asynctest for asyncronous tests.
+- Updated toolrack dependency.
+
+
 v1.3.0 - 2018-02-20
 ===================
 
