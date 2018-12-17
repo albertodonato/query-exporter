@@ -14,7 +14,8 @@ class QueryLoop:
         'counter': 'inc',
         'gauge': 'set',
         'histogram': 'observe',
-        'summary': 'observe'}
+        'summary': 'observe',
+        'enum': 'state'}
 
     def __init__(self, config, registry, logger, loop):
         self.loop = loop

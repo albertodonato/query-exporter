@@ -19,6 +19,15 @@ class ConfigError(Exception):
 Config = namedtuple('Config', ['databases', 'metrics', 'queries'])
 
 
+SUPPORTED_METRICS = (
+    'counter',
+    'gauge',
+    'histogram',
+    'summary',
+    'enum',
+)
+
+
 def load_config(config_fd):
     """Load YaML config from file."""
     config = defaultdict(dict, yaml.load(config_fd))
@@ -46,6 +55,9 @@ def _get_metrics(metrics):
     configs = []
     for name, config in metrics.items():
         metric_type = config.pop('type', '')
+        if metric_type not in SUPPORTED_METRICS:
+            raise ConfigError(
+                "Unsupported metric type: '{}'".format(metric_type))
         description = config.pop('description', '')
         # add a 'database' label to have different series for sharded databases
         config['labels'] = ['database']

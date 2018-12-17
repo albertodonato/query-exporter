@@ -32,6 +32,10 @@ The application is called with a configuration file that looks like this:
         type: histogram
         description: A sample histogram
         buckets: [10, 20, 50, 100, 1000]
+      metric4:
+        type: enum
+        description: A sample enum
+        states: [foo, bar, baz]
 
     queries:
       query1:
@@ -46,6 +50,18 @@ The application is called with a configuration file that looks like this:
         sql: |
           SELECT abs(random() / 1000000000000000),
                  abs(random() / 10000000000000000)
+      query3:
+        interval: 10
+        databases: [db2]
+        metrics: [metric4]
+        sql: |
+          SELECT value FROM (
+            SELECT 'foo' AS value UNION
+            SELECT 'bar'
+            UNION SELECT 'baz')
+          ORDER BY random()
+          LIMIT 1
+
 
 The ``dsn`` connection string has the following format::
 
@@ -105,8 +121,11 @@ Database engines
 
 SQLAlchemy doesn't depend on specific Python database modules at
 installation. This means additional modules might need to be installed for
-engines in use (e.g. ``psycopg2`` for PostgreSQL or ``MySQL-python`` for
-MySQL).
+engines in use, as follows::
+
+    pip install SQLAlchemy[postgresql] SQLAlchemy[mysql] ...
+
+based on which databased is in use.
 
 See `supported databases`_ for details.
 

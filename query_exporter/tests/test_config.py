@@ -72,8 +72,21 @@ class LoadConfigTests(TestCase):
             metric2.config,
             {'labels': ['database'], 'buckets': [10, 100, 1000]})
 
+    def test_load_metrics_unsupported_type(self):
+        """An error is raised if an unsupported metric type is passed."""
+        config = {
+            'metrics': {
+                'metric1': {
+                    'type': 'info',
+                    'description': 'info metric'}}}
+        config_file = self.tempdir.mkfile(content=yaml.dump(config))
+        with self.assertRaises(ConfigError) as cm, config_file.open() as fd:
+            load_config(fd)
+        self.assertEqual(
+            str(cm.exception), "Unsupported metric type: 'info'")
+
     def test_load_queries_section(self):
-        """The 'queries section is loaded from the config file."""
+        """The 'queries` section is loaded from the config file."""
         config = {
             'databases': {
                 'db1': {'dsn': 'postgres:///foo'},
