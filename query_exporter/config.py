@@ -1,24 +1,36 @@
 """Configuration management functions."""
 
-from collections import (
-    defaultdict,
-    namedtuple)
-
-import yaml
+from collections import defaultdict
+from typing import (
+    Any,
+    Dict,
+    FrozenSet,
+    List,
+    NamedTuple,
+)
 
 from prometheus_aioexporter.metric import MetricConfig
+import yaml
 
-from .db import Query, DataBase
+from .db import (
+    DataBase,
+    Query,
+)
 
 
 class ConfigError(Exception):
     """Configuration is invalid."""
 
 
-# Top-level configuration
-Config = namedtuple('Config', ['databases', 'metrics', 'queries'])
+class Config(NamedTuple):
+    """Top-level configuration."""
+
+    databases: List[DataBase]
+    metrics: List[MetricConfig]
+    queries: List[Query]
 
 
+# Supported metric types.
 SUPPORTED_METRICS = (
     'counter',
     'gauge',
@@ -28,7 +40,7 @@ SUPPORTED_METRICS = (
 )
 
 
-def load_config(config_fd):
+def load_config(config_fd) -> Config:
     """Load YaML config from file."""
     config = defaultdict(dict, yaml.load(config_fd))
     databases = _get_databases(config['databases'])
@@ -39,7 +51,7 @@ def load_config(config_fd):
     return Config(databases, metrics, queries)
 
 
-def _get_databases(configs):
+def _get_databases(configs: Dict[str, Dict[str, Any]]) -> List[DataBase]:
     """Return a dict mapping names to DataBases names."""
     databases = []
     for name, config in configs.items():
@@ -50,7 +62,7 @@ def _get_databases(configs):
     return databases
 
 
-def _get_metrics(metrics):
+def _get_metrics(metrics: Dict[str, Dict[str, Any]]) -> List[MetricConfig]:
     """Return metrics configuration."""
     configs = []
     for name, config in metrics.items():
@@ -65,7 +77,9 @@ def _get_metrics(metrics):
     return configs
 
 
-def _get_queries(configs, database_names, metric_names):
+def _get_queries(
+        configs: Dict[str, Dict[str, Any]], database_names: FrozenSet[str],
+        metric_names: FrozenSet[str]) -> List[Query]:
     """Return a list of Queries from config."""
     queries = []
     for name, config in configs.items():
@@ -81,7 +95,9 @@ def _get_queries(configs, database_names, metric_names):
     return queries
 
 
-def _validate_query_config(name, config, database_names, metric_names):
+def _validate_query_config(
+        name: str, config: Dict[str, Any], database_names: FrozenSet[str],
+        metric_names: FrozenSet[str]):
     """Validate a query configuration stanza."""
     unknown_databases = set(config['databases']) - database_names
     if unknown_databases:
@@ -95,7 +111,7 @@ def _validate_query_config(name, config, database_names, metric_names):
                 name, ', '.join(sorted(unknown_metrics))))
 
 
-def _convert_interval(name, config):
+def _convert_interval(name: str, config: Dict[str, Any]):
     """Convert query intervals to seconds."""
     interval = config.setdefault('interval', None)
     if interval is None:
@@ -104,8 +120,7 @@ def _convert_interval(name, config):
 
     multiplier = 1
 
-    config_error = ConfigError(
-        "Invalid interval for query '{}'".format(name))
+    config_error = ConfigError("Invalid interval for query '{}'".format(name))
 
     if isinstance(interval, str):
         # convert to seconds
@@ -129,7 +144,7 @@ def _convert_interval(name, config):
     config['interval'] = interval * multiplier
 
 
-def _raise_missing_key(key_error, entry_type, entry_name):
+def _raise_missing_key(key_error: KeyError, entry_type: str, entry_name: str):
     raise ConfigError(
         'Missing key {} for {} \'{}\''.format(
             str(key_error), entry_type, entry_name))

@@ -1,9 +1,10 @@
 *.pyc
 *.pyo
 /build
-*.egg-info
+/*.egg-info
+/.coverage
+/.mypy_cache
+/.tox
 .eggs
 .pybuild
-.coverage
-.tox
 .cache

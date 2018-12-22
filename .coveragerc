@@ -1,5 +1,8 @@
 [run]
-source =
-  query_exporter
-omit =
-  query_exporter/main.py
+source = query_exporter
+omit = query_exporter/main.py
+
+[report]
+show_missing = True
+fail_under = 100
+skip_covered = True

@@ -1,6 +1,7 @@
 """Loop to periodically execute queries."""
 
 import asyncio
+from typing import Any
 
 from toolrack.aio import PeriodicCall
 
@@ -15,7 +16,8 @@ class QueryLoop:
         'gauge': 'set',
         'histogram': 'observe',
         'summary': 'observe',
-        'enum': 'state'}
+        'enum': 'state'
+    }
 
     def __init__(self, config, registry, logger, loop):
         self.loop = loop
@@ -53,17 +55,19 @@ class QueryLoop:
     async def run_aperiodic_queries(self):
         coros = (
             self._execute_query(query, dbname)
-            for query in self._aperiodic_queries
-            for dbname in query.databases)
+            for query in self._aperiodic_queries for dbname in query.databases)
         await asyncio.gather(*coros, loop=self.loop)
 
     def _setup(self, config):
         """Initialize instance attributes."""
         self._metric_configs = {
             metric_config.name: metric_config
-            for metric_config in config.metrics}
+            for metric_config in config.metrics
+        }
         self._databases = {
-            database.name: database for database in config.databases}
+            database.name: database
+            for database in config.databases
+        }
 
         for query in config.queries:
             if query.interval is None:
@@ -100,7 +104,7 @@ class QueryLoop:
         prefix = 'error from database "{}":'.format(name)
         self._logger.error('{} {}'.format(prefix, error))
 
-    def _update_metric(self, name, value, dbname):
+    def _update_metric(self, name: str, value: Any, dbname: str):
         """Update value for a metric."""
         if value is None:
             # don't fail is queries that count return NULL

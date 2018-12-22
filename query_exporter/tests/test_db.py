@@ -1,120 +1,128 @@
-from unittest import TestCase
+import pytest
 
-from asynctest import TestCase as AsyncTestCase
-
-from .fakes import (
-    FakeSQLAlchemy,
-    FakeConnection)
 from ..db import (
-    Query,
     DataBase,
     DataBaseError,
-    InvalidResultCount)
+    InvalidResultCount,
+    Query,
+)
+from .fakes import (
+    FakeConnection,
+    FakeSQLAlchemy,
+)
 
 
-class QueryTests(TestCase):
+class TestQuery:
 
     def test_instantiate(self):
         """A query can be instantiated with the specified arguments."""
         query = Query(
             'query', 20, ['db1', 'db2'], ['metric1', 'metric2'], 'SELECT 1')
-        self.assertEqual(query.name, 'query')
-        self.assertEqual(query.interval, 20)
-        self.assertEqual(query.databases, ['db1', 'db2'])
-        self.assertEqual(query.metrics, ['metric1', 'metric2'])
-        self.assertEqual(query.sql, 'SELECT 1')
+        assert query.name == 'query'
+        assert query.interval == 20
+        assert query.databases == ['db1', 'db2']
+        assert query.metrics == ['metric1', 'metric2']
+        assert query.sql == 'SELECT 1'
 
     def test_results(self):
         """The results method returns a dict mapping metrics to results."""
         query = Query('query', 20, ['db'], ['metric1', 'metric2'], 'SELECT 1')
         rows = [(11, 22), (33, 44)]
-        self.assertEqual(
-            query.results(rows), {'metric1': (11, 33), 'metric2': (22, 44)})
+        assert query.results(rows) == {
+            'metric1': (11, 33),
+            'metric2': (22, 44)
+        }
 
     def test_results_wrong_result_count(self):
         """An error is raised if the result column count is wrong."""
         query = Query('query', 20, ['db'], ['metric'], 'SELECT 1, 2')
         rows = [(1, 2)]
-        with self.assertRaises(InvalidResultCount):
+        with pytest.raises(InvalidResultCount):
             query.results(rows)
 
     def test_results_empty(self):
         """No error is raised if the result set is empty"""
         query = Query('query', 20, ['db'], ['metric'], 'SELECT 1, 2')
-        rows = []
-        self.assertEqual(query.results(rows), {})
+        assert query.results([]) == {}
 
 
-class DataBaseTests(AsyncTestCase):
+@pytest.fixture
+def fake_sqlalchemy():
+    yield FakeSQLAlchemy()
 
-    def setUp(self):
-        super().setUp()
-        self.db = DataBase('db', 'postgres:///foo')
-        self.db.sqlalchemy = FakeSQLAlchemy()
 
-    def test_instantiate(self):
-        """A DataBase can be instantiated with the specified arguments."""
-        self.assertEqual(self.db.name, 'db')
-        self.assertEqual(self.db.dsn, 'postgres:///foo')
+@pytest.fixture
+def db(mocker, fake_sqlalchemy):
+    mocker.patch('query_exporter.db.sqlalchemy', fake_sqlalchemy)
+    yield DataBase('db', 'postgres:///foo')
 
-    async def test_connect(self):
+
+class TestDatabase:
+
+    def test_instantiate(self, db):
+        """A DataBase can be instantiated with the specified arguments, db."""
+        assert db.name == 'db'
+        assert db.dsn == 'postgres:///foo'
+
+    @pytest.mark.asyncio
+    async def test_connect(self, db, fake_sqlalchemy):
         """The connect connects to the database."""
-        await self.db.connect()
-        self.assertIsInstance(self.db._conn, FakeConnection)
-        self.assertEqual(self.db.sqlalchemy.dsn, 'postgres:///foo')
+        await db.connect()
+        assert isinstance(db._conn, FakeConnection)
+        assert fake_sqlalchemy.dsn == 'postgres:///foo'
 
-    async def test_connect_missing_engine_module(self):
+    @pytest.mark.asyncio
+    async def test_connect_missing_engine_module(self, db, fake_sqlalchemy):
         """An error is raised if a module for the engine is missing."""
-        self.db.sqlalchemy = FakeSQLAlchemy(missing_module='psycopg2')
-        with self.assertRaises(DataBaseError) as cm:
-            await self.db.connect()
-        self.assertEqual(str(cm.exception), 'module "psycopg2" not found')
+        fake_sqlalchemy.missing_module = 'psycopg2'
+        with pytest.raises(DataBaseError) as err:
+            await db.connect()
+        assert str(err.value) == 'module "psycopg2" not found'
 
-    async def test_connect_error(self):
+    @pytest.mark.asyncio
+    async def test_connect_error(self, db, fake_sqlalchemy):
         """A DataBaseError is raised if database connection fails."""
-        self.db.sqlalchemy = FakeSQLAlchemy(connect_error='some error')
-        with self.assertRaises(DataBaseError) as cm:
-            await self.db.connect()
-        self.assertEqual(str(cm.exception), 'some error')
+        fake_sqlalchemy.connect_error = 'some error'
+        with pytest.raises(DataBaseError) as err:
+            await db.connect()
+        assert str(err.value) == 'some error'
 
-    async def test_close(self):
+    @pytest.mark.asyncio
+    async def test_close(self, db):
         """The close method closes database connection."""
-        await self.db.connect()
-        connection = self.db._conn
-        await self.db.close()
-        self.assertTrue(connection.closed)
-        self.assertIsNone(self.db._conn)
+        await db.connect()
+        connection = db._conn
+        await db.close()
+        assert connection.closed
+        assert db._conn is None
 
-    async def test_execute(self):
+    @pytest.mark.asyncio
+    async def test_execute(self, db, fake_sqlalchemy):
         """The execute method executes a query."""
+        fake_sqlalchemy.query_results = [(10, 20), (30, 40)]
         query = Query('query', 20, ['db'], ['metric1', 'metric2'], 'SELECT 1')
-        sqlalchemy = FakeSQLAlchemy(query_results=[(10, 20), (30, 40)])
-        self.db.sqlalchemy = sqlalchemy
+        await db.connect()
+        result = await db.execute(query)
+        assert result == {'metric1': (10, 30), 'metric2': (20, 40)}
+        assert fake_sqlalchemy.engine.connection.sql == 'SELECT 1'
 
-        await self.db.connect()
-        result = await self.db.execute(query)
-        self.assertEqual(result, {'metric1': (10, 30), 'metric2': (20, 40)})
-        self.assertEqual(sqlalchemy.engine.connection.sql, 'SELECT 1')
-
-    async def test_execute_query_error(self):
+    @pytest.mark.asyncio
+    async def test_execute_query_error(self, db, fake_sqlalchemy):
         """If the query fails an error is raised."""
+        fake_sqlalchemy.query_error = 'wrong query'
         query = Query('query', 20, ['db'], ['metric'], 'WRONG')
-        sqlalchemy = FakeSQLAlchemy(query_error='wrong query')
-        self.db.sqlalchemy = sqlalchemy
+        await db.connect()
+        with pytest.raises(DataBaseError) as err:
+            await db.execute(query)
+        assert str(err.value) == 'wrong query'
 
-        await self.db.connect()
-        with self.assertRaises(DataBaseError) as cm:
-            await self.db.execute(query)
-        self.assertEqual(str(cm.exception), 'wrong query')
-
-    async def test_execute_not_connected(self):
+    @pytest.mark.asyncio
+    async def test_execute_not_connected(self, db, fake_sqlalchemy):
         """The execute recconnects to the database if not connected."""
+        fake_sqlalchemy.query_results = [(10, 20), (30, 40)]
         query = Query('query', 20, ['db'], ['metric1', 'metric2'], 'SELECT 1')
-        sqlalchemy = FakeSQLAlchemy(query_results=[(10, 20), (30, 40)])
-        self.db.sqlalchemy = sqlalchemy
-
-        result = await self.db.execute(query)
-        self.assertEqual(result, {'metric1': (10, 30), 'metric2': (20, 40)})
-        self.assertEqual(sqlalchemy.engine.connection.sql, 'SELECT 1')
+        result = await db.execute(query)
+        assert result == {'metric1': (10, 30), 'metric2': (20, 40)}
+        assert fake_sqlalchemy.engine.connection.sql == 'SELECT 1'
         # the connection is kept for reuse
-        self.assertFalse(sqlalchemy.engine.connection.closed)
+        assert not fake_sqlalchemy.engine.connection.closed

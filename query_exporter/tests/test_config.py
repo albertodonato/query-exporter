@@ -1,289 +1,277 @@
 from operator import attrgetter
 
+import pytest
 import yaml
 
-from toolrack.testing import (
-    TestCase,
-    TempDirFixture)
+from ..config import (
+    ConfigError,
+    load_config,
+)
 
-from ..config import load_config, ConfigError
+
+@pytest.fixture
+def config_full():
+    yield {
+        'databases': {
+            'db': {
+                'dsn': 'postgres:///foo'
+            }
+        },
+        'metrics': {
+            'm': {
+                'type': 'gauge'
+            }
+        },
+        'queries': {
+            'q': {
+                'interval': 10,
+                'databases': ['db'],
+                'metrics': ['m'],
+                'sql': 'SELECT 1'
+            }
+        }
+    }
 
 
-class LoadConfigTests(TestCase):
+@pytest.fixture
+def write_config(tmpdir):
 
-    def setUp(self):
-        super().setUp()
-        self.tempdir = self.useFixture(TempDirFixture())
-        self.config = {
-            'databases': {'db': {'dsn': 'postgres:///foo'}},
-            'metrics': {'m': {'type': 'gauge'}},
-            'queries': {
-                'q': {
-                    'interval': 10,
-                    'databases': ['db'],
-                    'metrics': ['m'],
-                    'sql': 'SELECT 1'}}}
+    path = tmpdir / 'config'
 
-    def test_load_databases_section(self):
+    def write(data):
+        path.write_text(yaml.dump(data), 'utf-8')
+        return path
+
+    yield write
+
+
+CONFIG_UNKNOWN_DBS = {
+    'metrics': {
+        'm': {
+            'type': 'summary'
+        }
+    },
+    'queries': {
+        'q': {
+            'interval': 10,
+            'databases': ['db1', 'db2'],
+            'metrics': ['m'],
+            'sql': 'SELECT 1'
+        }
+    }
+}
+
+CONFIG_UNKNOWN_METRICS = {
+    'databases': {
+        'db': {
+            'dsn': 'postgres:///foo'
+        }
+    },
+    'queries': {
+        'q': {
+            'interval': 10,
+            'databases': ['db'],
+            'metrics': ['m1', 'm2'],
+            'sql': 'SELECT 1'
+        }
+    }
+}
+
+CONFIG_MISSING_KEY = {'queries': {'q1': {'interval': 10}}}
+
+
+class TestLoadConfig:
+
+    def test_load_databases_section(self, write_config):
         """The 'databases' section is loaded from the config file."""
         config = {
             'databases': {
-                'db1': {'dsn': 'postgres:///foo'},
-                'db2': {'dsn': 'postgres:///bar'}}}
-        config_file = self.tempdir.mkfile(content=yaml.dump(config))
+                'db1': {
+                    'dsn': 'postgres:///foo'
+                },
+                'db2': {
+                    'dsn': 'postgres:///bar'
+                }
+            }
+        }
+        config_file = write_config(config)
         with config_file.open() as fd:
             result = load_config(fd)
         database1, database2 = sorted(result.databases, key=attrgetter('name'))
-        self.assertEqual(database1.name, 'db1')
-        self.assertEqual(database1.dsn, 'postgres:///foo')
-        self.assertEqual(database2.name, 'db2')
-        self.assertEqual(database2.dsn, 'postgres:///bar')
+        assert database1.name == 'db1'
+        assert database1.dsn == 'postgres:///foo'
+        assert database2.name == 'db2'
+        assert database2.dsn == 'postgres:///bar'
 
-    def test_load_databases_missing_dsn(self):
-        """An error is raised if the 'dsn' key is missing for a database."""
-        config = {'databases': {'db1': {}}}
-        config_file = self.tempdir.mkfile(content=yaml.dump(config))
-        with self.assertRaises(ConfigError) as cm, config_file.open() as fd:
-            load_config(fd)
-        self.assertEqual(
-            str(cm.exception), "Missing key 'dsn' for database 'db1'")
-
-    def test_load_metrics_section(self):
+    def test_load_metrics_section(self, write_config):
         """The 'metrics' section is loaded from the config file."""
         config = {
             'metrics': {
                 'metric1': {
                     'type': 'summary',
-                    'description': 'metric one'},
+                    'description': 'metric one'
+                },
                 'metric2': {
                     'type': 'histogram',
                     'description': 'metric two',
-                    'buckets': [10, 100, 1000]}}}
-        config_file = self.tempdir.mkfile(content=yaml.dump(config))
+                    'buckets': [10, 100, 1000]
+                }
+            }
+        }
+        config_file = write_config(config)
         with config_file.open() as fd:
             result = load_config(fd)
         metric1, metric2 = sorted(result.metrics, key=attrgetter('name'))
-        self.assertEqual(metric1.type, 'summary')
-        self.assertEqual(metric1.description, 'metric one')
-        self.assertEqual(metric1.config, {'labels': ['database']})
-        self.assertEqual(metric2.type, 'histogram')
-        self.assertEqual(metric2.description, 'metric two')
-        self.assertEqual(
-            metric2.config,
-            {'labels': ['database'], 'buckets': [10, 100, 1000]})
+        assert metric1.type == 'summary'
+        assert metric1.description == 'metric one'
+        assert metric1.config == {'labels': ['database']}
+        assert metric2.type == 'histogram'
+        assert metric2.description == 'metric two'
+        assert metric2.config == {
+            'labels': ['database'],
+            'buckets': [10, 100, 1000]
+        }
 
-    def test_load_metrics_unsupported_type(self):
+    def test_load_databases_missing_dsn(self, write_config):
+        """An error is raised if the 'dsn' key is missing for a database."""
+        config_file = write_config({'databases': {'db1': {}}})
+        with pytest.raises(ConfigError) as err, config_file.open() as fd:
+            load_config(fd)
+        assert str(err.value) == "Missing key 'dsn' for database 'db1'"
+
+    def test_load_metrics_unsupported_type(self, write_config):
         """An error is raised if an unsupported metric type is passed."""
         config = {
             'metrics': {
                 'metric1': {
                     'type': 'info',
-                    'description': 'info metric'}}}
-        config_file = self.tempdir.mkfile(content=yaml.dump(config))
-        with self.assertRaises(ConfigError) as cm, config_file.open() as fd:
+                    'description': 'info metric'
+                }
+            }
+        }
+        config_file = write_config(config)
+        with pytest.raises(ConfigError) as err, config_file.open() as fd:
             load_config(fd)
-        self.assertEqual(
-            str(cm.exception), "Unsupported metric type: 'info'")
+        assert str(err.value) == "Unsupported metric type: 'info'"
 
-    def test_load_queries_section(self):
+    def test_load_queries_section(self, write_config):
         """The 'queries` section is loaded from the config file."""
         config = {
             'databases': {
-                'db1': {'dsn': 'postgres:///foo'},
-                'db2': {'dsn': 'postgres:///bar'}},
+                'db1': {
+                    'dsn': 'postgres:///foo'
+                },
+                'db2': {
+                    'dsn': 'postgres:///bar'
+                }
+            },
             'metrics': {
-                'm1': {'type': 'summary'},
-                'm2': {'type': 'histogram'}},
+                'm1': {
+                    'type': 'summary'
+                },
+                'm2': {
+                    'type': 'histogram'
+                }
+            },
             'queries': {
                 'q1': {
                     'interval': 10,
                     'databases': ['db1'],
                     'metrics': ['m1'],
-                    'sql': 'SELECT 1'},
+                    'sql': 'SELECT 1'
+                },
                 'q2': {
                     'interval': 10,
                     'databases': ['db2'],
                     'metrics': ['m2'],
-                    'sql': 'SELECT 2'}}}
-        config_file = self.tempdir.mkfile(content=yaml.dump(config))
+                    'sql': 'SELECT 2'
+                }
+            }
+        }
+        config_file = write_config(config)
         with config_file.open() as fd:
             result = load_config(fd)
         query1, query2 = sorted(result.queries, key=attrgetter('name'))
-        self.assertEqual(query1.name, 'q1')
-        self.assertEqual(query1.databases, ['db1'])
-        self.assertEqual(query1.metrics, ['m1'])
-        self.assertEqual(query1.sql, 'SELECT 1')
-        self.assertEqual(query2.name, 'q2')
-        self.assertEqual(query2.databases, ['db2'])
-        self.assertEqual(query2.metrics, ['m2'])
-        self.assertEqual(query2.sql, 'SELECT 2')
+        assert query1.name == 'q1'
+        assert query1.databases == ['db1']
+        assert query1.metrics == ['m1']
+        assert query1.sql == 'SELECT 1'
+        assert query2.name == 'q2'
+        assert query2.databases == ['db2']
+        assert query2.metrics == ['m2']
+        assert query2.sql == 'SELECT 2'
 
-    def test_load_queries_unknown_databases(self):
-        """An error is raised if database names in query config are unknown."""
-        config = {
-            'metrics': {'m': {'type': 'summary'}},
-            'queries': {
-                'q': {
-                    'interval': 10,
-                    'databases': ['db1', 'db2'],
-                    'metrics': ['m'],
-                    'sql': 'SELECT 1'}}}
-        config_file = self.tempdir.mkfile(content=yaml.dump(config))
-        with self.assertRaises(ConfigError) as cm, config_file.open() as fd:
+    @pytest.mark.parametrize(
+        'config,error_message', [
+            (CONFIG_UNKNOWN_DBS, "Unknown databases for query 'q': db1, db2"),
+            (CONFIG_UNKNOWN_METRICS, "Unknown metrics for query 'q': m1, m2"),
+            (CONFIG_MISSING_KEY, "Missing key 'databases' for query 'q1'")
+        ])
+    def test_configuration_incorrect(
+            self, config, error_message, write_config):
+        """An error is raised if configuration is incorrect."""
+        config_file = write_config(config)
+        with pytest.raises(ConfigError) as err, config_file.open() as fd:
             load_config(fd)
-        self.assertEqual(
-            str(cm.exception), "Unknown databases for query 'q': db1, db2")
+        assert str(err.value) == error_message
 
-    def test_load_queries_unknown_metrics(self):
-        """An error is raised if metric names in query config are unknown."""
-        config = {
-            'databases': {
-                'db': {'dsn': 'postgres:///foo'}},
-            'queries': {
-                'q': {
-                    'interval': 10,
-                    'databases': ['db'],
-                    'metrics': ['m1', 'm2'],
-                    'sql': 'SELECT 1'}}}
-        config_file = self.tempdir.mkfile(content=yaml.dump(config))
-        with self.assertRaises(ConfigError) as cm, config_file.open() as fd:
-            load_config(fd)
-        self.assertEqual(
-            str(cm.exception), "Unknown metrics for query 'q': m1, m2")
-
-    def test_load_queries_missing_key(self):
-        """An error is raised if keys are missing in the queries section."""
-        config = {'queries': {'q1': {'interval': 10}}}
-        config_file = self.tempdir.mkfile(content=yaml.dump(config))
-        with self.assertRaises(ConfigError) as cm, config_file.open() as fd:
-            load_config(fd)
-        self.assertEqual(
-            str(cm.exception), "Missing key 'databases' for query 'q1'")
-
-    def test_load_queries_missing_interval_default_to_none(self):
+    def test_load_queries_missing_interval_default_to_none(self, write_config):
         """If the interval is not specified, it defaults to None."""
         config = {
             'databases': {
-                'db': {'dsn': 'postgres:///foo'}},
+                'db': {
+                    'dsn': 'postgres:///foo'
+                }
+            },
             'metrics': {
-                'm': {'type': 'summary'}},
+                'm': {
+                    'type': 'summary'
+                }
+            },
             'queries': {
                 'q': {
                     'databases': ['db'],
                     'metrics': ['m'],
-                    'sql': 'SELECT 1'}}}
-        config_file = self.tempdir.mkfile(content=yaml.dump(config))
+                    'sql': 'SELECT 1'
+                }
+            }
+        }
+        config_file = write_config(config)
         with config_file.open() as fd:
             config = load_config(fd)
-        self.assertIsNone(config.queries[0].interval)
+        assert config.queries[0].interval is None
 
-    def test_load_queries_interval_seconds(self):
-        """The query interval is stored as seconds."""
-        config_file = self.tempdir.mkfile(content=yaml.dump(self.config))
-        with config_file.open() as fd:
-            config = load_config(fd)
-        [query] = config.queries
-        self.assertEqual(query.interval, 10)
-
-    def test_load_queries_interval_as_string(self):
-        """The interval can be passed as string."""
-        self.config['queries']['q']['interval'] = '10'
-        config_file = self.tempdir.mkfile(content=yaml.dump(self.config))
-        with config_file.open() as fd:
-            config = load_config(fd)
-        [query] = config.queries
-        self.assertEqual(query.interval, 10)
-
-    def test_load_queries_interval_second_suffix(self):
-        """The 's' suffix can be used in interval values for seconds."""
-        self.config['queries']['q']['interval'] = '10s'
-        config_file = self.tempdir.mkfile(content=yaml.dump(self.config))
+    @pytest.mark.parametrize(
+        'interval,value', [
+            (10, 10), ('10', 10), ('10s', 10), ('10m', 600), ('1h', 3600),
+            ('1d', 3600 * 24), (None, None)
+        ])
+    def test_load_queries_interval(
+            self, interval, value, config_full, write_config):
+        """The query interval can be specified with suffixes."""
+        config_full['queries']['q']['interval'] = interval
+        config_file = write_config(config_full)
         with config_file.open() as fd:
             config = load_config(fd)
         [query] = config.queries
-        self.assertEqual(query.interval, 10)
+        assert query.interval == value
 
-    def test_load_queries_interval_minute_suffix(self):
-        """The 'm' suffix can be used in interval values for minutes."""
-        self.config['queries']['q']['interval'] = '10m'
-        config_file = self.tempdir.mkfile(content=yaml.dump(self.config))
-        with config_file.open() as fd:
-            config = load_config(fd)
-        [query] = config.queries
-        self.assertEqual(query.interval, 600)
-
-    def test_load_queries_interval_hour(self):
-        """The 'h' suffix can be used in interval values for hours."""
-        self.config['queries']['q']['interval'] = '1h'
-        config_file = self.tempdir.mkfile(content=yaml.dump(self.config))
-        with config_file.open() as fd:
-            config = load_config(fd)
-        [query] = config.queries
-        self.assertEqual(query.interval, 3600)
-
-    def test_load_queries_interval_day(self):
-        """The 'd' suffix can be used in interval values for days."""
-        self.config['queries']['q']['interval'] = '1d'
-        config_file = self.tempdir.mkfile(content=yaml.dump(self.config))
-        with config_file.open() as fd:
-            config = load_config(fd)
-        [query] = config.queries
-        self.assertEqual(query.interval, 3600 * 24)
-
-    def test_load_queries_interval_none(self):
-        """The interval can be None."""
-        self.config['queries']['q']['interval'] = None
-        config_file = self.tempdir.mkfile(content=yaml.dump(self.config))
-        with config_file.open() as fd:
-            config = load_config(fd)
-        [query] = config.queries
-        self.assertIsNone(query.interval)
-
-    def test_load_queries_interval_not_specified(self):
+    def test_load_queries_interval_not_specified(
+            self, config_full, write_config):
         """If the interval is not specified, it's set to None."""
-        del self.config['queries']['q']['interval']
-        config_file = self.tempdir.mkfile(content=yaml.dump(self.config))
+        del config_full['queries']['q']['interval']
+        config_file = write_config(config_full)
         with config_file.open() as fd:
             config = load_config(fd)
         [query] = config.queries
-        self.assertIsNone(query.interval)
+        assert query.interval is None
 
-    def test_invalid_interval_suffix(self):
-        """An invalid suffix for query interval raises an error."""
-        self.config['queries']['q']['interval'] = '1x'
-        config_file = self.tempdir.mkfile(content=yaml.dump(self.config))
-        with self.assertRaises(ConfigError) as cm, config_file.open() as fd:
+    @pytest.mark.parametrize('interval', ['1x', 'wrong', '1.5m', 0, -20])
+    def test_load_queries_invalid_interval(
+            self, interval, config_full, write_config):
+        """An invalid query interval raises an error."""
+        config_full['queries']['q']['interval'] = interval
+        config_file = write_config(config_full)
+        with pytest.raises(ConfigError) as err, config_file.open() as fd:
             load_config(fd)
-        self.assertEqual(str(cm.exception), "Invalid interval for query 'q'")
-
-    def test_invalid_interval_not_number(self):
-        """An query interval that is not a number raises an error."""
-        self.config['queries']['q']['interval'] = 'wrong'
-        config_file = self.tempdir.mkfile(content=yaml.dump(self.config))
-        with self.assertRaises(ConfigError) as cm, config_file.open() as fd:
-            load_config(fd)
-        self.assertEqual(str(cm.exception), "Invalid interval for query 'q'")
-
-    def test_invalid_interval_not_integer(self):
-        """An query interval that is not an integer raises an error."""
-        self.config['queries']['q']['interval'] = '1.5m'
-        config_file = self.tempdir.mkfile(content=yaml.dump(self.config))
-        with self.assertRaises(ConfigError) as cm, config_file.open() as fd:
-            load_config(fd)
-        self.assertEqual(str(cm.exception), "Invalid interval for query 'q'")
-
-    def test_invalid_interval_zero(self):
-        """An query interval of zero raises an error."""
-        self.config['queries']['q']['interval'] = 0
-        config_file = self.tempdir.mkfile(content=yaml.dump(self.config))
-        with self.assertRaises(ConfigError) as cm, config_file.open() as fd:
-            load_config(fd)
-        self.assertEqual(str(cm.exception), "Invalid interval for query 'q'")
-
-    def test_invalid_interval_negative(self):
-        """An negative query interval raises an error."""
-        self.config['queries']['q']['interval'] = -20
-        config_file = self.tempdir.mkfile(content=yaml.dump(self.config))
-        with self.assertRaises(ConfigError) as cm, config_file.open() as fd:
-            load_config(fd)
-        self.assertEqual(str(cm.exception), "Invalid interval for query 'q'")
+        assert str(err.value) == "Invalid interval for query 'q'"

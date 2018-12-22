@@ -1,13 +1,21 @@
 """Script entry point."""
 
 import argparse
+from typing import List
 
+from aiohttp import Application
+from prometheus_aioexporter import PrometheusExporterScript
+from prometheus_aioexporter.metric import (
+    InvalidMetricType,
+    MetricConfig,
+)
 from toolrack.script import ErrorExitMessage
 
-from prometheus_aioexporter.script import PrometheusExporterScript
-from prometheus_aioexporter.metric import InvalidMetricType
-
-from .config import load_config, ConfigError
+from .config import (
+    Config,
+    ConfigError,
+    load_config,
+)
 from .loop import QueryLoop
 
 
@@ -18,30 +26,28 @@ class QueryExporterScript(PrometheusExporterScript):
 
     description = __doc__
 
-    def configure_argument_parser(self, parser):
+    def configure_argument_parser(self, parser: argparse.ArgumentParser):
         parser.add_argument(
-            'config', type=argparse.FileType('r'),
-            help='configuration file')
+            'config', type=argparse.FileType('r'), help='configuration file')
 
-    def configure(self, args):
+    def configure(self, args: argparse.Namespace):
         config = self._load_config(args.config)
         self.create_metrics(config.metrics)
         self.query_loop = QueryLoop(
             config, self.registry, self.logger, self.loop)
 
-    async def on_application_startup(self, application):
-        application['exporter'].set_metric_update_handler(
-            self._update_handler)
+    async def on_application_startup(self, application: Application):
+        application['exporter'].set_metric_update_handler(self._update_handler)
         await self.query_loop.start()
 
-    async def on_application_shutdown(self, application):
+    async def on_application_shutdown(self, application: Application):
         await self.query_loop.stop()
 
-    async def _update_handler(self, metrics):
+    async def _update_handler(self, metrics: List[MetricConfig]):
         """Run queries with no specified interval on each request."""
         await self.query_loop.run_aperiodic_queries()
 
-    def _load_config(self, config_file):
+    def _load_config(self, config_file) -> Config:
         """Load the application configuration."""
         try:
             config = load_config(config_file)

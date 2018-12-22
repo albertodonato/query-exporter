@@ -13,5 +13,8 @@ jobs:
     - stage: lint
       script: tox -e lint
       python: "3.6"
+    - stage: check
+      script: tox -e check
+      python: "3.6"
 script: tox -e coverage
 after_success: codecov

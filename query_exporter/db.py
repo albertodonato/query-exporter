@@ -1,9 +1,16 @@
 """Database wrapper."""
 
 from collections import namedtuple
+from typing import (
+    Dict,
+    List,
+    NamedTuple,
+    Tuple,
+    Union,
+)
 
 import sqlalchemy
-
+from sqlalchemy.engine import Engine
 from sqlalchemy_aio import ASYNCIO_STRATEGY
 
 
@@ -18,13 +25,16 @@ class InvalidResultCount(Exception):
         super().__init__('Wrong result count from the query')
 
 
-Query = namedtuple(
-    'Query', ['name', 'interval', 'databases', 'metrics', 'sql'])
+class Query(NamedTuple):
+    """Query configuration and definition."""
 
+    name: str
+    interval: int
+    databases: List[str]
+    metrics: List[str]
+    sql: str
 
-class Query(Query):
-
-    def results(self, records):
+    def results(self, records: List[Tuple]) -> Dict[str, Tuple]:
         """Return a dict with a tuple of values for each metric."""
         if not records:
             return {}
@@ -37,14 +47,12 @@ class Query(Query):
 class DataBase(namedtuple('DataBase', ['name', 'dsn'])):
     """A database to perform Queries."""
 
-    sqlalchemy = sqlalchemy  # for testing
-
-    _conn = None
+    _conn: Union[Engine, None] = None
 
     async def connect(self):
         """Connect to the database."""
         try:
-            engine = self.sqlalchemy.create_engine(
+            engine = sqlalchemy.create_engine(
                 self.dsn, strategy=ASYNCIO_STRATEGY)
         except ImportError as error:
             raise DataBaseError('module "{}" not found'.format(error.name))
@@ -61,11 +69,12 @@ class DataBase(namedtuple('DataBase', ['name', 'dsn'])):
         await self._conn.close()
         self._conn = None
 
-    async def execute(self, query):
+    async def execute(self, query: Query):
         """Execute a query."""
         if self._conn is None:
             await self.connect()
 
+        self._conn: Engine
         try:
             result = await self._conn.execute(query.sql)
             return query.results(await result.fetchall())
