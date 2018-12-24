@@ -8,11 +8,25 @@ description: |
   metrics endpoint is performed.
 
   Each query can be run on multiple databases, and update multiple metrics.
+
+  The snap provides both the "query-exporter" command and a deamon instance of
+  the command, managed via a Systemd service.
+  To run the latter:
+
+    - create or edit /var/snap/query-exporter/common/config.yaml with the
+     config
+    - run `sudo snap restart query-exporter`
 base: core18
 confinement: strict
 grade: devel
 
 apps:
+  daemon:
+    command: bin/query-exporter $SNAP_COMMON/config.yaml
+    daemon: simple
+    plugs:
+      - network-bind
+      - network
   query-exporter:
     command: bin/query-exporter
     plugs:
