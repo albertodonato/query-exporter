@@ -89,28 +89,39 @@ For the configuration above, exported metrics look like this::
     metric1{database="db1"} 1549.0
     # HELP metric2 A sample summary
     # TYPE metric2 summary
-    metric2_count{database="db2"} 6.0
-    metric2_sum{database="db2"} 25329.0
-    metric2_count{database="db1"} 6.0
-    metric2_sum{database="db1"} 30170.0
+    metric2_count{database="db2"} 1.0
+    metric2_sum{database="db2"} 5229.0
+    metric2_count{database="db1"} 1.0
+    metric2_sum{database="db1"} 4513.0
+    # TYPE metric2_created gauge
+    metric2_created{database="db2"} 1.5456472955657206e+09
+    metric2_created{database="db1"} 1.5456472955663064e+09
     # HELP metric3 A sample histogram
     # TYPE metric3 histogram
     metric3_bucket{database="db2",le="10.0"} 0.0
-    metric3_bucket{database="db2",le="20.0"} 1.0
-    metric3_bucket{database="db2",le="50.0"} 2.0
-    metric3_bucket{database="db2",le="100.0"} 2.0
-    metric3_bucket{database="db2",le="1000.0"} 6.0
-    metric3_bucket{database="db2",le="+Inf"} 6.0
-    metric3_count{database="db2"} 6.0
-    metric3_sum{database="db2"} 2542.0
-    metric3_bucket{database="db1",le="10.0"} 1.0
-    metric3_bucket{database="db1",le="20.0"} 1.0
-    metric3_bucket{database="db1",le="50.0"} 1.0
-    metric3_bucket{database="db1",le="100.0"} 2.0
-    metric3_bucket{database="db1",le="1000.0"} 6.0
-    metric3_bucket{database="db1",le="+Inf"} 6.0
-    metric3_count{database="db1"} 6.0
-    metric3_sum{database="db1"} 2901.0
+    metric3_bucket{database="db2",le="20.0"} 0.0
+    metric3_bucket{database="db2",le="50.0"} 0.0
+    metric3_bucket{database="db2",le="100.0"} 0.0
+    metric3_bucket{database="db2",le="1000.0"} 1.0
+    metric3_bucket{database="db2",le="+Inf"} 1.0
+    metric3_count{database="db2"} 1.0
+    metric3_sum{database="db2"} 714.0
+    metric3_bucket{database="db1",le="10.0"} 0.0
+    metric3_bucket{database="db1",le="20.0"} 0.0
+    metric3_bucket{database="db1",le="50.0"} 0.0
+    metric3_bucket{database="db1",le="100.0"} 0.0
+    metric3_bucket{database="db1",le="1000.0"} 1.0
+    metric3_bucket{database="db1",le="+Inf"} 1.0
+    metric3_count{database="db1"} 1.0
+    metric3_sum{database="db1"} 602.0
+    # TYPE metric3_created gauge
+    metric3_created{database="db2"} 1.545647295565831e+09
+    metric3_created{database="db1"} 1.5456472955663848e+09
+    # HELP metric4 A sample enum
+    # TYPE metric4 gauge
+    metric4{database="db2",metric4="foo"} 0.0
+    metric4{database="db2",metric4="bar"} 1.0
+    metric4{database="db2",metric4="baz"} 0.0
 
 Metrics are automatically tagged with the ``database`` label so that
 indipendent series are generated for each database.

@@ -3,7 +3,7 @@
 import argparse
 from typing import List
 
-from aiohttp import Application
+from aiohttp.web import Application
 from prometheus_aioexporter import PrometheusExporterScript
 from prometheus_aioexporter.metric import (
     InvalidMetricType,
