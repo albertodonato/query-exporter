@@ -1,0 +1,41 @@
+name: query-exporter
+version: git
+version-script: git describe --tags HEAD
+summary: Export Prometheus metrics from SQL queries
+description: |
+  query-exporter is a Prometheus exporter which allows collecting metrics from
+  database queries, at specified time intervals or when a request to the
+  metrics endpoint is performed.
+
+  Each query can be run on multiple databases, and update multiple metrics.
+base: core18
+confinement: strict
+grade: devel
+
+apps:
+  query-exporter:
+    command: bin/query-exporter
+    plugs:
+      - home
+      - network-bind
+      - network
+
+parts:
+  query-exporter:
+    plugin: python
+    source: .
+    source-type: git
+    filesets:
+      bins:
+        - bin/query-exporter
+        - usr/bin/python3
+        - usr/bin/python3.6
+      libs:
+        - lib
+        - usr/lib
+        - -usr/lib/python3.7
+    prime:
+      - $bins
+      - etc
+      - $libs
+
