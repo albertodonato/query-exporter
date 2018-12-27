@@ -31,13 +31,7 @@ class Config(NamedTuple):
 
 
 # Supported metric types.
-SUPPORTED_METRICS = (
-    'counter',
-    'gauge',
-    'histogram',
-    'summary',
-    'enum',
-)
+SUPPORTED_METRICS = ('counter', 'enum', 'gauge', 'histogram', 'summary')
 
 
 def load_config(config_fd) -> Config:

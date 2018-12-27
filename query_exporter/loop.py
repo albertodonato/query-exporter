@@ -1,11 +1,20 @@
 """Loop to periodically execute queries."""
 
 import asyncio
-from typing import Any
+from logging import Logger
+from typing import (
+    Any,
+    List,
+)
 
+from prometheus_aioexporter.metric import MetricsRegistry
 from toolrack.aio import PeriodicCall
 
-from .db import DataBaseError
+from .config import Config
+from .db import (
+    DataBaseError,
+    Query,
+)
 
 
 class QueryLoop:
@@ -19,13 +28,15 @@ class QueryLoop:
         'enum': 'state'
     }
 
-    def __init__(self, config, registry, logger, loop):
+    def __init__(
+            self, config: Config, registry: MetricsRegistry, logger: Logger,
+            loop: asyncio.AbstractEventLoop):
         self.loop = loop
         self._logger = logger
         self._registry = registry
-        self._periodic_queries = []
-        self._aperiodic_queries = []
-        self._periodic_calls = []
+        self._periodic_queries: List[Query] = []
+        self._aperiodic_queries: List[Query] = []
+        self._periodic_calls: List[PeriodicCall] = []
         self._setup(config)
 
     async def start(self):
@@ -58,7 +69,7 @@ class QueryLoop:
             for query in self._aperiodic_queries for dbname in query.databases)
         await asyncio.gather(*coros, loop=self.loop)
 
-    def _setup(self, config):
+    def _setup(self, config: Config):
         """Initialize instance attributes."""
         self._metric_configs = {
             metric_config.name: metric_config
@@ -75,12 +86,12 @@ class QueryLoop:
             else:
                 self._periodic_queries.append(query)
 
-    def _run_query(self, query):
+    def _run_query(self, query: Query):
         """Periodic task to run a query."""
         for dbname in query.databases:
             self.loop.create_task(self._execute_query(query, dbname))
 
-    async def _execute_query(self, query, dbname):
+    async def _execute_query(self, query: Query, dbname: str):
         """'Execute a Query on a DataBase."""
         self._logger.debug(
             'running query "{}" on database "{}"'.format(query.name, dbname))
@@ -94,12 +105,12 @@ class QueryLoop:
             for value in values:
                 self._update_metric(name, value, dbname)
 
-    def _log_query_error(self, name, dbname, error):
+    def _log_query_error(self, name: str, dbname: str, error: Exception):
         """Log an error related to database query."""
         prefix = 'query "{}" on database "{}" failed:'.format(name, dbname)
         self._logger.error('{} {}'.format(prefix, error))
 
-    def _log_db_error(self, name, error):
+    def _log_db_error(self, name: str, error: Exception):
         """Log a failed database query."""
         prefix = 'error from database "{}":'.format(name)
         self._logger.error('{} {}'.format(prefix, error))
