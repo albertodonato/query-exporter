@@ -62,8 +62,7 @@ def _get_metrics(metrics: Dict[str, Dict[str, Any]]) -> List[MetricConfig]:
     for name, config in metrics.items():
         metric_type = config.pop('type', '')
         if metric_type not in SUPPORTED_METRICS:
-            raise ConfigError(
-                "Unsupported metric type: '{}'".format(metric_type))
+            raise ConfigError(f"Unsupported metric type: '{metric_type}'")
         description = config.pop('description', '')
         # add a 'database' label to have different series for sharded databases
         config['labels'] = ['database']
@@ -95,14 +94,14 @@ def _validate_query_config(
     """Validate a query configuration stanza."""
     unknown_databases = set(config['databases']) - database_names
     if unknown_databases:
+        unknown_list = ', '.join(sorted(unknown_databases))
         raise ConfigError(
-            "Unknown databases for query '{}': {}".format(
-                name, ', '.join(sorted(unknown_databases))))
+            f"Unknown databases for query '{name}': {unknown_list}")
     unknown_metrics = set(config['metrics']) - metric_names
     if unknown_metrics:
+        unknown_list = ', '.join(sorted(unknown_metrics))
         raise ConfigError(
-            "Unknown metrics for query '{}': {}".format(
-                name, ', '.join(sorted(unknown_metrics))))
+            f"Unknown metrics for query '{name}': {unknown_list}")
 
 
 def _convert_interval(name: str, config: Dict[str, Any]):
@@ -114,7 +113,7 @@ def _convert_interval(name: str, config: Dict[str, Any]):
 
     multiplier = 1
 
-    config_error = ConfigError("Invalid interval for query '{}'".format(name))
+    config_error = ConfigError(f"Invalid interval for query '{name}'")
 
     if isinstance(interval, str):
         # convert to seconds
@@ -140,5 +139,4 @@ def _convert_interval(name: str, config: Dict[str, Any]):
 
 def _raise_missing_key(key_error: KeyError, entry_type: str, entry_name: str):
     raise ConfigError(
-        'Missing key {} for {} \'{}\''.format(
-            str(key_error), entry_type, entry_name))
+        f'Missing key {str(key_error)} for {entry_type} \'{entry_name}\'')

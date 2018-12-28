@@ -20,7 +20,7 @@ class FakeSQLAlchemy:
         self.strategy = strategy
         if self.missing_module is not None:
             raise ImportError(
-                'Failed to import module "{}"'.format(self.missing_module),
+                f'Failed to import module "{self.missing_module}"',
                 name=self.missing_module)
         self.engine = FakeEngine(
             dsn,

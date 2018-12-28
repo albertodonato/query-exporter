@@ -47,8 +47,7 @@ class QueryLoop:
             except DataBaseError as error:
                 self._log_db_error(db.name, error)
             else:
-                self._logger.debug(
-                    'connected to database "{}"'.format(db.name))
+                self._logger.debug(f'connected to database "{db.name}"')
 
         for query in self._periodic_queries:
             call = PeriodicCall(self.loop, self._run_query, query)
@@ -94,7 +93,7 @@ class QueryLoop:
     async def _execute_query(self, query: Query, dbname: str):
         """'Execute a Query on a DataBase."""
         self._logger.debug(
-            'running query "{}" on database "{}"'.format(query.name, dbname))
+            f'running query "{query.name}" on database "{dbname}"')
         try:
             results = await self._databases[dbname].execute(query)
         except DataBaseError as error:
@@ -107,13 +106,12 @@ class QueryLoop:
 
     def _log_query_error(self, name: str, dbname: str, error: Exception):
         """Log an error related to database query."""
-        prefix = 'query "{}" on database "{}" failed:'.format(name, dbname)
-        self._logger.error('{} {}'.format(prefix, error))
+        self._logger.error(
+            f'query "{name}" on database "{dbname}" failed: {str(error)}')
 
     def _log_db_error(self, name: str, error: Exception):
         """Log a failed database query."""
-        prefix = 'error from database "{}":'.format(name)
-        self._logger.error('{} {}'.format(prefix, error))
+        self._logger.error(f'error from database "{name}": {str(error)}')
 
     def _update_metric(self, name: str, value: Any, dbname: str):
         """Update value for a metric."""
@@ -121,7 +119,6 @@ class QueryLoop:
             # don't fail is queries that count return NULL
             value = 0.0
         method = self._METRIC_METHODS[self._metric_configs[name].type]
-        self._logger.debug(
-            'updating metric "{}" {}({})'.format(name, method, value))
+        self._logger.debug(f'updating metric "{name}" {method}({value})')
         metric = self._registry.get_metric(name, labels={'database': dbname})
         getattr(metric, method)(value)

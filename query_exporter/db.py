@@ -55,7 +55,7 @@ class DataBase(namedtuple('DataBase', ['name', 'dsn'])):
             engine = sqlalchemy.create_engine(
                 self.dsn, strategy=ASYNCIO_STRATEGY)
         except ImportError as error:
-            raise DataBaseError('module "{}" not found'.format(error.name))
+            raise DataBaseError(f'module "{error.name}" not found')
 
         try:
             self._conn = await engine.connect()
