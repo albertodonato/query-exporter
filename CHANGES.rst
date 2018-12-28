@@ -1,3 +1,12 @@
+v1.5.0 - 2018-12-28
+===================
+
+- Drop support for Python 3.5.
+- Add support for "enum" metrics.
+- Add initial snap support.
+- Rework project setup and use pytest.
+
+
 v1.4.0 - 2018-06-08
 ===================
 
