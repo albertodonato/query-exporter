@@ -25,7 +25,7 @@ config = {
     },
     'test_suite': 'query_exporter',
     'install_requires': [
-        'aiohttp', 'prometheus-client', 'prometheus-aioexporter >= 1.5.0',
+        'aiohttp', 'prometheus-client', 'prometheus-aioexporter >= 1.5.1',
         'PyYaml', 'SQLAlchemy', 'sqlalchemy_aio', 'toolrack >= 2.1.0'
     ],
     'tests_require': tests_require,

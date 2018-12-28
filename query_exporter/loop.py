@@ -7,7 +7,7 @@ from typing import (
     List,
 )
 
-from prometheus_aioexporter.metric import MetricsRegistry
+from prometheus_aioexporter import MetricsRegistry
 from toolrack.aio import PeriodicCall
 
 from .config import Config

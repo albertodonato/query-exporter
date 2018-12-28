@@ -9,7 +9,7 @@ from typing import (
     NamedTuple,
 )
 
-from prometheus_aioexporter.metric import MetricConfig
+from prometheus_aioexporter import MetricConfig
 import yaml
 
 from .db import (

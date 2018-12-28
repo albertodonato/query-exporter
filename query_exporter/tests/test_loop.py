@@ -1,6 +1,6 @@
 import logging
 
-from prometheus_aioexporter.metric import MetricsRegistry
+from prometheus_aioexporter import MetricsRegistry
 import pytest
 import yaml
 
