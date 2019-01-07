@@ -6,6 +6,7 @@ matrix:
   fast_finish: true
 stages:
   - lint
+  - check
   - test
 install: pip install tox codecov
 jobs:
