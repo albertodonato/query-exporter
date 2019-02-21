@@ -16,9 +16,10 @@ description: |
     - create or edit /var/snap/query-exporter/common/config.yaml with the
      config
     - run `sudo snap restart query-exporter`
-base: core18
+license: GPL-3.0+
 confinement: strict
-grade: devel
+grade: stable
+base: core18
 
 apps:
   daemon:
