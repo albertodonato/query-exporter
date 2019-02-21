@@ -9,11 +9,11 @@ description: |
 
   Each query can be run on multiple databases, and update multiple metrics.
 
-  The snap provides both the "query-exporter" command and a deamon instance of
+  The snap provides both the `query-exporter` command and a deamon instance of
   the command, managed via a Systemd service.
   To run the latter:
 
-    - create or edit /var/snap/query-exporter/common/config.yaml with the
+    - create or edit `/var/snap/query-exporter/current/config.yaml` with the
      config
     - run `sudo snap restart query-exporter`
 license: GPL-3.0+
@@ -23,7 +23,7 @@ base: core18
 
 apps:
   daemon:
-    command: bin/query-exporter $SNAP_COMMON/config.yaml
+    command: bin/query-exporter $SNAP_DATA/config.yaml
     daemon: simple
     plugs:
       - network-bind
