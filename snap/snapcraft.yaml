@@ -14,8 +14,15 @@ description: |
   To run the latter:
 
     - create or edit `/var/snap/query-exporter/current/config.yaml` with the
-     config
+      configuration
     - run `sudo snap restart query-exporter`
+
+  Currently supported databases are:
+
+    - MySql
+    - PostgreSQL
+    - SQLite
+
 license: GPL-3.0+
 confinement: strict
 grade: stable
@@ -40,6 +47,12 @@ parts:
     plugin: python
     source: .
     source-type: git
+    python-packages:
+      - mysql
+      - psycopg2
+    stage-packages:
+      - libmysqlclient20
+      - libpq5
     filesets:
       bins:
         - bin/query-exporter
