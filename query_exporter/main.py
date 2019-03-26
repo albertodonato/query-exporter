@@ -23,8 +23,8 @@ class QueryExporterScript(PrometheusExporterScript):
     """Periodically run database queries and export results to Prometheus."""
 
     name = 'query-exporter'
-
     description = __doc__
+    default_port = 9560
 
     def configure_argument_parser(self, parser: argparse.ArgumentParser):
         parser.add_argument(

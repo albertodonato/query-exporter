@@ -36,7 +36,7 @@ SUPPORTED_METRICS = ('counter', 'enum', 'gauge', 'histogram', 'summary')
 
 def load_config(config_fd) -> Config:
     """Load YaML config from file."""
-    config = defaultdict(dict, yaml.load(config_fd))
+    config = defaultdict(dict, yaml.safe_load(config_fd))
     databases = _get_databases(config['databases'])
     metrics = _get_metrics(config['metrics'])
     database_names = frozenset(database.name for database in databases)
