@@ -50,6 +50,9 @@ parts:
     python-packages:
       - mysql
       - psycopg2
+    build-packages:
+      - libmysqlclient-dev
+      - libpq-dev
     stage-packages:
       - libmysqlclient20
       - libpq5
