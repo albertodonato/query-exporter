@@ -141,12 +141,33 @@ based on which databased is in use.
 See `supported databases`_ for details.
 
 
+Install from Snap
+-----------------
+
+|Get it from the Snap Store|
+
+``query-exporter`` can be installed from `Snap Store`_ on systems where Snaps
+are supported, via::
+
+  sudo snap install query-exporter
+
+The snap provides both the ``query-exporter`` command and a deamon instance of
+the command, managed via a Systemd service.
+
+To configure the daemon:
+
+- create or edit ``/var/snap/query-exporter/current/config.yaml`` with the
+  configuration
+- run ``sudo snap restart query-exporter``
+
+
 .. _Prometheus: https://prometheus.io/
 .. _SQLAlchemy: https://www.sqlalchemy.org/
 .. _`SQLAlchemy documentation`:
    http://docs.sqlalchemy.org/en/latest/core/engines.html#database-urls
 .. _`supported databases`:
    http://docs.sqlalchemy.org/en/latest/core/engines.html#supported-databases
+.. _`Snap Store`: https://snapcraft.io
 
 .. |Latest Version| image:: https://img.shields.io/pypi/v/query-exporter.svg
    :target: https://pypi.python.org/pypi/query-exporter
@@ -156,3 +177,5 @@ See `supported databases`_ for details.
    :target: https://codecov.io/gh/albertodonato/query-exporter
 .. |Snap Status| image:: https://build.snapcraft.io/badge/albertodonato/query-exporter.svg
    :target: https://build.snapcraft.io/user/albertodonato/query-exporter
+.. |Get it from the Snap Store| image:: https://snapcraft.io/static/images/badges/en/snap-store-black.svg
+   :target: https://snapcraft.io/query-exporter
