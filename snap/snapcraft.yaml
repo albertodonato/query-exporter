@@ -19,7 +19,7 @@ description: |
 
   Currently supported databases are:
 
-    - MySql
+    - MySQL
     - PostgreSQL
     - SQLite
 
@@ -30,7 +30,7 @@ base: core18
 
 apps:
   daemon:
-    command: bin/query-exporter $SNAP_DATA/config.yaml
+    command: bin/query-exporter -H 0.0.0.0 $SNAP_DATA/config.yaml
     daemon: simple
     plugs:
       - network-bind

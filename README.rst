@@ -126,6 +126,9 @@ For the configuration above, exported metrics look like this::
 Metrics are automatically tagged with the ``database`` label so that
 indipendent series are generated for each database.
 
+The exporter uses port ``9560`` for exposting metrics, under the standard
+``/metrics`` endpoint.
+
 
 Database engines
 ----------------
