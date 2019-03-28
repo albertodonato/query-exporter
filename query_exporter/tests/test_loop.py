@@ -1,3 +1,4 @@
+from collections import defaultdict
 import logging
 
 from prometheus_aioexporter import MetricsRegistry
@@ -74,9 +75,23 @@ def mocked_queries(query_loop):
     yield queries
 
 
-def metric_values(metric):
+def metric_values(metric, by_labels=()):
     """Return values for the metric."""
-    return [value for _, _, value in metric._samples()]
+    if metric._type == 'gauge':
+        suffix = ''
+    elif metric._type == 'counter':
+        suffix = '_total'
+
+    values = defaultdict(list)
+    for sample_suffix, labels, value in metric._samples():
+        if sample_suffix == suffix:
+            if by_labels:
+                label_values = tuple(labels[label] for label in by_labels)
+                values[label_values] = value
+            else:
+                values[sample_suffix].append(value)
+
+    return values if by_labels else values[suffix]
 
 
 @pytest.mark.asyncio
@@ -101,9 +116,15 @@ class TestQueryLoop:
         fake_sqlalchemy.query_results = [(100.0, )]
         await query_loop.start()
         await query_loop.stop()
-        metric = registry.get_metric('m')
         # the metric is updated
+        metric = registry.get_metric('m')
         assert metric_values(metric) == [100.0]
+        # the number of queries is updated
+        queries_metric = registry.get_metric('queries')
+        assert metric_values(
+            queries_metric, by_labels=('status', )) == {
+                ('success', ): 1.0
+            }
 
     async def test_run_query_null_value(
             self, query_loop, registry, fake_sqlalchemy):
@@ -122,7 +143,8 @@ class TestQueryLoop:
         await query_loop.stop()
         assert caplog.messages == [
             'connected to database "db"', 'running query "q" on database "db"',
-            'updating metric "m" set(100.0)'
+            'updating metric "m" set(100.0)',
+            'updating metric "queries" inc(1)'
         ]
 
     async def test_run_query_log_error(
@@ -135,7 +157,7 @@ class TestQueryLoop:
         assert 'query "q" on database "db" failed: error' in caplog.messages
 
     async def test_run_query_log_invalid_result_count(
-            self, caplog, query_loop, fake_sqlalchemy):
+            self, caplog, query_loop, registry, fake_sqlalchemy):
         """An error is logged if result count doesn't match metrics count."""
         caplog.set_level(logging.DEBUG)
         fake_sqlalchemy.query_results = [(100.0, 200.0)]
@@ -144,6 +166,26 @@ class TestQueryLoop:
         assert (
             'query "q" on database "db" failed: Wrong result count from the '
             'query' in caplog.messages)
+
+    async def test_run_query_increase_db_erorr_count(
+            self, query_loop, registry, fake_sqlalchemy):
+        """Query errors are logged."""
+        fake_sqlalchemy.connect_error = 'error'
+        await query_loop.start()
+        await query_loop.stop()
+        queries_metric = registry.get_metric('database_errors')
+        assert metric_values(queries_metric) == [1.0]
+
+    async def test_run_query_increase_error_count(
+            self, query_loop, registry, fake_sqlalchemy):
+        fake_sqlalchemy.query_results = [(100.0, 200.0)]
+        await query_loop.start()
+        await query_loop.stop()
+        queries_metric = registry.get_metric('queries')
+        assert metric_values(
+            queries_metric, by_labels=('status', )) == {
+                ('error', ): 1.0
+            }
 
     async def test_run_query_periodically(
             self, query_loop, fake_sqlalchemy, mocked_queries, advance_time):

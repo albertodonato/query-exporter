@@ -17,6 +17,20 @@ from .db import (
     Query,
 )
 
+# the label used to filter metrics by database
+DATABASE_LABEL = 'database'
+
+# metric for counting database errors
+DB_ERRORS_METRIC_NAME = 'database_errors'
+DB_ERRORS_METRIC = MetricConfig(
+    DB_ERRORS_METRIC_NAME, 'Number of database errors', 'counter',
+    {'labels': [DATABASE_LABEL]})
+# metric for counting performed queries
+QUERIES_METRIC_NAME = 'queries'
+QUERIES_METRIC = MetricConfig(
+    QUERIES_METRIC_NAME, 'Number of database queries', 'counter',
+    {'labels': [DATABASE_LABEL, 'status']})
+
 
 class ConfigError(Exception):
     """Configuration is invalid."""
@@ -58,14 +72,15 @@ def _get_databases(configs: Dict[str, Dict[str, Any]]) -> List[DataBase]:
 
 def _get_metrics(metrics: Dict[str, Dict[str, Any]]) -> List[MetricConfig]:
     """Return metrics configuration."""
-    configs = []
+    # add global metrics
+    configs = [DB_ERRORS_METRIC, QUERIES_METRIC]
     for name, config in metrics.items():
         metric_type = config.pop('type', '')
         if metric_type not in SUPPORTED_METRICS:
             raise ConfigError(f"Unsupported metric type: '{metric_type}'")
         description = config.pop('description', '')
-        # add a 'database' label to have different series for sharded databases
-        config['labels'] = ['database']
+        # add a label to allow filtering by database
+        config['labels'] = [DATABASE_LABEL]
         configs.append(MetricConfig(name, description, metric_type, config))
     return configs
 

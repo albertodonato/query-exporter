@@ -5,7 +5,9 @@ import yaml
 
 from ..config import (
     ConfigError,
+    DB_ERRORS_METRIC,
     load_config,
+    QUERIES_METRIC,
 )
 
 
@@ -121,7 +123,8 @@ class TestLoadConfig:
         config_file = write_config(config)
         with config_file.open() as fd:
             result = load_config(fd)
-        metric1, metric2 = sorted(result.metrics, key=attrgetter('name'))
+        db_errors_metric, metric1, metric2, queries_metric = sorted(
+            result.metrics, key=attrgetter('name'))
         assert metric1.type == 'summary'
         assert metric1.description == 'metric one'
         assert metric1.config == {'labels': ['database']}
@@ -131,6 +134,9 @@ class TestLoadConfig:
             'labels': ['database'],
             'buckets': [10, 100, 1000]
         }
+        # global metrics
+        assert db_errors_metric == DB_ERRORS_METRIC
+        assert queries_metric == QUERIES_METRIC
 
     def test_load_databases_missing_dsn(self, write_config):
         """An error is raised if the 'dsn' key is missing for a database."""

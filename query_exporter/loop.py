@@ -5,12 +5,19 @@ from logging import Logger
 from typing import (
     Any,
     List,
+    Mapping,
+    Optional,
 )
 
 from prometheus_aioexporter import MetricsRegistry
 from toolrack.aio import PeriodicCall
 
-from .config import Config
+from .config import (
+    Config,
+    DATABASE_LABEL,
+    DB_ERRORS_METRIC_NAME,
+    QUERIES_METRIC_NAME,
+)
 from .db import (
     DataBaseError,
     Query,
@@ -46,6 +53,8 @@ class QueryLoop:
                 await db.connect()
             except DataBaseError as error:
                 self._log_db_error(db.name, error)
+                self._increment_db_error_count(db.name)
+
             else:
                 self._logger.debug(f'connected to database "{db.name}"')
 
@@ -98,27 +107,46 @@ class QueryLoop:
             results = await self._databases[dbname].execute(query)
         except DataBaseError as error:
             self._log_query_error(query.name, dbname, error)
+            self._increment_queries_count(dbname, 'error')
             return
 
         for name, values in results.items():
             for value in values:
                 self._update_metric(name, value, dbname)
+        self._increment_queries_count(dbname, 'success')
 
     def _log_query_error(self, name: str, dbname: str, error: Exception):
         """Log an error related to database query."""
         self._logger.error(
             f'query "{name}" on database "{dbname}" failed: {str(error)}')
 
-    def _log_db_error(self, name: str, error: Exception):
+    def _log_db_error(self, dbname: str, error: Exception):
         """Log a failed database query."""
-        self._logger.error(f'error from database "{name}": {str(error)}')
+        self._logger.error(f'error from database "{dbname}": {str(error)}')
 
-    def _update_metric(self, name: str, value: Any, dbname: str):
+    def _update_metric(
+            self,
+            name: str,
+            value: Any,
+            dbname: str,
+            extra_labels: Optional[Mapping[str, str]] = None):
         """Update value for a metric."""
         if value is None:
             # don't fail is queries that count return NULL
             value = 0.0
         method = self._METRIC_METHODS[self._metric_configs[name].type]
         self._logger.debug(f'updating metric "{name}" {method}({value})')
-        metric = self._registry.get_metric(name, labels={'database': dbname})
+        labels = {DATABASE_LABEL: dbname}
+        if extra_labels:
+            labels.update(extra_labels)
+        metric = self._registry.get_metric(name, labels)
         getattr(metric, method)(value)
+
+    def _increment_queries_count(self, dbname: str, status: str):
+        """Increment count of queries in a status for a database."""
+        self._update_metric(
+            QUERIES_METRIC_NAME, 1, dbname, extra_labels={'status': status})
+
+    def _increment_db_error_count(self, dbname: str):
+        """Increment number of errors for a database."""
+        self._update_metric(DB_ERRORS_METRIC_NAME, 1, dbname)
