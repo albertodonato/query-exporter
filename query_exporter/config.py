@@ -1,11 +1,14 @@
 """Configuration management functions."""
 
 from collections import defaultdict
+import os
+import re
 from typing import (
     Any,
     Dict,
     FrozenSet,
     List,
+    Mapping,
     NamedTuple,
 )
 
@@ -15,6 +18,7 @@ import yaml
 from .db import (
     DataBase,
     Query,
+    validate_dsn,
 )
 
 # the label used to filter metrics by database
@@ -47,11 +51,14 @@ class Config(NamedTuple):
 # Supported metric types.
 SUPPORTED_METRICS = ('counter', 'enum', 'gauge', 'histogram', 'summary')
 
+# Type matching os.environ.
+Environ = Mapping[str, str]
 
-def load_config(config_fd) -> Config:
+
+def load_config(config_fd, env: Environ = os.environ) -> Config:
     """Load YaML config from file."""
     config = defaultdict(dict, yaml.safe_load(config_fd))
-    databases = _get_databases(config['databases'])
+    databases = _get_databases(config['databases'], env)
     metrics = _get_metrics(config['metrics'])
     database_names = frozenset(database.name for database in databases)
     metric_names = frozenset(metric.name for metric in metrics)
@@ -59,14 +66,17 @@ def load_config(config_fd) -> Config:
     return Config(databases, metrics, queries)
 
 
-def _get_databases(configs: Dict[str, Dict[str, Any]]) -> List[DataBase]:
+def _get_databases(configs: Dict[str, Dict[str, Any]],
+                   env: Environ) -> List[DataBase]:
     """Return a dict mapping names to DataBases names."""
     databases = []
     for name, config in configs.items():
         try:
-            databases.append(DataBase(name, config['dsn']))
+            databases.append(DataBase(name, _resolve_dsn(config['dsn'], env)))
         except KeyError as e:
             _raise_missing_key(e, 'database', name)
+        except Exception as e:
+            raise ConfigError(str(e))
     return databases
 
 
@@ -152,6 +162,19 @@ def _convert_interval(name: str, config: Dict[str, Any]):
     config['interval'] = interval * multiplier
 
 
+def _resolve_dsn(dsn: str, env: Environ) -> str:
+    if dsn.startswith('env:'):
+        _, varname = dsn.split(':', 1)
+        if not re.match(r'[a-zA-Z_][a-zA-Z0-9_]*$', varname):
+            raise ValueError(f"Invalid variable name: '{varname}'")
+        if varname not in env:
+            raise ValueError(f"Undefined variable: '{varname}'")
+        dsn = env[varname]
+
+    validate_dsn(dsn)
+    return dsn
+
+
 def _raise_missing_key(key_error: KeyError, entry_type: str, entry_name: str):
     raise ConfigError(
-        f'Missing key {str(key_error)} for {entry_type} \'{entry_name}\'')
+        f"Missing key {str(key_error)} for {entry_type} '{entry_name}'")

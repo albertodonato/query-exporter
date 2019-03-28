@@ -138,12 +138,42 @@ class TestLoadConfig:
         assert db_errors_metric == DB_ERRORS_METRIC
         assert queries_metric == QUERIES_METRIC
 
+    def test_load_databases_dsn_from_env(self, write_config):
+        config_file = write_config({'databases': {'db1': {'dsn': 'env:FOO'}}})
+        with config_file.open() as fd:
+            config = load_config(fd, env={'FOO': 'postgresql:///foo'})
+            [database] = config.databases
+        assert database.dsn == 'postgresql:///foo'
+
     def test_load_databases_missing_dsn(self, write_config):
         """An error is raised if the 'dsn' key is missing for a database."""
         config_file = write_config({'databases': {'db1': {}}})
         with pytest.raises(ConfigError) as err, config_file.open() as fd:
             load_config(fd)
         assert str(err.value) == "Missing key 'dsn' for database 'db1'"
+
+    def test_load_databases_invalid_dsn(self, write_config):
+        config_file = write_config({'databases': {'db1': {'dsn': 'invalid'}}})
+        with pytest.raises(ConfigError) as err, config_file.open() as fd:
+            load_config(fd)
+        assert str(err.value) == "Invalid database DSN: 'invalid'"
+
+    def test_load_databases_dsn_invalid_env(self, write_config):
+        config_file = write_config(
+            {'databases': {
+                'db1': {
+                    'dsn': 'env:NOT-VALID'
+                }
+            }})
+        with pytest.raises(ConfigError) as err, config_file.open() as fd:
+            load_config(fd)
+        assert str(err.value) == "Invalid variable name: 'NOT-VALID'"
+
+    def test_load_databases_dsn_undefined_env(self, write_config):
+        config_file = write_config({'databases': {'db1': {'dsn': 'env:FOO'}}})
+        with pytest.raises(ConfigError) as err, config_file.open() as fd:
+            load_config(fd, env={})
+        assert str(err.value) == "Undefined variable: 'FOO'"
 
     def test_load_metrics_unsupported_type(self, write_config):
         """An error is raised if an unsupported metric type is passed."""

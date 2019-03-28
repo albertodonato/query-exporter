@@ -11,11 +11,20 @@ from typing import (
 
 import sqlalchemy
 from sqlalchemy.engine import Engine
+from sqlalchemy.engine.url import _parse_rfc1738_args
+from sqlalchemy.exc import ArgumentError
 from sqlalchemy_aio import ASYNCIO_STRATEGY
 
 
 class DataBaseError(Exception):
     """A database error."""
+
+
+class InvalidDatabaseDSN(Exception):
+    """Database DSN is invalid."""
+
+    def __init__(self, dsn: str):
+        super().__init__(f"Invalid database DSN: '{dsn}'")
 
 
 class InvalidResultCount(Exception):
@@ -80,3 +89,15 @@ class DataBase(namedtuple('DataBase', ['name', 'dsn'])):
             return query.results(await result.fetchall())
         except Exception as error:
             raise DataBaseError(str(error).strip())
+
+
+def validate_dsn(dsn: str):
+    """Validate a database DSN.
+
+    Raises InvalideDatabaseDSN if invalid.
+
+    """
+    try:
+        _parse_rfc1738_args(dsn)
+    except (ArgumentError, ValueError):
+        raise InvalidDatabaseDSN(dsn)

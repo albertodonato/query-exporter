@@ -3,8 +3,10 @@ import pytest
 from ..db import (
     DataBase,
     DataBaseError,
+    InvalidDatabaseDSN,
     InvalidResultCount,
     Query,
+    validate_dsn,
 )
 from .fakes import (
     FakeConnection,
@@ -126,3 +128,13 @@ class TestDatabase:
         assert fake_sqlalchemy.engine.connection.sql == 'SELECT 1'
         # the connection is kept for reuse
         assert not fake_sqlalchemy.engine.connection.closed
+
+
+class TestValidateDSN:
+
+    def test_valid(self):
+        assert validate_dsn('postgresql://user:pass@host/database') is None
+
+    def test_invalid(self):
+        with pytest.raises(InvalidDatabaseDSN):
+            validate_dsn('foo-bar')

@@ -63,16 +63,21 @@ The application is called with a configuration file that looks like this:
           LIMIT 1
 
 
-The ``dsn`` connection string has the following format::
+- The ``dsn`` connection string has the following format::
 
-    dialect[+driver]://[username:password][@host:port]/database
+  dialect[+driver]://[username:password][@host:port]/database
 
 (see `SQLAlchemy documentation`_ for details on the available options).
 
-The ``metrics`` list in the query configuration must match values returned by
+It's also possible to get the connection string from an environment variable
+(e.g. ``$CONNECTION_STRING``) by setting ``dsn`` to::
+
+  env:CONNECTION_STRING
+
+- The ``metrics`` list in the query configuration must match values returned by
 the query defined in ``sql``.
 
-The ``interval`` value is interpreted as seconds if no suffix is specified;
+- The ``interval`` value is interpreted as seconds if no suffix is specified;
 valid suffix are ``s``, ``m``, ``h``, ``d``. Only integer values can be
 specified. If no value is specified (or specified as ``null``), the query is
 executed at every HTTP request.
@@ -151,7 +156,7 @@ SQLAlchemy doesn't depend on specific Python database modules at
 installation. This means additional modules might need to be installed for
 engines in use, as follows::
 
-    pip install SQLAlchemy[postgresql] SQLAlchemy[mysql] ...
+  pip install SQLAlchemy[postgresql] SQLAlchemy[mysql] ...
 
 based on which databased is in use.
 
@@ -177,6 +182,11 @@ To configure the daemon:
   configuration
 - run ``sudo snap restart query-exporter``
 
+The snap has builtin support for the following databases::
+
+- MySQL
+- PostgreSQL
+- SQLite
 
 .. _Prometheus: https://prometheus.io/
 .. _SQLAlchemy: https://www.sqlalchemy.org/
