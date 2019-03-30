@@ -67,6 +67,6 @@ parts:
         - -usr/lib/python3.7
     prime:
       - $bins
-      - etc
+      - etc/python3.6
       - $libs
 
