@@ -9,7 +9,7 @@ tests_require = ['pytest', 'pytest-asyncio', 'pytest-mock']
 
 config = {
     'name': 'query-exporter',
-    'version': '1.6.0',
+    'version': '1.7.0',
     'license': 'GPLv3+',
     'description': 'Export Prometheus metrics generated from SQL queries.',
     'long_description': Path('README.rst').read_text(),

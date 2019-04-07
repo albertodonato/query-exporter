@@ -1,3 +1,11 @@
+v1.7.0 - 2018-04-07
+===================
+
+- Add a "queries" and "database_errors" metrics lebeled by database (Fixes #1)
+- Support database DSNs defined as "env:<VARNAME>" to supply the dns from the
+  environment (Fixes: #5)
+
+
 v1.6.0 - 2018-03-26
 ===================
 
