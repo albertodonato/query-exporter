@@ -10,5 +10,7 @@ column_limit = 79
 continuation_align_style = SPACE
 space_between_ending_comma_and_closing_bracket = true
 split_all_comma_separated_values = false
+split_before_expression_after_opening_paren = true
 split_before_first_argument = true
 split_complex_comprehension = false
+split_penalty_after_opening_bracket= 35
