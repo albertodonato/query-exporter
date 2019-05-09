@@ -34,6 +34,10 @@ class InvalidResultCount(Exception):
         super().__init__('Wrong result count from the query')
 
 
+# Result values for metrics from a query
+QueryResults = Dict[str, Tuple]
+
+
 class Query(NamedTuple):
     """Query configuration and definition."""
 
@@ -43,7 +47,7 @@ class Query(NamedTuple):
     metrics: List[str]
     sql: str
 
-    def results(self, records: List[Tuple]) -> Dict[str, Tuple]:
+    def results(self, records: List[Tuple]) -> QueryResults:
         """Return a dict with a tuple of values for each metric."""
         if not records:
             return {}
@@ -78,7 +82,7 @@ class DataBase(namedtuple('DataBase', ['name', 'dsn'])):
         await self._conn.close()
         self._conn = None
 
-    async def execute(self, query: Query):
+    async def execute(self, query: Query) -> QueryResults:
         """Execute a query."""
         if self._conn is None:
             await self.connect()
