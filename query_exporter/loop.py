@@ -50,7 +50,7 @@ class QueryLoop:
         """Start periodic queries execution."""
         for db in self._databases.values():
             try:
-                await db.connect()
+                await db.connect(loop=self.loop)
             except DataBaseError as error:
                 self._log_db_error(db.name, error)
                 self._increment_db_error_count(db.name)

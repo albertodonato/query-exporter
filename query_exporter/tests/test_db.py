@@ -1,4 +1,5 @@
 import pytest
+from sqlalchemy_aio.base import AsyncConnection
 
 from ..db import (
     DataBase,
@@ -7,10 +8,6 @@ from ..db import (
     InvalidResultCount,
     Query,
     validate_dsn,
-)
-from .fakes import (
-    FakeConnection,
-    FakeSQLAlchemy,
 )
 
 
@@ -49,45 +46,41 @@ class TestQuery:
 
 
 @pytest.fixture
-def fake_sqlalchemy():
-    yield FakeSQLAlchemy()
+async def db():
+    db = DataBase('db', 'sqlite://')
+    yield db
+    await db.close()
 
 
-@pytest.fixture
-def db(mocker, fake_sqlalchemy):
-    mocker.patch('query_exporter.db.sqlalchemy', fake_sqlalchemy)
-    yield DataBase('db', 'postgres:///foo')
-
-
-class TestDatabase:
+class TestDataBase:
 
     def test_instantiate(self, db):
         """A DataBase can be instantiated with the specified arguments, db."""
+        db = DataBase('db', 'sqlite:///foo')
         assert db.name == 'db'
-        assert db.dsn == 'postgres:///foo'
+        assert db.dsn == 'sqlite:///foo'
 
     @pytest.mark.asyncio
-    async def test_connect(self, db, fake_sqlalchemy):
+    async def test_connect(self, db):
         """The connect connects to the database."""
         await db.connect()
-        assert isinstance(db._conn, FakeConnection)
-        assert fake_sqlalchemy.dsn == 'postgres:///foo'
+        assert isinstance(db._conn, AsyncConnection)
 
     @pytest.mark.asyncio
-    async def test_connect_missing_engine_module(self, db, fake_sqlalchemy):
+    async def test_connect_missing_engine_module(self, event_loop):
         """An error is raised if a module for the engine is missing."""
-        fake_sqlalchemy.missing_module = 'psycopg2'
-        with pytest.raises(DataBaseError) as err:
-            await db.connect()
-        assert str(err.value) == 'module "psycopg2" not found'
+        db = DataBase('db', 'postgresql:///foo')
+        with pytest.raises(DataBaseError) as error:
+            await db.connect(loop=event_loop)
+        assert str(error.value) == 'module "psycopg2" not found'
 
     @pytest.mark.asyncio
-    async def test_connect_error(self, db, fake_sqlalchemy):
+    async def test_connect_error(self, event_loop):
         """A DataBaseError is raised if database connection fails."""
-        fake_sqlalchemy.connect_error = 'some error'
-        with pytest.raises(DataBaseError) as err:
-            await db.connect()
-        assert str(err.value) == 'some error'
+        db = DataBase('db', f'sqlite:////invalid')
+        with pytest.raises(DataBaseError) as error:
+            await db.connect(loop=event_loop)
+        assert 'unable to open database file' in str(error.value)
 
     @pytest.mark.asyncio
     async def test_close(self, db):
@@ -99,35 +92,32 @@ class TestDatabase:
         assert db._conn is None
 
     @pytest.mark.asyncio
-    async def test_execute(self, db, fake_sqlalchemy):
+    async def test_execute(self, db):
         """The execute method executes a query."""
-        fake_sqlalchemy.query_results = [(10, 20), (30, 40)]
-        query = Query('query', 20, ['db'], ['metric1', 'metric2'], 'SELECT 1')
+        sql = 'SELECT * FROM (SELECT 10, 20 UNION SELECT 30, 40)'
+        query = Query('query', 20, ['db'], ['metric1', 'metric2'], sql)
         await db.connect()
         result = await db.execute(query)
         assert result == {'metric1': (10, 30), 'metric2': (20, 40)}
-        assert fake_sqlalchemy.engine.connection.sql == 'SELECT 1'
 
     @pytest.mark.asyncio
-    async def test_execute_query_error(self, db, fake_sqlalchemy):
+    async def test_execute_query_error(self, db):
         """If the query fails an error is raised."""
-        fake_sqlalchemy.query_error = 'wrong query'
         query = Query('query', 20, ['db'], ['metric'], 'WRONG')
         await db.connect()
         with pytest.raises(DataBaseError) as err:
             await db.execute(query)
-        assert str(err.value) == 'wrong query'
+        assert 'syntax error' in str(err.value)
 
     @pytest.mark.asyncio
-    async def test_execute_not_connected(self, db, fake_sqlalchemy):
+    @pytest.mark.asyncio
+    async def test_execute_not_connected(self, db):
         """The execute recconnects to the database if not connected."""
-        fake_sqlalchemy.query_results = [(10, 20), (30, 40)]
-        query = Query('query', 20, ['db'], ['metric1', 'metric2'], 'SELECT 1')
+        query = Query('query', 20, ['db'], ['metric'], 'SELECT 1')
         result = await db.execute(query)
-        assert result == {'metric1': (10, 30), 'metric2': (20, 40)}
-        assert fake_sqlalchemy.engine.connection.sql == 'SELECT 1'
+        assert result == {'metric': (1, )}
         # the connection is kept for reuse
-        assert not fake_sqlalchemy.engine.connection.closed
+        assert not db._conn.closed
 
 
 class TestValidateDSN:

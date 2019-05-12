@@ -1,10 +1,12 @@
 """Database wrapper."""
 
+import asyncio
 from collections import namedtuple
 from typing import (
     Dict,
     List,
     NamedTuple,
+    Optional,
     Tuple,
     Union,
 )
@@ -31,7 +33,7 @@ class InvalidResultCount(Exception):
     """Number of results from a query don't match metrics count."""
 
     def __init__(self):
-        super().__init__('Wrong result count from the query')
+        super().__init__('Wrong result count from query')
 
 
 # Result values for metrics from a query
@@ -62,11 +64,11 @@ class DataBase(namedtuple('DataBase', ['name', 'dsn'])):
 
     _conn: Union[Engine, None] = None
 
-    async def connect(self):
+    async def connect(self, loop: Optional[asyncio.AbstractEventLoop] = None):
         """Connect to the database."""
         try:
             engine = sqlalchemy.create_engine(
-                self.dsn, strategy=ASYNCIO_STRATEGY)
+                self.dsn, strategy=ASYNCIO_STRATEGY, loop=loop)
         except ImportError as error:
             raise DataBaseError(f'module "{error.name}" not found')
 

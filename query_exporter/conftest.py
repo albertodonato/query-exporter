@@ -3,6 +3,8 @@ from functools import wraps
 
 import pytest
 
+from .db import DataBase
+
 
 @pytest.fixture
 async def advance_time(event_loop):
@@ -50,3 +52,17 @@ async def advance_time(event_loop):
                 await asyncio.sleep(0)
 
     yield Clocker(event_loop).advance
+
+
+@pytest.fixture
+def tracked_queries(mocker):
+    """Return a list collecting Query executed by DataBases."""
+    queries = []
+    orig_execute = DataBase.execute
+
+    async def execute(self, query):
+        queries.append(query)
+        return await orig_execute(self, query)
+
+    mocker.patch.object(DataBase, 'execute', execute)
+    yield queries
