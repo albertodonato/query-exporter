@@ -4,9 +4,11 @@ import asyncio
 from logging import Logger
 from typing import (
     Any,
+    Dict,
     List,
     Mapping,
     Optional,
+    Set,
 )
 
 from prometheus_aioexporter import MetricsRegistry
@@ -43,7 +45,9 @@ class QueryLoop:
         self._registry = registry
         self._periodic_queries: List[Query] = []
         self._aperiodic_queries: List[Query] = []
-        self._periodic_calls: List[PeriodicCall] = []
+        # map query names to their PeriodicCall
+        self._periodic_calls: Dict[str, PeriodicCall] = {}
+        self._doomed_queries: Set[str] = set()
         self._setup(config)
 
     async def start(self):
@@ -54,20 +58,19 @@ class QueryLoop:
             except DataBaseError as error:
                 self._log_db_error(db.name, error)
                 self._increment_db_error_count(db.name)
-
             else:
                 self._logger.debug(f'connected to database "{db.name}"')
 
         for query in self._periodic_queries:
             call = PeriodicCall(self.loop, self._run_query, query)
-            self._periodic_calls.append(call)
+            self._periodic_calls[query.name] = call
             call.start(query.interval)
 
     async def stop(self):
         """Stop periodic query execution."""
-        coros = (call.stop() for call in self._periodic_calls)
+        coros = (call.stop() for call in self._periodic_calls.values())
         await asyncio.gather(*coros, loop=self.loop)
-        self._periodic_calls = []
+        self._periodic_calls = {}
         coros = (db.close() for db in self._databases.values())
         await asyncio.gather(*coros, loop=self.loop)
 
@@ -101,6 +104,9 @@ class QueryLoop:
 
     async def _execute_query(self, query: Query, dbname: str):
         """'Execute a Query on a DataBase."""
+        if await self._remove_if_dooomed(query):
+            return
+
         self._logger.debug(
             f'running query "{query.name}" on database "{dbname}"')
         try:
@@ -108,12 +114,34 @@ class QueryLoop:
         except DataBaseError as error:
             self._log_query_error(query.name, dbname, error)
             self._increment_queries_count(dbname, 'error')
+            if error.fatal:
+                self._logger.debug(f'removing doomed query "{query.name}"')
+                self._doomed_queries.add(query.name)
             return
 
         for name, values in results.items():
             for value in values:
                 self._update_metric(name, value, dbname)
         self._increment_queries_count(dbname, 'success')
+
+    async def _remove_if_dooomed(self, query: Query) -> bool:
+        """Remove a query if it will never work.
+
+        Return whether the query has been removed.
+
+        """
+        if query.name not in self._doomed_queries:
+            return False
+
+        self._doomed_queries.remove(query.name)
+        if query.interval is None:
+            self._aperiodic_queries.remove(query)
+        else:
+            self._periodic_queries.remove(query)
+            call = self._periodic_calls.pop(query.name, None)
+            if call is not None:
+                await call.stop()
+        return True
 
     def _log_query_error(self, name: str, dbname: str, error: Exception):
         """Log an error related to database query."""

@@ -134,11 +134,20 @@ class TestDataBase:
         """If the query fails an error is raised."""
         query = Query('query', 20, ['db'], ['metric'], 'WRONG')
         await db.connect()
-        with pytest.raises(DataBaseError) as err:
+        with pytest.raises(DataBaseError) as error:
             await db.execute(query)
-        assert 'syntax error' in str(err.value)
+        assert 'syntax error' in str(error.value)
 
     @pytest.mark.asyncio
+    async def test_execute_query_invalid_count(self, db):
+        """If the query fails an error is raised."""
+        query = Query('query', 20, ['db'], ['metric'], 'SELECT 1, 2')
+        await db.connect()
+        with pytest.raises(DataBaseError) as error:
+            await db.execute(query)
+        assert str(error.value) == 'Wrong result count from query'
+        assert error.value.fatal
+
     @pytest.mark.asyncio
     async def test_execute_not_connected(self, db):
         """The execute recconnects to the database if not connected."""

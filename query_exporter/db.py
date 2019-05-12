@@ -22,7 +22,14 @@ from sqlalchemy_aio import ASYNCIO_STRATEGY
 
 
 class DataBaseError(Exception):
-    """A database error."""
+    """A databease error.
+
+    if `fatal` is True, it means the Query will never succeed.
+    """
+
+    def __init__(self, message: str, fatal: bool = False):
+        super().__init__(message)
+        self.fatal = fatal
 
 
 class InvalidDatabaseDSN(Exception):
@@ -91,7 +98,7 @@ class DataBase(namedtuple('DataBase', ['name', 'dsn'])):
             engine = sqlalchemy.create_engine(
                 self.dsn, strategy=ASYNCIO_STRATEGY, loop=loop)
         except ImportError as error:
-            raise DataBaseError(f'module "{error.name}" not found')
+            raise DataBaseError(f'module "{error.name}" not found', fatal=True)
 
         try:
             self._conn = await engine.connect()
@@ -115,7 +122,8 @@ class DataBase(namedtuple('DataBase', ['name', 'dsn'])):
             result = await self._conn.execute(query.sql)
             return query.results(await QueryResults.from_results(result))
         except Exception as error:
-            raise DataBaseError(str(error).strip())
+            fatal = isinstance(error, InvalidResultCount)
+            raise DataBaseError(str(error).strip(), fatal=fatal)
 
 
 def validate_dsn(dsn: str):

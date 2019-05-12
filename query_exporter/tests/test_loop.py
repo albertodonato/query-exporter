@@ -88,20 +88,20 @@ class TestQueryLoop:
     async def test_start(self, query_loop):
         """The start method starts periodic calls for queries."""
         await query_loop.start()
-        [periodic_call] = query_loop._periodic_calls
+        periodic_call = query_loop._periodic_calls['q']
         assert periodic_call.running
 
     async def test_stop(self, query_loop):
         """The stop method stops periodic calls for queries."""
         await query_loop.start()
-        [periodic_call] = query_loop._periodic_calls
+        periodic_call = query_loop._periodic_calls['q']
         await query_loop.stop()
         assert not periodic_call.running
 
     async def test_run_query(self, query_tracker, query_loop, registry):
         """Queries are run and update metrics."""
         await query_loop.start()
-        await query_tracker.wait_queries(1)
+        await query_tracker.wait_results()
         # the metric is updated
         metric = registry.get_metric('m')
         assert metric_values(metric) == [100.0]
@@ -118,7 +118,7 @@ class TestQueryLoop:
         config_data['queries']['q']['sql'] = 'SELECT NULL'
         query_loop = make_query_loop()
         await query_loop.start()
-        await query_tracker.wait_queries(1)
+        await query_tracker.wait_results()
         metric = registry.get_metric('m')
         assert metric_values(metric) == [0]
 
@@ -126,7 +126,7 @@ class TestQueryLoop:
         """Debug messages are logged on query execution."""
         caplog.set_level(logging.DEBUG)
         await query_loop.start()
-        await query_tracker.wait_queries(1)
+        await query_tracker.wait_queries()
         assert caplog.messages == [
             'connected to database "db"', 'running query "q" on database "db"',
             'updating metric "m" set(100.0)',
@@ -140,7 +140,7 @@ class TestQueryLoop:
         config_data['queries']['q']['sql'] = 'WRONG QUERY'
         query_loop = make_query_loop()
         await query_loop.start()
-        await query_tracker.wait_queries(1)
+        await query_tracker.wait_failures()
         assert (
             'query "q" on database "db" failed: '
             '(sqlite3.OperationalError) near "WRONG": syntax error' in
@@ -154,10 +154,11 @@ class TestQueryLoop:
         config_data['queries']['q']['sql'] = 'SELECT 100.0, 200.0'
         query_loop = make_query_loop()
         await query_loop.start()
-        await query_tracker.wait_queries(1)
+        await query_tracker.wait_failures()
         assert (
             'query "q" on database "db" failed: Wrong result count from query'
             in caplog.messages)
+        assert 'removing doomed query "q"' in caplog.messages
 
     async def test_run_query_increase_db_error_count(
             self, query_tracker, config_data, make_query_loop, registry):
@@ -165,7 +166,7 @@ class TestQueryLoop:
         config_data['databases']['db']['dsn'] = f'sqlite:////invalid'
         query_loop = make_query_loop()
         await query_loop.start()
-        await query_tracker.wait_queries(1)
+        await query_tracker.wait_failures()
         queries_metric = registry.get_metric('database_errors')
         assert metric_values(queries_metric) == [1.0]
 
@@ -175,7 +176,7 @@ class TestQueryLoop:
         config_data['queries']['q']['sql'] = 'SELECT 100.0 200.0'
         query_loop = make_query_loop()
         await query_loop.start()
-        await query_tracker.wait_queries(1)
+        await query_tracker.wait_failures()
         queries_metric = registry.get_metric('queries')
         assert metric_values(
             queries_metric, by_labels=('status', )) == {
@@ -196,6 +197,33 @@ class TestQueryLoop:
         await advance_time(5)
         assert len(query_tracker.queries) == 2
 
+    async def test_run_periodic_queries_invalid_result_count(
+            self, query_tracker, config_data, make_query_loop, advance_time):
+        """Periodic queries returning invalid elements count are removed."""
+        config_data['queries']['q']['sql'] = 'SELECT 100.0, 200.0'
+        query_loop = make_query_loop()
+        await query_loop.start()
+        await advance_time(0)  # kick the first run
+        assert len(query_tracker.queries) == 1
+        assert len(query_tracker.results) == 0
+        # the query is not run again
+        await advance_time(5)
+        assert len(query_tracker.results) == 0
+        await advance_time(5)
+        assert len(query_tracker.results) == 0
+
+    async def test_run_periodic_queries_invalid_result_count_stop_task(
+            self, event_loop, query_tracker, config_data, make_query_loop):
+        config_data['queries']['q']['sql'] = 'SELECT 100.0, 200.0'
+        config_data['queries']['q']['interval'] = 1.0
+        query_loop = make_query_loop()
+        await query_loop.start()
+        periodic_call = query_loop._periodic_calls['q']
+        await asyncio.sleep(1.1, loop=event_loop)
+        # the query has been stopped and removed
+        assert not periodic_call.running
+        assert query_loop._periodic_calls == {}
+
     async def test_run_aperiodic_queries(
             self, query_tracker, config_data, make_query_loop):
         """Queries with null interval can be run explicitly."""
@@ -205,3 +233,15 @@ class TestQueryLoop:
         assert len(query_tracker.queries) == 1
         await query_loop.run_aperiodic_queries()
         assert len(query_tracker.queries) == 2
+
+    async def test_run_aperiodic_queries_invalid_result_count(
+            self, query_tracker, config_data, make_query_loop):
+        """Aperiodic queries returning invalid elements count are removed."""
+        config_data['queries']['q']['sql'] = 'SELECT 100.0, 200.0'
+        del config_data['queries']['q']['interval']
+        query_loop = make_query_loop()
+        await query_loop.run_aperiodic_queries()
+        assert len(query_tracker.queries) == 1
+        # the query is not run again
+        await query_loop.run_aperiodic_queries()
+        assert len(query_tracker.queries) == 1

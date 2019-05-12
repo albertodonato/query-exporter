@@ -63,21 +63,34 @@ def query_tracker(mocker, event_loop):
         def __init__(self):
             self.queries = []
             self.results = []
+            self.failures = []
 
-        async def wait_queries(self, count, timeout=5):
+        async def wait_queries(self, count=1, timeout=5):
+            await self._wait('queries', count, timeout)
+
+        async def wait_results(self, count=1, timeout=5):
+            await self._wait('results', count, timeout)
+
+        async def wait_failures(self, count=1, timeout=5):
+            await self._wait('failures', count, timeout)
+
+        async def _wait(self, attr, count, timeout):
             timeout += event_loop.time()
             while event_loop.time() < timeout:
-                if len(self.queries) >= count:
+                if len(getattr(self, attr)) >= count:
                     break
-                await asyncio.sleep(0.1, loop=event_loop)
+                await asyncio.sleep(0.05, loop=event_loop)
 
     tracker = QueryTracker()
-
     orig_execute = DataBase.execute
 
     async def execute(self, query):
         tracker.queries.append(query)
-        result = await orig_execute(self, query)
+        try:
+            result = await orig_execute(self, query)
+        except Exception as e:
+            tracker.failures.append(e)
+            raise
         tracker.results.append(result)
         return result
 
