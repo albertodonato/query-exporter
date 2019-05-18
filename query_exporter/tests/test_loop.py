@@ -12,7 +12,7 @@ from ..loop import QueryLoop
 
 @pytest.fixture
 def config_data():
-    return {
+    yield {
         'databases': {
             'db': {
                 'dsn': 'sqlite://'
@@ -88,7 +88,6 @@ class TestQueryLoop:
     async def test_start(self, query_loop):
         """The start method starts periodic calls for queries."""
         await query_loop.start()
-        # self.addCleanup(self.query_loop.stop)
         [periodic_call] = query_loop._periodic_calls
         assert periodic_call.running
 
@@ -99,10 +98,10 @@ class TestQueryLoop:
         await query_loop.stop()
         assert not periodic_call.running
 
-    async def test_run_query(self, query_loop, registry):
+    async def test_run_query(self, query_tracker, query_loop, registry):
         """Queries are run and update metrics."""
         await query_loop.start()
-        await query_loop.stop()
+        await query_tracker.wait_queries(1)
         # the metric is updated
         metric = registry.get_metric('m')
         assert metric_values(metric) == [100.0]
@@ -114,20 +113,20 @@ class TestQueryLoop:
             }
 
     async def test_run_query_null_value(
-            self, registry, config_data, make_query_loop):
+            self, query_tracker, registry, config_data, make_query_loop):
         """A null value in query results is treated like a zero."""
         config_data['queries']['q']['sql'] = 'SELECT NULL'
         query_loop = make_query_loop()
         await query_loop.start()
-        await query_loop.stop()
+        await query_tracker.wait_queries(1)
         metric = registry.get_metric('m')
         assert metric_values(metric) == [0]
 
-    async def test_run_query_log(self, caplog, query_loop):
+    async def test_run_query_log(self, caplog, query_tracker, query_loop):
         """Debug messages are logged on query execution."""
         caplog.set_level(logging.DEBUG)
         await query_loop.start()
-        await query_loop.stop()
+        await query_tracker.wait_queries(1)
         assert caplog.messages == [
             'connected to database "db"', 'running query "q" on database "db"',
             'updating metric "m" set(100.0)',
@@ -135,47 +134,48 @@ class TestQueryLoop:
         ]
 
     async def test_run_query_log_error(
-            self, caplog, config_data, make_query_loop):
+            self, caplog, query_tracker, config_data, make_query_loop):
         """Query errors are logged."""
         caplog.set_level(logging.DEBUG)
         config_data['queries']['q']['sql'] = 'WRONG QUERY'
         query_loop = make_query_loop()
         await query_loop.start()
-        await query_loop.stop()
+        await query_tracker.wait_queries(1)
         assert (
             'query "q" on database "db" failed: '
             '(sqlite3.OperationalError) near "WRONG": syntax error' in
             caplog.text)
 
     async def test_run_query_log_invalid_result_count(
-            self, caplog, config_data, make_query_loop, registry):
+            self, caplog, query_tracker, config_data, make_query_loop,
+            registry):
         """An error is logged if result count doesn't match metrics count."""
         caplog.set_level(logging.DEBUG)
         config_data['queries']['q']['sql'] = 'SELECT 100.0, 200.0'
         query_loop = make_query_loop()
         await query_loop.start()
-        await query_loop.stop()
+        await query_tracker.wait_queries(1)
         assert (
             'query "q" on database "db" failed: Wrong result count from query'
             in caplog.messages)
 
     async def test_run_query_increase_db_error_count(
-            self, config_data, make_query_loop, registry):
+            self, query_tracker, config_data, make_query_loop, registry):
         """Query errors are logged."""
         config_data['databases']['db']['dsn'] = f'sqlite:////invalid'
         query_loop = make_query_loop()
         await query_loop.start()
-        await query_loop.stop()
+        await query_tracker.wait_queries(1)
         queries_metric = registry.get_metric('database_errors')
         assert metric_values(queries_metric) == [1.0]
 
     async def test_run_query_increase_error_count(
-            self, config_data, make_query_loop, registry):
+            self, query_tracker, config_data, make_query_loop, registry):
         """Count of errored queries is incremented on error."""
         config_data['queries']['q']['sql'] = 'SELECT 100.0 200.0'
         query_loop = make_query_loop()
         await query_loop.start()
-        await query_loop.stop()
+        await query_tracker.wait_queries(1)
         queries_metric = registry.get_metric('queries')
         assert metric_values(
             queries_metric, by_labels=('status', )) == {
@@ -183,25 +183,25 @@ class TestQueryLoop:
             }
 
     async def test_run_query_at_interval(
-            self, query_loop, advance_time, tracked_queries):
+            self, advance_time, query_tracker, query_loop):
         """Queries are run at the specified time interval."""
         await query_loop.start()
         await advance_time(0)  # kick the first run
         # the query has been run once
-        assert len(tracked_queries) == 1
+        assert len(query_tracker.queries) == 1
         await advance_time(5)
         # no more runs yet
-        assert len(tracked_queries) == 1
+        assert len(query_tracker.queries) == 1
         # now the query runs again
         await advance_time(5)
-        assert len(tracked_queries) == 2
+        assert len(query_tracker.queries) == 2
 
     async def test_run_aperiodic_queries(
-            self, config_data, make_query_loop, tracked_queries):
+            self, query_tracker, config_data, make_query_loop):
         """Queries with null interval can be run explicitly."""
         del config_data['queries']['q']['interval']
         query_loop = make_query_loop()
         await query_loop.run_aperiodic_queries()
-        assert len(tracked_queries) == 1
+        assert len(query_tracker.queries) == 1
         await query_loop.run_aperiodic_queries()
-        assert len(tracked_queries) == 2
+        assert len(query_tracker.queries) == 2

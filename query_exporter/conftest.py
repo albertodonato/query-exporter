@@ -55,14 +55,31 @@ async def advance_time(event_loop):
 
 
 @pytest.fixture
-def tracked_queries(mocker):
+def query_tracker(mocker, event_loop):
     """Return a list collecting Query executed by DataBases."""
-    queries = []
+
+    class QueryTracker:
+
+        def __init__(self):
+            self.queries = []
+            self.results = []
+
+        async def wait_queries(self, count, timeout=5):
+            timeout += event_loop.time()
+            while event_loop.time() < timeout:
+                if len(self.queries) >= count:
+                    break
+                await asyncio.sleep(0.1, loop=event_loop)
+
+    tracker = QueryTracker()
+
     orig_execute = DataBase.execute
 
     async def execute(self, query):
-        queries.append(query)
-        return await orig_execute(self, query)
+        tracker.queries.append(query)
+        result = await orig_execute(self, query)
+        tracker.results.append(result)
+        return result
 
     mocker.patch.object(DataBase, 'execute', execute)
-    yield queries
+    yield tracker

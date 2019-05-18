@@ -1,4 +1,6 @@
 import pytest
+from sqlalchemy import create_engine
+from sqlalchemy_aio import ASYNCIO_STRATEGY
 from sqlalchemy_aio.base import AsyncConnection
 
 from ..db import (
@@ -7,6 +9,7 @@ from ..db import (
     InvalidDatabaseDSN,
     InvalidResultCount,
     Query,
+    QueryResults,
     validate_dsn,
 )
 
@@ -26,8 +29,8 @@ class TestQuery:
     def test_results(self):
         """The results method returns a dict mapping metrics to results."""
         query = Query('query', 20, ['db'], ['metric1', 'metric2'], 'SELECT 1')
-        rows = [(11, 22), (33, 44)]
-        assert query.results(rows) == {
+        query_results = QueryResults(['one', 'two'], [(11, 22), (33, 44)])
+        assert query.results(query_results) == {
             'metric1': (11, 33),
             'metric2': (22, 44)
         }
@@ -35,14 +38,28 @@ class TestQuery:
     def test_results_wrong_result_count(self):
         """An error is raised if the result column count is wrong."""
         query = Query('query', 20, ['db'], ['metric'], 'SELECT 1, 2')
-        rows = [(1, 2)]
+        query_results = QueryResults(['one', 'two'], [(1, 2)])
         with pytest.raises(InvalidResultCount):
-            query.results(rows)
+            query.results(query_results)
 
     def test_results_empty(self):
         """No error is raised if the result set is empty"""
         query = Query('query', 20, ['db'], ['metric'], 'SELECT 1, 2')
-        assert query.results([]) == {}
+        query_results = QueryResults(['one', 'two'], [])
+        assert query.results(query_results) == {}
+
+
+class TestQueryResults:
+
+    @pytest.mark.asyncio
+    async def test_from_results(self, event_loop):
+        engine = create_engine(
+            'sqlite://', strategy=ASYNCIO_STRATEGY, loop=event_loop)
+        async with engine.connect() as conn:
+            result = await conn.execute('SELECT 1 AS a, 2 AS b')
+            query_results = await QueryResults.from_results(result)
+        assert query_results.keys == ['a', 'b']
+        assert query_results.rows == [(1, 2)]
 
 
 @pytest.fixture
@@ -92,13 +109,25 @@ class TestDataBase:
         assert db._conn is None
 
     @pytest.mark.asyncio
-    async def test_execute(self, db):
+    async def test_execute_field_order(self, db):
         """The execute method executes a query."""
         sql = 'SELECT * FROM (SELECT 10, 20 UNION SELECT 30, 40)'
         query = Query('query', 20, ['db'], ['metric1', 'metric2'], sql)
         await db.connect()
         result = await db.execute(query)
         assert result == {'metric1': (10, 30), 'metric2': (20, 40)}
+
+    @pytest.mark.asyncio
+    async def test_execute_matching_column_names(self, db):
+        """The execute method executes a query."""
+        sql = (
+            'SELECT metric2, metric1 FROM ('
+            ' SELECT 10 AS metric2, 20 AS metric1 UNION'
+            ' SELECT 30 AS metric2, 40 AS metric1)')
+        query = Query('query', 20, ['db'], ['metric1', 'metric2'], sql)
+        await db.connect()
+        result = await db.execute(query)
+        assert result == {'metric1': (20, 40), 'metric2': (10, 30)}
 
     @pytest.mark.asyncio
     async def test_execute_query_error(self, db):

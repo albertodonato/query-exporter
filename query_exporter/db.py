@@ -12,7 +12,10 @@ from typing import (
 )
 
 import sqlalchemy
-from sqlalchemy.engine import Engine
+from sqlalchemy.engine import (
+    Engine,
+    ResultProxy,
+)
 from sqlalchemy.engine.url import _parse_rfc1738_args
 from sqlalchemy.exc import ArgumentError
 from sqlalchemy_aio import ASYNCIO_STRATEGY
@@ -36,8 +39,20 @@ class InvalidResultCount(Exception):
         super().__init__('Wrong result count from query')
 
 
+class QueryResults(NamedTuple):
+    """Results of a database query."""
+
+    keys: List[str]
+    rows: List[Tuple]
+
+    @classmethod
+    async def from_results(cls, results: ResultProxy):
+        """Return a QueryResults from results for a query."""
+        return cls(await results.keys(), await results.fetchall())
+
+
 # Result values for metrics from a query
-QueryResults = Dict[str, Tuple]
+MetricsResults = Dict[str, Tuple]
 
 
 class Query(NamedTuple):
@@ -49,14 +64,20 @@ class Query(NamedTuple):
     metrics: List[str]
     sql: str
 
-    def results(self, records: List[Tuple]) -> QueryResults:
+    def results(self, query_results: QueryResults) -> MetricsResults:
         """Return a dict with a tuple of values for each metric."""
-        if not records:
+        if not query_results.rows:
             return {}
 
-        if len(self.metrics) != len(records[0]):
+        if len(self.metrics) != len(query_results.keys):
             raise InvalidResultCount()
-        return dict(zip(self.metrics, zip(*records)))
+        if set(self.metrics) == set(query_results.keys):
+            # column names match metric names, use column order
+            metric_names = query_results.keys
+        else:
+            # use declared metrics name order
+            metric_names = self.metrics
+        return dict(zip(metric_names, zip(*query_results.rows)))
 
 
 class DataBase(namedtuple('DataBase', ['name', 'dsn'])):
@@ -84,7 +105,7 @@ class DataBase(namedtuple('DataBase', ['name', 'dsn'])):
         await self._conn.close()
         self._conn = None
 
-    async def execute(self, query: Query) -> QueryResults:
+    async def execute(self, query: Query) -> MetricsResults:
         """Execute a query."""
         if self._conn is None:
             await self.connect()
@@ -92,7 +113,7 @@ class DataBase(namedtuple('DataBase', ['name', 'dsn'])):
         self._conn: Engine
         try:
             result = await self._conn.execute(query.sql)
-            return query.results(await result.fetchall())
+            return query.results(await QueryResults.from_results(result))
         except Exception as error:
             raise DataBaseError(str(error).strip())
 
