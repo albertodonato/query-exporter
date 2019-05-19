@@ -35,7 +35,7 @@ class InvalidDatabaseDSN(Exception):
     """Database DSN is invalid."""
 
     def __init__(self, dsn: str):
-        super().__init__(f"Invalid database DSN: '{dsn}'")
+        super().__init__(f'Invalid database DSN: "{dsn}"')
 
 
 class InvalidResultCount(Exception):

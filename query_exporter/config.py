@@ -35,6 +35,9 @@ QUERIES_METRIC = MetricConfig(
     QUERIES_METRIC_NAME, 'Number of database queries', 'counter',
     {'labels': [DATABASE_LABEL, 'status']})
 
+# regexp for validating metrics and label names
+_NAME_RE = re.compile(r'[a-zA-Z_][a-zA-Z0-9_]*$')
+
 
 class ConfigError(Exception):
     """Configuration is invalid."""
@@ -125,12 +128,12 @@ def _validate_query_config(
     if unknown_databases:
         unknown_list = ', '.join(sorted(unknown_databases))
         raise ConfigError(
-            f"Unknown databases for query '{name}': {unknown_list}")
+            f'Unknown databases for query "{name}": {unknown_list}')
     unknown_metrics = set(config['metrics']) - metric_names
     if unknown_metrics:
         unknown_list = ', '.join(sorted(unknown_metrics))
         raise ConfigError(
-            f"Unknown metrics for query '{name}': {unknown_list}")
+            f'Unknown metrics for query "{name}": {unknown_list}')
 
 
 def _convert_interval(name: str, config: Dict[str, Any]):
@@ -142,7 +145,7 @@ def _convert_interval(name: str, config: Dict[str, Any]):
 
     multiplier = 1
 
-    config_error = ConfigError(f"Invalid interval for query '{name}'")
+    config_error = ConfigError(f'Invalid interval for query "{name}"')
 
     if isinstance(interval, str):
         # convert to seconds
@@ -169,10 +172,10 @@ def _convert_interval(name: str, config: Dict[str, Any]):
 def _resolve_dsn(dsn: str, env: Environ) -> str:
     if dsn.startswith('env:'):
         _, varname = dsn.split(':', 1)
-        if not re.match(r'[a-zA-Z_][a-zA-Z0-9_]*$', varname):
-            raise ValueError(f"Invalid variable name: '{varname}'")
+        if not _NAME_RE.match(varname):
+            raise ValueError(f'Invalid variable name: "{varname}"')
         if varname not in env:
-            raise ValueError(f"Undefined variable: '{varname}'")
+            raise ValueError(f'Undefined variable: "{varname}"')
         dsn = env[varname]
 
     validate_dsn(dsn)
@@ -181,4 +184,4 @@ def _resolve_dsn(dsn: str, env: Environ) -> str:
 
 def _raise_missing_key(key_error: KeyError, entry_type: str, entry_name: str):
     raise ConfigError(
-        f"Missing key {str(key_error)} for {entry_type} '{entry_name}'")
+        f'Missing key "{key_error.args[0]}" for {entry_type} "{entry_name}"')

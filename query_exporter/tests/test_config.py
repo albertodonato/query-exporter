@@ -153,13 +153,13 @@ class TestLoadConfig:
         config_file = write_config({'databases': {'db1': {}}})
         with pytest.raises(ConfigError) as err, config_file.open() as fd:
             load_config(fd)
-        assert str(err.value) == "Missing key 'dsn' for database 'db1'"
+        assert str(err.value) == 'Missing key "dsn" for database "db1"'
 
     def test_load_databases_invalid_dsn(self, write_config):
         config_file = write_config({'databases': {'db1': {'dsn': 'invalid'}}})
         with pytest.raises(ConfigError) as err, config_file.open() as fd:
             load_config(fd)
-        assert str(err.value) == "Invalid database DSN: 'invalid'"
+        assert str(err.value) == 'Invalid database DSN: "invalid"'
 
     def test_load_databases_dsn_invalid_env(self, write_config):
         config_file = write_config(
@@ -170,13 +170,13 @@ class TestLoadConfig:
             }})
         with pytest.raises(ConfigError) as err, config_file.open() as fd:
             load_config(fd)
-        assert str(err.value) == "Invalid variable name: 'NOT-VALID'"
+        assert str(err.value) == 'Invalid variable name: "NOT-VALID"'
 
     def test_load_databases_dsn_undefined_env(self, write_config):
         config_file = write_config({'databases': {'db1': {'dsn': 'env:FOO'}}})
         with pytest.raises(ConfigError) as err, config_file.open() as fd:
             load_config(fd, env={})
-        assert str(err.value) == "Undefined variable: 'FOO'"
+        assert str(err.value) == 'Undefined variable: "FOO"'
 
     def test_load_metrics_unsupported_type(self, write_config):
         """An error is raised if an unsupported metric type is passed."""
@@ -191,7 +191,7 @@ class TestLoadConfig:
         config_file = write_config(config)
         with pytest.raises(ConfigError) as err, config_file.open() as fd:
             load_config(fd)
-        assert str(err.value) == "Unsupported metric type: 'info'"
+        assert str(err.value) == 'Unsupported metric type: "info"'
 
     def test_load_queries_section(self, write_config):
         """The 'queries` section is loaded from the config file."""
@@ -242,9 +242,9 @@ class TestLoadConfig:
 
     @pytest.mark.parametrize(
         'config,error_message', [
-            (CONFIG_UNKNOWN_DBS, "Unknown databases for query 'q': db1, db2"),
-            (CONFIG_UNKNOWN_METRICS, "Unknown metrics for query 'q': m1, m2"),
-            (CONFIG_MISSING_KEY, "Missing key 'databases' for query 'q1'")
+            (CONFIG_UNKNOWN_DBS, 'Unknown databases for query "q": db1, db2'),
+            (CONFIG_UNKNOWN_METRICS, 'Unknown metrics for query "q": m1, m2'),
+            (CONFIG_MISSING_KEY, 'Missing key "databases" for query "q1"')
         ])
     def test_configuration_incorrect(
             self, config, error_message, write_config):
@@ -313,4 +313,4 @@ class TestLoadConfig:
         config_file = write_config(config_full)
         with pytest.raises(ConfigError) as err, config_file.open() as fd:
             load_config(fd)
-        assert str(err.value) == "Invalid interval for query 'q'"
+        assert str(err.value) == 'Invalid interval for query "q"'
