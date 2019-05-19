@@ -72,7 +72,11 @@ def _get_databases(configs: Dict[str, Dict[str, Any]],
     databases = []
     for name, config in configs.items():
         try:
-            databases.append(DataBase(name, _resolve_dsn(config['dsn'], env)))
+            db = DataBase(
+                name,
+                _resolve_dsn(config['dsn'], env),
+                keep_connected=bool(config.get('keep-connected', True)))
+            databases.append(db)
         except KeyError as e:
             _raise_missing_key(e, 'database', name)
         except Exception as e:

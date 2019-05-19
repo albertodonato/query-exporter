@@ -71,11 +71,16 @@ async def db():
 
 class TestDataBase:
 
-    def test_instantiate(self, db):
+    def test_instantiate(self):
         """A DataBase can be instantiated with the specified arguments, db."""
         db = DataBase('db', 'sqlite:///foo')
         assert db.name == 'db'
         assert db.dsn == 'sqlite:///foo'
+        assert db.keep_connected
+
+    def test_instantiate_no_keep_connected(self):
+        db = DataBase('db', 'sqlite:///foo', keep_connected=False)
+        assert not db.keep_connected
 
     @pytest.mark.asyncio
     async def test_connect(self, db):
@@ -107,6 +112,16 @@ class TestDataBase:
         await db.close()
         assert connection.closed
         assert db._conn is None
+
+    @pytest.mark.parametrize('connected', [True, False])
+    @pytest.mark.asyncio
+    async def test_execute_keep_connected(self, connected):
+        db = DataBase('db', 'sqlite://', keep_connected=connected)
+        query = Query('query', 20, ['db'], ['metric'], 'SELECT 1.0')
+        await db.connect()
+        await db.execute(query)
+        assert db.connected == connected
+        await db.close()
 
     @pytest.mark.asyncio
     async def test_execute_field_order(self, db):

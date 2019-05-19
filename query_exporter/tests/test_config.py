@@ -92,7 +92,8 @@ class TestLoadConfig:
                     'dsn': 'postgres:///foo'
                 },
                 'db2': {
-                    'dsn': 'postgres:///bar'
+                    'dsn': 'postgres:///bar',
+                    'keep-connected': False
                 }
             }
         }
@@ -102,8 +103,10 @@ class TestLoadConfig:
         database1, database2 = sorted(result.databases, key=attrgetter('name'))
         assert database1.name == 'db1'
         assert database1.dsn == 'postgres:///foo'
+        assert database1.keep_connected
         assert database2.name == 'db2'
         assert database2.dsn == 'postgres:///bar'
+        assert not database2.keep_connected
 
     def test_load_metrics_section(self, write_config):
         """The 'metrics' section is loaded from the config file."""

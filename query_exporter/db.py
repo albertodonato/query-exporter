@@ -1,7 +1,6 @@
 """Database wrapper."""
 
 import asyncio
-from collections import namedtuple
 from typing import (
     Dict,
     List,
@@ -87,10 +86,22 @@ class Query(NamedTuple):
         return dict(zip(metric_names, zip(*query_results.rows)))
 
 
-class DataBase(namedtuple('DataBase', ['name', 'dsn'])):
+class _DataBase(NamedTuple):
+
+    name: str
+    dsn: str
+    keep_connected: bool = True
+
+
+class DataBase(_DataBase):
     """A database to perform Queries."""
 
     _conn: Union[Engine, None] = None
+
+    @property
+    def connected(self) -> bool:
+        """Whether the database is connected."""
+        return self._conn is not None
 
     async def connect(self, loop: Optional[asyncio.AbstractEventLoop] = None):
         """Connect to the database."""
@@ -107,14 +118,14 @@ class DataBase(namedtuple('DataBase', ['name', 'dsn'])):
 
     async def close(self):
         """Close the database connection."""
-        if self._conn is None:
+        if not self.connected:
             return
         await self._conn.close()
         self._conn = None
 
     async def execute(self, query: Query) -> MetricsResults:
         """Execute a query."""
-        if self._conn is None:
+        if not self.connected:
             await self.connect()
 
         self._conn: Engine
@@ -124,6 +135,9 @@ class DataBase(namedtuple('DataBase', ['name', 'dsn'])):
         except Exception as error:
             fatal = isinstance(error, InvalidResultCount)
             raise DataBaseError(str(error).strip(), fatal=fatal)
+        finally:
+            if not self.keep_connected:
+                await self.close()
 
 
 def validate_dsn(dsn: str):
