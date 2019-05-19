@@ -20,6 +20,7 @@ The application is called with a configuration file that looks like this:
         dsn: sqlite://
       db2:
         dsn: sqlite://
+        keep-connected: false
 
     metrics:
       metric1:
@@ -67,20 +68,26 @@ The application is called with a configuration file that looks like this:
 
     dialect[+driver]://[username:password][@host:port]/database
 
-(see `SQLAlchemy documentation`_ for details on the available options).
+  (see `SQLAlchemy documentation`_ for details on the available options).
 
-It's also possible to get the connection string from an environment variable
-(e.g. ``$CONNECTION_STRING``) by setting ``dsn`` to::
+  It's also possible to get the connection string from an environment variable
+  (e.g. ``$CONNECTION_STRING``) by setting ``dsn`` to::
 
-  env:CONNECTION_STRING
+    env:CONNECTION_STRING
+
+- If ``keep-connected: false`` is specified for a database, the application
+  will disconnect from the database after running each query and reconnect the
+  next time. Usually the default (``true``) is desired, but setting it to
+  ``false`` might be useful if queries on a database are run with very long
+  interval, to avoid holding idle connections.
 
 - The ``metrics`` list in the query configuration must match values returned by
-the query defined in ``sql``.
+ the query defined in ``sql``.
 
 - The ``interval`` value is interpreted as seconds if no suffix is specified;
-valid suffix are ``s``, ``m``, ``h``, ``d``. Only integer values can be
-specified. If no value is specified (or specified as ``null**), the query is
-executed at every HTTP request.
+  valid suffix are ``s``, ``m``, ``h``, ``d``. Only integer values can be
+  specified. If no value is specified (or specified as ``null``), the query is
+  executed at every HTTP request.
 
 Queries will usually return a single row, but multiple rows are supported, and
 each row will cause an update of the related metrics.  This is relevant for any
