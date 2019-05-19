@@ -9,6 +9,7 @@ from ..config import (
     load_config,
     QUERIES_METRIC,
 )
+from ..db import QueryMetric
 
 
 @pytest.fixture
@@ -21,7 +22,8 @@ def config_full():
         },
         'metrics': {
             'm': {
-                'type': 'gauge'
+                'type': 'gauge',
+                'labels': ['l1', 'l2']
             }
         },
         'queries': {
@@ -79,7 +81,42 @@ CONFIG_UNKNOWN_METRICS = {
     }
 }
 
-CONFIG_MISSING_KEY = {'queries': {'q1': {'interval': 10}}}
+CONFIG_MISSING_DB_KEY = {'queries': {'q1': {'interval': 10}}}
+
+CONFIG_MISSING_METRIC_TYPE = {
+    'databases': {
+        'db': {
+            'dsn': 'postgres:///foo'
+        }
+    },
+    'metrics': {
+        'm': {}
+    }
+}
+
+CONFIG_INVALID_METRIC_NAME = {
+    'databases': {
+        'db': {
+            'dsn': 'postgres:///foo'
+        }
+    },
+    'metrics': {
+        'is wrong': {}
+    }
+}
+
+CONFIG_INVALID_LABEL_NAME = {
+    'databases': {
+        'db': {
+            'dsn': 'postgres:///foo'
+        }
+    },
+    'metrics': {
+        'm': {
+            'labels': ['wrong-name']
+        }
+    }
+}
 
 
 class TestLoadConfig:
@@ -107,39 +144,6 @@ class TestLoadConfig:
         assert database2.name == 'db2'
         assert database2.dsn == 'postgres:///bar'
         assert not database2.keep_connected
-
-    def test_load_metrics_section(self, write_config):
-        """The 'metrics' section is loaded from the config file."""
-        config = {
-            'metrics': {
-                'metric1': {
-                    'type': 'summary',
-                    'description': 'metric one'
-                },
-                'metric2': {
-                    'type': 'histogram',
-                    'description': 'metric two',
-                    'buckets': [10, 100, 1000]
-                }
-            }
-        }
-        config_file = write_config(config)
-        with config_file.open() as fd:
-            result = load_config(fd)
-        db_errors_metric, metric1, metric2, queries_metric = sorted(
-            result.metrics, key=attrgetter('name'))
-        assert metric1.type == 'summary'
-        assert metric1.description == 'metric one'
-        assert metric1.config == {'labels': ['database']}
-        assert metric2.type == 'histogram'
-        assert metric2.description == 'metric two'
-        assert metric2.config == {
-            'labels': ['database'],
-            'buckets': [10, 100, 1000]
-        }
-        # global metrics
-        assert db_errors_metric == DB_ERRORS_METRIC
-        assert queries_metric == QUERIES_METRIC
 
     def test_load_databases_dsn_from_env(self, write_config):
         config_file = write_config({'databases': {'db1': {'dsn': 'env:FOO'}}})
@@ -178,6 +182,50 @@ class TestLoadConfig:
             load_config(fd, env={})
         assert str(err.value) == 'Undefined variable: "FOO"'
 
+    def test_load_metrics_section(self, write_config):
+        """The 'metrics' section is loaded from the config file."""
+        config = {
+            'metrics': {
+                'metric1': {
+                    'type': 'summary',
+                    'description': 'metric one',
+                    'labels': ['label1', 'label2']
+                },
+                'metric2': {
+                    'type': 'histogram',
+                    'description': 'metric two',
+                    'buckets': [10, 100, 1000]
+                }
+            }
+        }
+        config_file = write_config(config)
+        with config_file.open() as fd:
+            result = load_config(fd)
+        db_errors_metric, metric1, metric2, queries_metric = sorted(
+            result.metrics, key=attrgetter('name'))
+        assert metric1.type == 'summary'
+        assert metric1.description == 'metric one'
+        assert metric1.config == {'labels': ['database', 'label1', 'label2']}
+        assert metric2.type == 'histogram'
+        assert metric2.description == 'metric two'
+        assert metric2.config == {
+            'labels': ['database'],
+            'buckets': [10, 100, 1000]
+        }
+        # global metrics
+        assert db_errors_metric == DB_ERRORS_METRIC
+        assert queries_metric == QUERIES_METRIC
+
+    def test_load_metrics_reserved_label(self, write_config):
+        """An error is raised if reserved labels are used."""
+        config = {'metrics': {'m': {'type': 'gauge', 'labels': ['database']}}}
+        config_file = write_config(config)
+        with pytest.raises(ConfigError) as err, config_file.open() as fd:
+            load_config(fd)
+        assert (
+            str(err.value) ==
+            'Reserved labels declared for metric "m": database')
+
     def test_load_metrics_unsupported_type(self, write_config):
         """An error is raised if an unsupported metric type is passed."""
         config = {
@@ -206,7 +254,8 @@ class TestLoadConfig:
             },
             'metrics': {
                 'm1': {
-                    'type': 'summary'
+                    'type': 'summary',
+                    'labels': ['l1', 'l2']
                 },
                 'm2': {
                     'type': 'histogram'
@@ -233,18 +282,23 @@ class TestLoadConfig:
         query1, query2 = sorted(result.queries, key=attrgetter('name'))
         assert query1.name == 'q1'
         assert query1.databases == ['db1']
-        assert query1.metrics == ['m1']
+        assert query1.metrics == [QueryMetric('m1', ['l1', 'l2'])]
         assert query1.sql == 'SELECT 1'
         assert query2.name == 'q2'
         assert query2.databases == ['db2']
-        assert query2.metrics == ['m2']
+        assert query2.metrics == [QueryMetric('m2', [])]
         assert query2.sql == 'SELECT 2'
 
     @pytest.mark.parametrize(
         'config,error_message', [
             (CONFIG_UNKNOWN_DBS, 'Unknown databases for query "q": db1, db2'),
             (CONFIG_UNKNOWN_METRICS, 'Unknown metrics for query "q": m1, m2'),
-            (CONFIG_MISSING_KEY, 'Missing key "databases" for query "q1"')
+            (CONFIG_MISSING_DB_KEY, 'Missing key "databases" for query "q1"'),
+            (CONFIG_MISSING_METRIC_TYPE, 'Missing key "type" for metric "m"'),
+            (CONFIG_INVALID_METRIC_NAME, 'Invalid metric name: is wrong'),
+            (
+                CONFIG_INVALID_LABEL_NAME,
+                'Invalid label name for metric "m": wrong-name')
         ])
     def test_configuration_incorrect(
             self, config, error_message, write_config):

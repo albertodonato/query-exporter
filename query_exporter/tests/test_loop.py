@@ -156,8 +156,8 @@ class TestQueryLoop:
         await query_loop.start()
         await query_tracker.wait_failures()
         assert (
-            'query "q" on database "db" failed: Wrong result count from query'
-            in caplog.messages)
+            'query "q" on database "db" failed: Wrong result count from query:'
+            ' expected 1, got 2' in caplog.messages)
         assert 'removing doomed query "q"' in caplog.messages
 
     async def test_run_query_increase_db_error_count(

@@ -1,8 +1,11 @@
 """Database wrapper."""
 
 import asyncio
+from itertools import chain
 from typing import (
+    Any,
     Dict,
+    FrozenSet,
     List,
     NamedTuple,
     Optional,
@@ -18,6 +21,12 @@ from sqlalchemy.engine import (
 from sqlalchemy.engine.url import _parse_rfc1738_args
 from sqlalchemy.exc import ArgumentError
 from sqlalchemy_aio import ASYNCIO_STRATEGY
+
+# the label used to filter metrics by database
+DATABASE_LABEL = 'database'
+
+# labels that are automatically added to metrics
+AUTOMATIC_LABELS = frozenset([DATABASE_LABEL])
 
 
 class DataBaseError(Exception):
@@ -41,8 +50,23 @@ class InvalidDatabaseDSN(Exception):
 class InvalidResultCount(Exception):
     """Number of results from a query don't match metrics count."""
 
+    def __init__(self, expected: int, got: int):
+        super().__init__(
+            f'Wrong result count from query: expected {expected}, got {got}')
+
+
+class InvalidResultColumnNames(Exception):
+    """Invalid column names in query results."""
+
     def __init__(self):
-        super().__init__('Wrong result count from query')
+        super().__init__('Wrong column names from query')
+
+
+class QueryMetric(NamedTuple):
+    """Metric details for a Query."""
+
+    name: str
+    labels: List[str]
 
 
 class QueryResults(NamedTuple):
@@ -57,8 +81,12 @@ class QueryResults(NamedTuple):
         return cls(await results.keys(), await results.fetchall())
 
 
-# Result values for metrics from a query
-MetricsResults = Dict[str, Tuple]
+class MetricResult(NamedTuple):
+    """A result for a metric from a query."""
+
+    metric: str
+    value: Any
+    labels: Dict[str, str]
 
 
 class Query(NamedTuple):
@@ -67,23 +95,50 @@ class Query(NamedTuple):
     name: str
     interval: int
     databases: List[str]
-    metrics: List[str]
+    metrics: List[QueryMetric]
     sql: str
 
-    def results(self, query_results: QueryResults) -> MetricsResults:
-        """Return a dict with a tuple of values for each metric."""
-        if not query_results.rows:
-            return {}
+    def labels(self) -> FrozenSet[str]:
+        return frozenset(chain(*(metric.labels for metric in self.metrics)))
 
-        if len(self.metrics) != len(query_results.keys):
-            raise InvalidResultCount()
-        if set(self.metrics) == set(query_results.keys):
+    def results(self, query_results: QueryResults) -> List[MetricResult]:
+        """Return MetricResults from a query."""
+        if not query_results.rows:
+            return []
+
+        result_keys = set(query_results.keys)
+        labels = self.labels()
+        metrics = [metric.name for metric in self.metrics]
+        expected_keys = set(metrics) | labels
+        if len(expected_keys) != len(result_keys):
+            raise InvalidResultCount(len(expected_keys), len(result_keys))
+        if labels:
+            if result_keys != expected_keys:
+                raise InvalidResultColumnNames()
+            results = []
+            for row in query_results.rows:
+                values = dict(zip(query_results.keys, row))
+                for metric in self.metrics:
+                    metric_result = MetricResult(
+                        metric.name, values[metric.name],
+                        {label: values[label]
+                         for label in metric.labels})
+                    results.append(metric_result)
+            return results
+        elif set(metrics) == set(query_results.keys):
             # column names match metric names, use column order
-            metric_names = query_results.keys
+            return self._metrics_results(query_results.keys, query_results)
         else:
             # use declared metrics name order
-            metric_names = self.metrics
-        return dict(zip(metric_names, zip(*query_results.rows)))
+            return self._metrics_results(metrics, query_results)
+
+    def _metrics_results(
+            self, metric_names: List[str],
+            query_results: QueryResults) -> List[MetricResult]:
+        return [
+            MetricResult(name, value, {}) for row in query_results.rows
+            for name, value in zip(metric_names, row)
+        ]
 
 
 class _DataBase(NamedTuple):
@@ -123,7 +178,7 @@ class DataBase(_DataBase):
         await self._conn.close()
         self._conn = None
 
-    async def execute(self, query: Query) -> MetricsResults:
+    async def execute(self, query: Query) -> List[MetricResult]:
         """Execute a query."""
         if not self.connected:
             await self.connect()

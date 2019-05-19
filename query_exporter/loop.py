@@ -16,11 +16,11 @@ from toolrack.aio import PeriodicCall
 
 from .config import (
     Config,
-    DATABASE_LABEL,
     DB_ERRORS_METRIC_NAME,
     QUERIES_METRIC_NAME,
 )
 from .db import (
+    DATABASE_LABEL,
     DataBaseError,
     Query,
 )
@@ -119,9 +119,9 @@ class QueryLoop:
                 self._doomed_queries.add(query.name)
             return
 
-        for name, values in results.items():
-            for value in values:
-                self._update_metric(name, value, dbname)
+        for result in results:
+            self._update_metric(
+                result.metric, result.value, dbname, labels=result.labels)
         self._increment_queries_count(dbname, 'success')
 
     async def _remove_if_dooomed(self, query: Query) -> bool:
@@ -157,23 +157,23 @@ class QueryLoop:
             name: str,
             value: Any,
             dbname: str,
-            extra_labels: Optional[Mapping[str, str]] = None):
+            labels: Optional[Mapping[str, str]] = None):
         """Update value for a metric."""
         if value is None:
             # don't fail is queries that count return NULL
             value = 0.0
         method = self._METRIC_METHODS[self._metric_configs[name].type]
         self._logger.debug(f'updating metric "{name}" {method}({value})')
-        labels = {DATABASE_LABEL: dbname}
-        if extra_labels:
-            labels.update(extra_labels)
-        metric = self._registry.get_metric(name, labels)
+        all_labels = {DATABASE_LABEL: dbname}
+        if labels:
+            all_labels.update(labels)
+        metric = self._registry.get_metric(name, all_labels)
         getattr(metric, method)(value)
 
     def _increment_queries_count(self, dbname: str, status: str):
         """Increment count of queries in a status for a database."""
         self._update_metric(
-            QUERIES_METRIC_NAME, 1, dbname, extra_labels={'status': status})
+            QUERIES_METRIC_NAME, 1, dbname, labels={'status': status})
 
     def _increment_db_error_count(self, dbname: str):
         """Increment number of errors for a database."""

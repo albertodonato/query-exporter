@@ -16,13 +16,13 @@ from prometheus_aioexporter import MetricConfig
 import yaml
 
 from .db import (
+    AUTOMATIC_LABELS,
     DataBase,
+    DATABASE_LABEL,
     Query,
+    QueryMetric,
     validate_dsn,
 )
-
-# the label used to filter metrics by database
-DATABASE_LABEL = 'database'
 
 # metric for counting database errors
 DB_ERRORS_METRIC_NAME = 'database_errors'
@@ -64,8 +64,7 @@ def load_config(config_fd, env: Environ = os.environ) -> Config:
     databases = _get_databases(config['databases'], env)
     metrics = _get_metrics(config['metrics'])
     database_names = frozenset(database.name for database in databases)
-    metric_names = frozenset(metric.name for metric in metrics)
-    queries = _get_queries(config['queries'], database_names, metric_names)
+    queries = _get_queries(config['queries'], database_names, metrics)
     return Config(databases, metrics, queries)
 
 
@@ -92,32 +91,70 @@ def _get_metrics(metrics: Dict[str, Dict[str, Any]]) -> List[MetricConfig]:
     # add global metrics
     configs = [DB_ERRORS_METRIC, QUERIES_METRIC]
     for name, config in metrics.items():
-        metric_type = config.pop('type', '')
-        if metric_type not in SUPPORTED_METRICS:
-            raise ConfigError(f"Unsupported metric type: '{metric_type}'")
-        description = config.pop('description', '')
-        # add a label to allow filtering by database
-        config['labels'] = [DATABASE_LABEL]
-        configs.append(MetricConfig(name, description, metric_type, config))
+        try:
+            _validate_metric_config(name, config)
+            metric_type = config.pop('type')
+            if metric_type not in SUPPORTED_METRICS:
+                raise ConfigError(f'Unsupported metric type: "{metric_type}"')
+            config.setdefault('labels', []).extend(AUTOMATIC_LABELS)
+            config['labels'].sort()
+            description = config.pop('description', '')
+            configs.append(
+                MetricConfig(name, description, metric_type, config))
+        except KeyError as e:
+            _raise_missing_key(e, 'metric', name)
     return configs
+
+
+def _validate_metric_config(name: str, config: Dict[str, Any]):
+    """Validate a metric configuration stanza."""
+    if not _NAME_RE.match(name):
+        raise ConfigError(f'Invalid metric name: {name}')
+    labels = set(config.get('labels', ()))
+    overlap_labels = labels & AUTOMATIC_LABELS
+    if overlap_labels:
+        overlap_list = ', '.join(sorted(overlap_labels))
+        raise ConfigError(
+            f'Reserved labels declared for metric "{name}": {overlap_list}')
+    for label in labels:
+        if not _NAME_RE.match(label):
+            raise ConfigError(
+                f'Invalid label name for metric "{name}": {label}')
 
 
 def _get_queries(
         configs: Dict[str, Dict[str, Any]], database_names: FrozenSet[str],
-        metric_names: FrozenSet[str]) -> List[Query]:
+        metrics: List[MetricConfig]) -> List[Query]:
     """Return a list of Queries from config."""
+    all_metrics = {metric.name: metric for metric in metrics}
+    metric_names = frozenset(all_metrics)
     queries = []
     for name, config in configs.items():
         try:
             _validate_query_config(name, config, database_names, metric_names)
-            _convert_interval(name, config)
+            _convert_query_interval(name, config)
+            query_metrics = _get_query_metrics(config, all_metrics)
             queries.append(
                 Query(
                     name, config['interval'], config['databases'],
-                    config['metrics'], config['sql'].strip()))
+                    query_metrics, config['sql'].strip()))
         except KeyError as e:
             _raise_missing_key(e, 'query', name)
     return queries
+
+
+def _get_query_metrics(
+        config: Dict[str, Any],
+        metrics: Dict[str, MetricConfig]) -> List[QueryMetric]:
+    """Return QueryMetrics for a query."""
+
+    def _metric_labels(labels: List[str]) -> List[str]:
+        return sorted(set(labels) - AUTOMATIC_LABELS)
+
+    return [
+        QueryMetric(name, _metric_labels(metrics[name].config['labels']))
+        for name in config['metrics']
+    ]
 
 
 def _validate_query_config(
@@ -136,7 +173,7 @@ def _validate_query_config(
             f'Unknown metrics for query "{name}": {unknown_list}')
 
 
-def _convert_interval(name: str, config: Dict[str, Any]):
+def _convert_query_interval(name: str, config: Dict[str, Any]):
     """Convert query intervals to seconds."""
     interval = config.setdefault('interval', None)
     if interval is None:
