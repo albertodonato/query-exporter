@@ -65,7 +65,7 @@ The application is called with a configuration file that looks like this:
 
 - The ``dsn`` connection string has the following format::
 
-  dialect[+driver]://[username:password][@host:port]/database
+    dialect[+driver]://[username:password][@host:port]/database
 
 (see `SQLAlchemy documentation`_ for details on the available options).
 
@@ -79,13 +79,29 @@ the query defined in ``sql``.
 
 - The ``interval`` value is interpreted as seconds if no suffix is specified;
 valid suffix are ``s``, ``m``, ``h``, ``d``. Only integer values can be
-specified. If no value is specified (or specified as ``null``), the query is
+specified. If no value is specified (or specified as ``null**), the query is
 executed at every HTTP request.
 
 Queries will usually return a single row, but multiple rows are supported, and
 each row will cause an update of the related metrics.  This is relevant for any
 kind of metric except gauges, which will be effectively updated to the value
 from the last row.
+
+**Note**:
+by default, metrics are matched to values from returned rows in the specified
+order. However, if all column names from the query match metric names, order
+will be disregarded.  For example:
+
+.. code:: yaml
+
+    queries:
+      query1:
+        databases: [db1]
+        metrics: [metric1, metric2]
+        sql: SELECT 10.0 AS metric2, 20.0 AS metric1
+
+will update ``metric1`` to 20.0 and ``metric2`` to 10.0.
+
 
 For the configuration above, exported metrics look like this::
 
