@@ -154,6 +154,7 @@ class DataBase(_DataBase):
 
     _conn: Union[Engine, None] = None
     _logger: logging.Logger = logging.getLogger()
+    _pending_queries: int = 0
 
     @property
     def connected(self) -> bool:
@@ -184,6 +185,7 @@ class DataBase(_DataBase):
             return
         await self._conn.close()
         self._conn = None
+        self._pending_queries = 0
         self._logger.debug(f'disconnected from database "{self.name}"')
 
     async def execute(self, query: Query) -> List[MetricResult]:
@@ -191,6 +193,7 @@ class DataBase(_DataBase):
         if not self.connected:
             await self.connect()
 
+        self._pending_queries += 1
         self._conn: Engine
         try:
             result = await self._conn.execute(query.sql)
@@ -199,7 +202,9 @@ class DataBase(_DataBase):
             fatal = isinstance(error, InvalidResultCount)
             raise DataBaseError(str(error).strip(), fatal=fatal)
         finally:
-            if not self.keep_connected:
+            assert self._pending_queries >= 0, 'pending queries is negative'
+            self._pending_queries -= 1
+            if not self.keep_connected and not self._pending_queries:
                 await self.close()
 
 

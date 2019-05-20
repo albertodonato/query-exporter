@@ -1,3 +1,4 @@
+import asyncio
 import logging
 
 import pytest
@@ -216,6 +217,19 @@ class TestDataBase:
         await db.execute(query)
         assert db.connected == connected
         await db.close()
+
+    @pytest.mark.asyncio
+    async def test_execute_no_keep_disconnect_after_pending_queries(
+            self, event_loop):
+        db = DataBase('db', 'sqlite://', keep_connected=False)
+        query1 = Query(
+            'query1', 5, ['db'], [QueryMetric('metric1', [])], 'SELECT 1.0')
+        query2 = Query(
+            'query', 5, ['db'], [QueryMetric('metric2', [])], 'SELECT 2.0')
+        await db.connect(loop=event_loop)
+        await asyncio.gather(
+            db.execute(query1), db.execute(query2), loop=event_loop)
+        assert not db.connected
 
     @pytest.mark.asyncio
     async def test_execute_not_connected(self, db):
