@@ -129,8 +129,8 @@ class TestQueryLoop:
         await query_tracker.wait_queries()
         assert caplog.messages == [
             'connected to database "db"', 'running query "q" on database "db"',
-            'updating metric "m" set(100.0) {database="db"}',
-            'updating metric "queries" inc(1) {database="db",status="success"}'
+            'updating metric "m" set 100.0 {database="db"}',
+            'updating metric "queries" inc 1 {database="db",status="success"}'
         ]
 
     async def test_run_query_log_labels(
@@ -144,8 +144,8 @@ class TestQueryLoop:
         await query_tracker.wait_queries()
         assert caplog.messages == [
             'connected to database "db"', 'running query "q" on database "db"',
-            'updating metric "m" set(100.0) {database="db",l="foo"}',
-            'updating metric "queries" inc(1) {database="db",status="success"}'
+            'updating metric "m" set 100.0 {database="db",l="foo"}',
+            'updating metric "queries" inc 1 {database="db",status="success"}'
         ]
 
     async def test_run_query_log_error(

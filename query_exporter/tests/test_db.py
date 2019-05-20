@@ -1,3 +1,5 @@
+import logging
+
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy_aio import ASYNCIO_STRATEGY
@@ -168,10 +170,12 @@ class TestDataBase:
         assert not db.keep_connected
 
     @pytest.mark.asyncio
-    async def test_connect(self, db):
+    async def test_connect(self, caplog, db):
         """The connect connects to the database."""
+        caplog.set_level(logging.DEBUG)
         await db.connect()
         assert isinstance(db._conn, AsyncConnection)
+        assert caplog.messages == ['connected to database "db"']
 
     @pytest.mark.asyncio
     async def test_connect_missing_engine_module(self, event_loop):
@@ -190,13 +194,17 @@ class TestDataBase:
         assert 'unable to open database file' in str(error.value)
 
     @pytest.mark.asyncio
-    async def test_close(self, db):
+    async def test_close(self, caplog, db):
         """The close method closes database connection."""
+        caplog.set_level(logging.DEBUG)
         await db.connect()
         connection = db._conn
         await db.close()
         assert connection.closed
         assert db._conn is None
+        assert caplog.messages == [
+            'connected to database "db"', 'disconnected from database "db"'
+        ]
 
     @pytest.mark.parametrize('connected', [True, False])
     @pytest.mark.asyncio

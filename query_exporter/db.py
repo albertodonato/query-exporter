@@ -2,6 +2,7 @@
 
 import asyncio
 from itertools import chain
+import logging
 from typing import (
     Any,
     Dict,
@@ -152,11 +153,16 @@ class DataBase(_DataBase):
     """A database to perform Queries."""
 
     _conn: Union[Engine, None] = None
+    _logger: logging.Logger = logging.getLogger()
 
     @property
     def connected(self) -> bool:
         """Whether the database is connected."""
         return self._conn is not None
+
+    def set_logger(self, logger: logging.Logger):
+        """Set a logger for the DataBase"""
+        self._logger = logger
 
     async def connect(self, loop: Optional[asyncio.AbstractEventLoop] = None):
         """Connect to the database."""
@@ -170,6 +176,7 @@ class DataBase(_DataBase):
             self._conn = await engine.connect()
         except Exception as error:
             raise DataBaseError(str(error).strip())
+        self._logger.debug(f'connected to database "{self.name}"')
 
     async def close(self):
         """Close the database connection."""
@@ -177,6 +184,7 @@ class DataBase(_DataBase):
             return
         await self._conn.close()
         self._conn = None
+        self._logger.debug(f'disconnected from database "{self.name}"')
 
     async def execute(self, query: Query) -> List[MetricResult]:
         """Execute a query."""

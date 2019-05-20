@@ -11,7 +11,10 @@ from typing import (
     Set,
 )
 
-from prometheus_aioexporter import MetricsRegistry
+from prometheus_aioexporter import (
+    MetricConfig,
+    MetricsRegistry,
+)
 from toolrack.aio import PeriodicCall
 
 from .config import (
@@ -20,6 +23,7 @@ from .config import (
     QUERIES_METRIC_NAME,
 )
 from .db import (
+    DataBase,
     DATABASE_LABEL,
     DataBaseError,
     Query,
@@ -42,6 +46,8 @@ class QueryLoop:
             loop: asyncio.AbstractEventLoop):
         self.loop = loop
         self._logger = logger
+        self._metric_configs: Dict[str, MetricConfig] = {}
+        self._databases: Dict[str, DataBase] = {}
         self._registry = registry
         self._periodic_queries: List[Query] = []
         self._aperiodic_queries: List[Query] = []
@@ -58,8 +64,6 @@ class QueryLoop:
             except DataBaseError as error:
                 self._log_db_error(db.name, error)
                 self._increment_db_error_count(db.name)
-            else:
-                self._logger.debug(f'connected to database "{db.name}"')
 
         for query in self._periodic_queries:
             call = PeriodicCall(self.loop, self._run_query, query)
@@ -86,10 +90,9 @@ class QueryLoop:
             metric_config.name: metric_config
             for metric_config in config.metrics
         }
-        self._databases = {
-            database.name: database
-            for database in config.databases
-        }
+        for database in config.databases:
+            database.set_logger(self._logger)
+            self._databases[database.name] = database
 
         for query in config.queries:
             if query.interval is None:
@@ -170,7 +173,7 @@ class QueryLoop:
             f'{label}="{value}"'
             for label, value in sorted(all_labels.items()))
         self._logger.debug(
-            f'updating metric "{name}" {method}({value}) {{{labels_string}}}')
+            f'updating metric "{name}" {method} {value} {{{labels_string}}}')
         metric = self._registry.get_metric(name, all_labels)
         getattr(metric, method)(value)
 
