@@ -11,7 +11,18 @@ PostgreSQL, MySQL, Oracle and Microsoft SQL Server.
 
 Each query can be run on multiple databases, and update multiple metrics.
 
-The application is called with a configuration file that looks like this:
+The application is run simply as::
+
+  query-exporter config.yaml
+
+where the passed configuration file contains the definitions of the databases
+to connect and queries to perform to update metrics.
+
+
+Configuration file format
+-------------------------
+
+A sample configuration file for the application looks like this:
 
 .. code:: yaml
 
@@ -29,6 +40,7 @@ The application is called with a configuration file that looks like this:
       metric2:
         type: summary
         description: A sample summary
+        labels: [l1, l2]
       metric3:
         type: histogram
         description: A sample histogram
@@ -49,95 +61,162 @@ The application is called with a configuration file that looks like this:
         databases: [db1, db2]
         metrics: [metric2, metric3]
         sql: |
-          SELECT abs(random() / 1000000000000000),
-                 abs(random() / 10000000000000000)
+          SELECT abs(random() / 1000000000000000) AS metric2,
+                 abs(random() / 10000000000000000) AS metric3,
+                 "value1" AS l1,
+                 "value2" AS l2
       query3:
         interval: 10
         databases: [db2]
         metrics: [metric4]
         sql: |
           SELECT value FROM (
-            SELECT 'foo' AS value UNION
-            SELECT 'bar' UNION
-            SELECT 'baz')
+            SELECT "foo" AS value UNION
+            SELECT "bar" UNION
+            SELECT "baz")
           ORDER BY random()
           LIMIT 1
 
+``databases`` section
+~~~~~~~~~~~~~~~~~~~~~
 
-- The ``dsn`` connection string has the following format::
+This section contains defintions for databases to connect to. Key names are
+arbitrary and only used to reference databases in the ``queries`` section.
+
+Each database defintions can have the following keys:
+
+``dsn``:
+  the connection string for the database, in the following format::
 
     dialect[+driver]://[username:password][@host:port]/database
 
-  (see `SQLAlchemy documentation`_ for details on the available options).
+  See `SQLAlchemy documentation`_ for details on available engines.
 
   It's also possible to get the connection string from an environment variable
   (e.g. ``$CONNECTION_STRING``) by setting ``dsn`` to::
 
     env:CONNECTION_STRING
 
-- If ``keep-connected: false`` is specified for a database, the application
-  will disconnect from the database after running each query and reconnect the
-  next time. Usually the default (``true``) is desired, but setting it to
-  ``false`` might be useful if queries on a database are run with very long
-  interval, to avoid holding idle connections.
+``keep-connected``:
+  whether to keep the connection open for the database between queries, or
+  disconnect after each one. If not specified, defaults to ``true``.  Setting
+  this option to ``false`` might be useful if queries on a database are run
+  with very long interval, to avoid holding idle connections.
 
-- The ``metrics`` list in the query configuration must match values returned by
- the query defined in ``sql``.
+``metrics`` section
+~~~~~~~~~~~~~~~~~~~
 
-- The ``interval`` value is interpreted as seconds if no suffix is specified;
-  valid suffix are ``s``, ``m``, ``h``, ``d``. Only integer values can be
-  specified. If no value is specified (or specified as ``null``), the query is
-  executed at every HTTP request.
+This section contains Prometheus_ metrics definitions. Keys are used as metric
+names, and must therefore be valid metric identifiers.
 
-Queries will usually return a single row, but multiple rows are supported, and
-each row will cause an update of the related metrics.  This is relevant for any
-kind of metric except gauges, which will be effectively updated to the value
-from the last row.
+Each metric definition can have the following keys:
 
-**Note**:
-by default, metrics are matched to values from returned rows in the specified
-order. However, if all column names from the query match metric names, order
-will be disregarded.  For example:
+``type``:
+  the type of the metric, must be specified. The following metric types are
+  supported::
 
-.. code:: yaml
+    counter, enum, gauge, histogram, summary
 
-    queries:
-      query1:
-        databases: [db1]
+``description``:
+  an optional description of the metric.
+
+``labels``:
+  an optional list of label names to apply to the metric.
+
+  If specified, queries updating the metric must return rows that include
+  values for each label in addition to the metric value.  Column names must
+  match metric and labels names.
+
+``buckets``:
+  for ``histogram`` metrics, a list of buckets for the metrics.
+
+  If not specified, default buckets are applied.
+
+``states``:
+  for ``enum`` metrics, a list of string values for possible states.
+
+  Queries for updating the enum must return valid states.
+
+``queries`` section
+~~~~~~~~~~~~~~~~~~~
+
+This section contains definitions for queries to perform. Key names are
+arbitrary and only used to identify queries in logs.
+
+Each query definition can have the following keys:la-
+
+``interval``:
+  the time interval at which queries are run.
+
+  The value is interpreted as seconds if no suffix is specified; valid suffixes
+  are ``s``, ``m``, ``h``, ``d``. Only integer values are accepted.
+
+  If no value is specified (or specified as ``null``), the query is only
+  executed upon HTTP requests.
+
+``databases``:
+  the list of databases to run the query on.
+
+  Names must match those defined in the ``databases`` section.
+
+  Metrics are automatically tagged with the ``database`` label so that
+  indipendent series are generated for each database that a query is run on.
+
+``metrics``:
+  the list of metrics that the query updates.
+
+  Names must match those defined in the ``metrics`` section.
+
+``sql``:
+  the SQL text of the query.
+
+  The query must return a number of rows that match the number of ``metrics``
+  specified for the query plus labels for those metrics (if any).
+
+  The names of returned columns should match those of declared metrics and
+  their labels.  As an exception, if no metric for the query has labels and
+  column names don't match those of metrics, the order of metrics declaration
+  is used. For example:
+
+  .. code:: yaml
+
+      query:
+        databases: [db]
         metrics: [metric1, metric2]
-        sql: SELECT 10.0 AS metric2, 20.0 AS metric1
+        sql: SELECT 10.0, 20.0
 
-will update ``metric1`` to 20.0 and ``metric2`` to 10.0.
+  will update ``metric1`` to ``10.0`` and ``metric2`` to ``20.0``.
 
 
-For the configuration above, exported metrics look like this::
+Metrics endpoint
+----------------
+
+The exporter uses port ``9560`` by default for exposting metrics, under the
+standard ``/metrics`` endpoint.
+
+For the configuration above, the endpoint would return something like this::
 
   # HELP database_errors_total Number of database errors
   # TYPE database_errors_total counter
-  database_errors_total{database="db1"} 1.0
-  # TYPE database_errors_created gauge
-  database_errors_created{database="db1"} 1.5537735966162562e+09
   # HELP queries_total Number of database queries
   # TYPE queries_total counter
-  queries_total{database="db1",status="success"} 5.0
-  queries_total{database="db1",status="error"} 1.0
   queries_total{database="db2",status="success"} 2.0
+  queries_total{database="db1",status="success"} 3.0
   # TYPE queries_created gauge
-  queries_created{database="db1",status="success"} 1.5537735966273613e+09
-  queries_created{database="db1",status="error"} 1.5537735966273613e+09
-  queries_created{database="db2",status="success"} 1.553773596627851e+09
+  queries_created{database="db2",status="success"} 1.558334663380845e+09
+  queries_created{database="db1",status="success"} 1.558334663381175e+09
   # HELP metric1 A sample gauge
   # TYPE metric1 gauge
-  metric1{database="db1"} 1549.0
+  metric1{database="db1"} 2580.0
   # HELP metric2 A sample summary
   # TYPE metric2 summary
-  metric2_count{database="db2"} 1.0
-  metric2_sum{database="db2"} 5229.0
-  metric2_count{database="db1"} 1.0
-  metric2_sum{database="db1"} 4513.0
+  metric2_count{database="db2",l1="value1",l2="value2"} 1.0
+  metric2_sum{database="db2",l1="value1",l2="value2"} 6476.0
+  metric2_count{database="db1",l1="value1",l2="value2"} 1.0
+  metric2_sum{database="db1",l1="value1",l2="value2"} 2340.0
   # TYPE metric2_created gauge
-  metric2_created{database="db2"} 1.5456472955657206e+09
-  metric2_created{database="db1"} 1.5456472955663064e+09
+  metric2_created{database="db2",l1="value1",l2="value2"} 1.5583346633805697e+09
+  metric2_created{database="db1",l1="value1",l2="value2"} 1.5583346633816812e+09
   # HELP metric3 A sample histogram
   # TYPE metric3 histogram
   metric3_bucket{database="db2",le="10.0"} 0.0
@@ -147,7 +226,7 @@ For the configuration above, exported metrics look like this::
   metric3_bucket{database="db2",le="1000.0"} 1.0
   metric3_bucket{database="db2",le="+Inf"} 1.0
   metric3_count{database="db2"} 1.0
-  metric3_sum{database="db2"} 714.0
+  metric3_sum{database="db2"} 135.0
   metric3_bucket{database="db1",le="10.0"} 0.0
   metric3_bucket{database="db1",le="20.0"} 0.0
   metric3_bucket{database="db1",le="50.0"} 0.0
@@ -155,33 +234,27 @@ For the configuration above, exported metrics look like this::
   metric3_bucket{database="db1",le="1000.0"} 1.0
   metric3_bucket{database="db1",le="+Inf"} 1.0
   metric3_count{database="db1"} 1.0
-  metric3_sum{database="db1"} 602.0
+  metric3_sum{database="db1"} 164.0
   # TYPE metric3_created gauge
-  metric3_created{database="db2"} 1.545647295565831e+09
-  metric3_created{database="db1"} 1.5456472955663848e+09
+  metric3_created{database="db2"} 1.5583346633807e+09
+  metric3_created{database="db1"} 1.558334663381795e+09
   # HELP metric4 A sample enum
   # TYPE metric4 gauge
   metric4{database="db2",metric4="foo"} 0.0
-  metric4{database="db2",metric4="bar"} 1.0
-  metric4{database="db2",metric4="baz"} 0.0
-
-Metrics are automatically tagged with the ``database`` label so that
-indipendent series are generated for each database.
-
-The exporter uses port ``9560`` for exposting metrics, under the standard
-``/metrics`` endpoint.
+  metric4{database="db2",metric4="bar"} 0.0
+  metric4{database="db2",metric4="baz"} 1.0
 
 
 Database engines
 ----------------
 
-SQLAlchemy doesn't depend on specific Python database modules at
+SQLAlchemy_ doesn't depend on specific Python database modules at
 installation. This means additional modules might need to be installed for
-engines in use, as follows::
+engines in use. These can be installed as follows::
 
   pip install SQLAlchemy[postgresql] SQLAlchemy[mysql] ...
 
-based on which databased is in use.
+based on which database engines are needed.
 
 See `supported databases`_ for details.
 
@@ -210,6 +283,7 @@ The snap has builtin support for the following databases::
 - MySQL
 - PostgreSQL
 - SQLite
+
 
 .. _Prometheus: https://prometheus.io/
 .. _SQLAlchemy: https://www.sqlalchemy.org/
