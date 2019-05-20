@@ -129,8 +129,23 @@ class TestQueryLoop:
         await query_tracker.wait_queries()
         assert caplog.messages == [
             'connected to database "db"', 'running query "q" on database "db"',
-            'updating metric "m" set(100.0)',
-            'updating metric "queries" inc(1)'
+            'updating metric "m" set(100.0) {database="db"}',
+            'updating metric "queries" inc(1) {database="db",status="success"}'
+        ]
+
+    async def test_run_query_log_labels(
+            self, caplog, query_tracker, config_data, make_query_loop):
+        """Debug messages include metric labels."""
+        config_data['metrics']['m']['labels'] = ['l']
+        config_data['queries']['q']['sql'] = 'SELECT 100.0 AS m, "foo" AS l'
+        query_loop = make_query_loop()
+        caplog.set_level(logging.DEBUG)
+        await query_loop.start()
+        await query_tracker.wait_queries()
+        assert caplog.messages == [
+            'connected to database "db"', 'running query "q" on database "db"',
+            'updating metric "m" set(100.0) {database="db",l="foo"}',
+            'updating metric "queries" inc(1) {database="db",status="success"}'
         ]
 
     async def test_run_query_log_error(

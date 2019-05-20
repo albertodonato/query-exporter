@@ -163,10 +163,14 @@ class QueryLoop:
             # don't fail is queries that count return NULL
             value = 0.0
         method = self._METRIC_METHODS[self._metric_configs[name].type]
-        self._logger.debug(f'updating metric "{name}" {method}({value})')
         all_labels = {DATABASE_LABEL: dbname}
         if labels:
             all_labels.update(labels)
+        labels_string = ','.join(
+            f'{label}="{value}"'
+            for label, value in sorted(all_labels.items()))
+        self._logger.debug(
+            f'updating metric "{name}" {method}({value}) {{{labels_string}}}')
         metric = self._registry.get_metric(name, all_labels)
         getattr(metric, method)(value)
 
