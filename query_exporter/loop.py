@@ -72,16 +72,16 @@ class QueryLoop:
     async def stop(self):
         """Stop periodic query execution."""
         coros = (call.stop() for call in self._periodic_calls.values())
-        await asyncio.gather(*coros, loop=self.loop)
+        await asyncio.gather(*coros, loop=self.loop, return_exceptions=True)
         self._periodic_calls = {}
         coros = (db.close() for db in self._databases.values())
-        await asyncio.gather(*coros, loop=self.loop)
+        await asyncio.gather(*coros, loop=self.loop, return_exceptions=True)
 
     async def run_aperiodic_queries(self):
         coros = (
             self._execute_query(query, dbname)
             for query in self._aperiodic_queries for dbname in query.databases)
-        await asyncio.gather(*coros, loop=self.loop)
+        await asyncio.gather(*coros, loop=self.loop, return_exceptions=True)
 
     def _setup(self, config: Config):
         """Initialize instance attributes."""

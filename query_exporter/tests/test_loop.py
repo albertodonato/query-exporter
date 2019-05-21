@@ -43,7 +43,7 @@ def registry():
 async def make_query_loop(tmpdir, event_loop, config_data, registry):
     query_loops = []
 
-    def make_query_loop():
+    def make_loop():
         config_file = (tmpdir / 'config.yaml')
         config_file.write_text(yaml.dump(config_data), 'utf-8')
         with config_file.open() as fh:
@@ -53,9 +53,11 @@ async def make_query_loop(tmpdir, event_loop, config_data, registry):
         query_loops.append(query_loop)
         return query_loop
 
-    yield make_query_loop
+    yield make_loop
     await asyncio.gather(
-        *(query_loop.stop() for query_loop in query_loops), loop=event_loop)
+        *(query_loop.stop() for query_loop in query_loops),
+        loop=event_loop,
+        return_exceptions=True)
 
 
 @pytest.fixture
@@ -208,6 +210,7 @@ class TestQueryLoop:
         await query_loop.start()
         periodic_call = query_loop._periodic_calls['q']
         await asyncio.sleep(1.1, loop=event_loop)
+        await query_tracker.wait_failures()
         # the query has been stopped and removed
         assert not periodic_call.running
         assert query_loop._periodic_calls == {}
@@ -232,4 +235,5 @@ class TestQueryLoop:
         assert len(query_tracker.queries) == 1
         # the query is not run again
         await query_loop.run_aperiodic_queries()
+        await query_tracker.wait_failures()
         assert len(query_tracker.queries) == 1
