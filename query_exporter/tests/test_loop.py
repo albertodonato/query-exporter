@@ -148,33 +148,6 @@ class TestQueryLoop:
             'updating metric "queries" inc 1 {database="db",status="success"}'
         ]
 
-    async def test_run_query_log_error(
-            self, caplog, query_tracker, config_data, make_query_loop):
-        """Query errors are logged."""
-        caplog.set_level(logging.DEBUG)
-        config_data['queries']['q']['sql'] = 'WRONG QUERY'
-        query_loop = make_query_loop()
-        await query_loop.start()
-        await query_tracker.wait_failures()
-        assert (
-            'query "q" on database "db" failed: '
-            '(sqlite3.OperationalError) near "WRONG": syntax error' in
-            caplog.text)
-
-    async def test_run_query_log_invalid_result_count(
-            self, caplog, query_tracker, config_data, make_query_loop,
-            registry):
-        """An error is logged if result count doesn't match metrics count."""
-        caplog.set_level(logging.DEBUG)
-        config_data['queries']['q']['sql'] = 'SELECT 100.0, 200.0'
-        query_loop = make_query_loop()
-        await query_loop.start()
-        await query_tracker.wait_failures()
-        assert (
-            'query "q" on database "db" failed: Wrong result count from query:'
-            ' expected 1, got 2' in caplog.messages)
-        assert 'removing doomed query "q"' in caplog.messages
-
     async def test_run_query_increase_db_error_count(
             self, query_tracker, config_data, make_query_loop, registry):
         """Query errors are logged."""

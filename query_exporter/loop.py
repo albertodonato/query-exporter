@@ -61,8 +61,7 @@ class QueryLoop:
         for db in self._databases.values():
             try:
                 await db.connect(loop=self.loop)
-            except DataBaseError as error:
-                self._log_db_error(db.name, error)
+            except DataBaseError:
                 self._increment_db_error_count(db.name)
 
         for query in self._periodic_queries:
@@ -110,12 +109,9 @@ class QueryLoop:
         if await self._remove_if_dooomed(query):
             return
 
-        self._logger.debug(
-            f'running query "{query.name}" on database "{dbname}"')
         try:
             results = await self._databases[dbname].execute(query)
         except DataBaseError as error:
-            self._log_query_error(query.name, dbname, error)
             self._increment_queries_count(dbname, 'error')
             if error.fatal:
                 self._logger.debug(f'removing doomed query "{query.name}"')
@@ -145,15 +141,6 @@ class QueryLoop:
             if call is not None:
                 await call.stop()
         return True
-
-    def _log_query_error(self, name: str, dbname: str, error: Exception):
-        """Log an error related to database query."""
-        self._logger.error(
-            f'query "{name}" on database "{dbname}" failed: {str(error)}')
-
-    def _log_db_error(self, dbname: str, error: Exception):
-        """Log a failed database query."""
-        self._logger.error(f'error from database "{dbname}": {str(error)}')
 
     def _update_metric(
             self,

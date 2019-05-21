@@ -63,6 +63,10 @@ class InvalidResultColumnNames(Exception):
         super().__init__('Wrong column names from query')
 
 
+# databse errors that mean the query won't ever succeed
+FATAL_ERRORS = (InvalidResultCount, InvalidResultColumnNames)
+
+
 class QueryMetric(NamedTuple):
     """Metric details for a Query."""
 
@@ -171,12 +175,13 @@ class DataBase(_DataBase):
             engine = sqlalchemy.create_engine(
                 self.dsn, strategy=ASYNCIO_STRATEGY, loop=loop)
         except ImportError as error:
-            raise DataBaseError(f'module "{error.name}" not found', fatal=True)
+            raise self._db_error(
+                f'module "{error.name}" not found', fatal=True)
 
         try:
             self._conn = await engine.connect()
         except Exception as error:
-            raise DataBaseError(str(error).strip())
+            raise self._db_error(error)
         self._logger.debug(f'connected to database "{self.name}"')
 
     async def close(self):
@@ -193,19 +198,39 @@ class DataBase(_DataBase):
         if not self.connected:
             await self.connect()
 
+        self._logger.debug(
+            f'running query "{query.name}" on database "{self.name}"')
         self._pending_queries += 1
         self._conn: Engine
         try:
             result = await self._conn.execute(query.sql)
             return query.results(await QueryResults.from_results(result))
         except Exception as error:
-            fatal = isinstance(error, InvalidResultCount)
-            raise DataBaseError(str(error).strip(), fatal=fatal)
+            raise self._query_db_error(
+                query.name, error, fatal=isinstance(error, FATAL_ERRORS))
         finally:
             assert self._pending_queries >= 0, 'pending queries is negative'
             self._pending_queries -= 1
             if not self.keep_connected and not self._pending_queries:
                 await self.close()
+
+    def _query_db_error(
+            self,
+            query_name: str,
+            error: Union[str, Exception],
+            fatal: bool = False):
+        """Create and log a DataBaseError for a failed query."""
+        message = str(error).strip()
+        self._logger.error(
+            f'query "{query_name}" on database "{self.name}" failed: ' +
+            message)
+        return DataBaseError(message, fatal=fatal)
+
+    def _db_error(self, error: Union[str, Exception], fatal: bool = False):
+        """Create and log a DataBaseError."""
+        message = str(error).strip()
+        self._logger.error(f'error from database "{self.name}": {message}')
+        return DataBaseError(message, fatal=fatal)
 
 
 def validate_dsn(dsn: str):

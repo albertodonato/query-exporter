@@ -146,6 +146,7 @@ class TestLoadConfig:
         assert not database2.keep_connected
 
     def test_load_databases_dsn_from_env(self, write_config):
+        """The database DSN can be loaded from env."""
         config_file = write_config({'databases': {'db1': {'dsn': 'env:FOO'}}})
         with config_file.open() as fd:
             config = load_config(fd, env={'FOO': 'postgresql:///foo'})
@@ -160,12 +161,14 @@ class TestLoadConfig:
         assert str(err.value) == 'Missing key "dsn" for database "db1"'
 
     def test_load_databases_invalid_dsn(self, write_config):
+        """An error is raised if the DSN is invalid."""
         config_file = write_config({'databases': {'db1': {'dsn': 'invalid'}}})
         with pytest.raises(ConfigError) as err, config_file.open() as fd:
             load_config(fd)
         assert str(err.value) == 'Invalid database DSN: "invalid"'
 
     def test_load_databases_dsn_invalid_env(self, write_config):
+        """An error is raised if the DSN from environment is invalid."""
         config_file = write_config(
             {'databases': {
                 'db1': {
@@ -177,6 +180,7 @@ class TestLoadConfig:
         assert str(err.value) == 'Invalid variable name: "NOT-VALID"'
 
     def test_load_databases_dsn_undefined_env(self, write_config):
+        """An error is raised if the environ variable for DSN is undefined."""
         config_file = write_config({'databases': {'db1': {'dsn': 'env:FOO'}}})
         with pytest.raises(ConfigError) as err, config_file.open() as fd:
             load_config(fd, env={})
