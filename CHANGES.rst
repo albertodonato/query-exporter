@@ -1,4 +1,15 @@
-v1.7.0 - 2018-04-07
+v1.8.0 - 2019-05-25
+===================
+
+- Support custom labels in metrics, setting values from queries result (#7)
+- Suport matching metrics by query result column name instead of order
+- Disable queries that will certainly always fail (e.g. because of invalid
+  returned column names/number) (#6)
+- Support disconnecting from after each query (#8)
+- Rework tests to use actualy SQLite in-memory databases instead of fakes
+
+  
+v1.7.0 - 2019-04-07
 ===================
 
 - Add a "queries" and "database_errors" metrics lebeled by database (Fixes #1)
@@ -6,7 +17,7 @@ v1.7.0 - 2018-04-07
   environment (Fixes: #5)
 
 
-v1.6.0 - 2018-03-26
+v1.6.0 - 2019-03-26
 ===================
 
 - Change default port to 9560 (to make it unique)
