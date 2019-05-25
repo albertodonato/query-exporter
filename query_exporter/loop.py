@@ -73,7 +73,7 @@ class QueryLoop:
         """Stop periodic query execution."""
         coros = (call.stop() for call in self._periodic_calls.values())
         await asyncio.gather(*coros, loop=self.loop, return_exceptions=True)
-        self._periodic_calls = {}
+        self._periodic_calls.clear()
         coros = (db.close() for db in self._databases.values())
         await asyncio.gather(*coros, loop=self.loop, return_exceptions=True)
 

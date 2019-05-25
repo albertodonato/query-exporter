@@ -163,7 +163,7 @@ class TestQueryLoop:
     async def test_run_query_increase_error_count(
             self, query_tracker, config_data, make_query_loop, registry):
         """Count of errored queries is incremented on error."""
-        config_data['queries']['q']['sql'] = 'SELECT 100.0 200.0'
+        config_data['queries']['q']['sql'] = 'SELECT 100.0 AS a, 200.0 AS b'
         query_loop = make_query_loop()
         await query_loop.start()
         await query_tracker.wait_failures()
@@ -190,7 +190,7 @@ class TestQueryLoop:
     async def test_run_periodic_queries_invalid_result_count(
             self, query_tracker, config_data, make_query_loop, advance_time):
         """Periodic queries returning invalid elements count are removed."""
-        config_data['queries']['q']['sql'] = 'SELECT 100.0, 200.0'
+        config_data['queries']['q']['sql'] = 'SELECT 100.0 AS a, 200.0 AS b'
         query_loop = make_query_loop()
         await query_loop.start()
         await advance_time(0)  # kick the first run
@@ -204,7 +204,7 @@ class TestQueryLoop:
 
     async def test_run_periodic_queries_invalid_result_count_stop_task(
             self, event_loop, query_tracker, config_data, make_query_loop):
-        config_data['queries']['q']['sql'] = 'SELECT 100.0, 200.0'
+        config_data['queries']['q']['sql'] = 'SELECT 100.0 AS a, 200.0 AS b'
         config_data['queries']['q']['interval'] = 1.0
         query_loop = make_query_loop()
         await query_loop.start()
@@ -228,7 +228,7 @@ class TestQueryLoop:
     async def test_run_aperiodic_queries_invalid_result_count(
             self, query_tracker, config_data, make_query_loop):
         """Aperiodic queries returning invalid elements count are removed."""
-        config_data['queries']['q']['sql'] = 'SELECT 100.0, 200.0'
+        config_data['queries']['q']['sql'] = 'SELECT 100.0 AS a, 200.0 AS b'
         del config_data['queries']['q']['interval']
         query_loop = make_query_loop()
         await query_loop.run_aperiodic_queries()
