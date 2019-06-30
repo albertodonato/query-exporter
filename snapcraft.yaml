@@ -69,4 +69,3 @@ parts:
       - $bins
       - etc/python3.6
       - $libs
-

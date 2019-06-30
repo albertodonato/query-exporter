@@ -1,5 +1,5 @@
-query-exporter - Export Prometheus metrics from SQL queries
-===========================================================
+Export Prometheus metrics from SQL queries
+==========================================
 
 |Latest Version| |Build Status| |Coverage Status| |Snap Status|
 
@@ -11,7 +11,7 @@ PostgreSQL, MySQL, Oracle and Microsoft SQL Server.
 
 Each query can be run on multiple databases, and update multiple metrics.
 
-The application is run simply as::
+The application is simply run as::
 
   query-exporter config.yaml
 
@@ -88,7 +88,7 @@ Each database defintions can have the following keys:
 ``dsn``:
   the connection string for the database, in the following format::
 
-    dialect[+driver]://[username:password][@host:port]/database
+    dialect[+driver]://[username:password][@host:port]/database[?option=value&...]
 
   See `SQLAlchemy documentation`_ for details on available engines.
 
@@ -278,7 +278,7 @@ To configure the daemon:
   configuration
 - run ``sudo snap restart query-exporter``
 
-The snap has builtin support for the following databases::
+The snap has builtin support for the following databases:
 
 - MySQL
 - PostgreSQL
