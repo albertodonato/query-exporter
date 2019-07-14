@@ -173,7 +173,10 @@ class DataBase(_DataBase):
         """Connect to the database."""
         try:
             engine = sqlalchemy.create_engine(
-                self.dsn, strategy=ASYNCIO_STRATEGY, loop=loop)
+                self.dsn,
+                strategy=ASYNCIO_STRATEGY,
+                loop=loop,
+                execution_options={'autocommit': True})
         except ImportError as error:
             raise self._db_error(
                 f'module "{error.name}" not found', fatal=True)
