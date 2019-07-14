@@ -1,3 +1,9 @@
+v1.8.1 - 2019-07-14
+===================
+
+- Enable autocommit on connection (#10)
+
+
 v1.8.0 - 2019-05-25
 ===================
 
@@ -8,7 +14,7 @@ v1.8.0 - 2019-05-25
 - Support disconnecting from after each query (#8)
 - Rework tests to use actualy SQLite in-memory databases instead of fakes
 
-  
+
 v1.7.0 - 2019-04-07
 ===================
 
