@@ -113,9 +113,13 @@ Each metric definition can have the following keys:
 
 ``type``:
   the type of the metric, must be specified. The following metric types are
-  supported::
+  supported:
 
-    counter, enum, gauge, histogram, summary
+  - counter
+  - enum
+  - gauge
+  - histogram
+  - summary
 
 ``description``:
   an optional description of the metric.
