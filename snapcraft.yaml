@@ -1,6 +1,5 @@
 name: query-exporter
 version: git
-version-script: git describe --tags HEAD
 summary: Export Prometheus metrics from SQL queries
 description: |
   query-exporter is a Prometheus exporter which allows collecting metrics from
