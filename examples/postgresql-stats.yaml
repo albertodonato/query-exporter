@@ -6,7 +6,7 @@
 # Metrics and queries are inspired from the Dynatrace PostgreSQL plugin:
 # https://github.com/Dynatrace/Dynatrace-AppMon-PostgreSQL-Monitor-Plugin
 #
-# To user this config, set PG_DATABASE_DSN environment variable to the desired
+# To use this config, set PG_DATABASE_DSN environment variable to the desired
 # server DSN.
 
 databases:
