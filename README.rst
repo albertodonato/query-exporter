@@ -191,6 +191,43 @@ Each query definition can have the following keys:la-
 
   will update ``metric1`` to ``10.0`` and ``metric2`` to ``20.0``.
 
+``parameters``:
+  an optional list of parameters sets to run the query with.
+
+  If a query is specified with parameters in its ``sql``, it will be run once
+  for every set of parameters specified in this list, for every interval.
+
+  Parameters sets can be specified as a list of positional parameters (using
+  the ``?`` syntax in the query SQL) or as a key/value dictionary when named
+  parameters are used (e.g. ``:param``).
+
+  As an example:
+
+  .. code:: yaml
+
+      query1:
+        databases: [db]
+        metrics: [metric1]
+        sql: |
+          SELECT COUNT(*) FROM table
+          WHERE id > :param1 AND id < :param2
+        parameters:
+          - param1: 10
+            param2: 20
+          - param1: 30
+            param2: 40
+      query2:
+        databases: [db]
+        metrics: [metric2]
+        sql: |
+          SELECT COUNT(*) FROM othertable
+          WHERE id > ? AND id < ?
+        parameters:
+          - [10, 20]
+          - [30, 40]
+
+  All elements of the parameters list must be of the same kind (all lists or all dictionaries).
+
 
 Metrics endpoint
 ----------------

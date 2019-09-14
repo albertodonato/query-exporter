@@ -106,6 +106,39 @@ class TestQueryLoop:
             ("success",): 1.0
         }
 
+    @pytest.mark.parametrize(
+        "query,params",
+        [
+            ("SELECT :param AS m", [{"param": 10.0}, {"param": 20.0}]),
+            ("SELECT ? AS m", [[10.0], [20.0]]),
+        ],
+    )
+    async def test_run_query_with_parameters(
+        self,
+        query_tracker,
+        registry,
+        config_data,
+        make_query_loop,
+        query,
+        params,
+    ):
+        """Queries are run with declared parameters."""
+        config_data["metrics"]["m"]["type"] = "counter"
+        config_data["queries"]["q"]["sql"] = query
+        config_data["queries"]["q"]["parameters"] = params
+        query_loop = make_query_loop()
+        await query_loop.start()
+        await query_tracker.wait_results()
+        # the metric is updated
+        metric = registry.get_metric("m")
+        # the sum is recorded
+        assert metric_values(metric) == [30.0]
+        # the number of queries is updated
+        queries_metric = registry.get_metric("queries")
+        assert metric_values(queries_metric, by_labels=("status",)) == {
+            ("success",): 2.0
+        }
+
     async def test_run_query_null_value(
         self, query_tracker, registry, config_data, make_query_loop
     ):

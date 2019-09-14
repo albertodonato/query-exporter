@@ -10,6 +10,7 @@ from typing import (
     List,
     NamedTuple,
     Optional,
+    Sequence,
     Tuple,
     Union,
 )
@@ -95,14 +96,18 @@ class MetricResult(NamedTuple):
     labels: Dict[str, str]
 
 
+QueryParameters = List[Union[List[Sequence], Dict[str, Any]]]
+
+
 class Query(NamedTuple):
-    """Query configuration and definition."""
+    """Query definition and configuration."""
 
     name: str
     interval: int
     databases: List[str]
     metrics: List[QueryMetric]
     sql: str
+    parameters: Optional[QueryParameters] = []
 
     def labels(self) -> FrozenSet[str]:
         return frozenset(chain(*(metric.labels for metric in self.metrics)))
@@ -212,7 +217,7 @@ class DataBase(_DataBase):
         self._pending_queries += 1
         self._conn: Engine
         try:
-            result = await self._conn.execute(query.sql)
+            result = await self._conn.execute(query.sql, query.parameters)
             return query.results(await QueryResults.from_results(result))
         except Exception as error:
             raise self._query_db_error(
