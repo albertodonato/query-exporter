@@ -29,7 +29,7 @@ base: core18
 
 apps:
   daemon:
-    command: 'bin/query-exporter -H 0.0.0.0 :: -- $SNAP_DATA/config.yaml'
+    command: daemon.sh
     daemon: simple
     plugs:
       - network-bind
@@ -68,3 +68,7 @@ parts:
       - $bins
       - etc/python3.6
       - $libs
+
+  wrappers:
+    plugin: dump
+    source: snap/local
