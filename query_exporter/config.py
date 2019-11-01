@@ -12,9 +12,8 @@ from typing import (
     NamedTuple,
 )
 
-import yaml
-
 from prometheus_aioexporter import MetricConfig
+import yaml
 
 from .db import (
     AUTOMATIC_LABELS,

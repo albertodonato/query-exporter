@@ -2,9 +2,9 @@ import asyncio
 from collections import defaultdict
 import logging
 
+from prometheus_aioexporter import MetricsRegistry
 import yaml
 
-from prometheus_aioexporter import MetricsRegistry
 import pytest
 
 from ..config import load_config

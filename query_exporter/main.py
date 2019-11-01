@@ -4,13 +4,12 @@ import argparse
 from typing import List
 
 from aiohttp.web import Application
-from toolrack.script import ErrorExitMessage
-
 from prometheus_aioexporter import (
     MetricConfig,
     PrometheusExporterScript,
 )
 from prometheus_aioexporter.metric import InvalidMetricType
+from toolrack.script import ErrorExitMessage
 
 from .config import (
     Config,

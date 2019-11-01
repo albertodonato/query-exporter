@@ -11,12 +11,11 @@ from typing import (
     Set,
 )
 
-from toolrack.aio import PeriodicCall
-
 from prometheus_aioexporter import (
     MetricConfig,
     MetricsRegistry,
 )
+from toolrack.aio import PeriodicCall
 
 from .config import (
     Config,
