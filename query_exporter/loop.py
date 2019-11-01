@@ -11,11 +11,12 @@ from typing import (
     Set,
 )
 
+from toolrack.aio import PeriodicCall
+
 from prometheus_aioexporter import (
     MetricConfig,
     MetricsRegistry,
 )
-from toolrack.aio import PeriodicCall
 
 from .config import (
     Config,
@@ -34,16 +35,20 @@ class QueryLoop:
     """Periodically performs queries."""
 
     _METRIC_METHODS = {
-        'counter': 'inc',
-        'gauge': 'set',
-        'histogram': 'observe',
-        'summary': 'observe',
-        'enum': 'state'
+        "counter": "inc",
+        "gauge": "set",
+        "histogram": "observe",
+        "summary": "observe",
+        "enum": "state",
     }
 
     def __init__(
-            self, config: Config, registry: MetricsRegistry, logger: Logger,
-            loop: asyncio.AbstractEventLoop):
+        self,
+        config: Config,
+        registry: MetricsRegistry,
+        logger: Logger,
+        loop: asyncio.AbstractEventLoop,
+    ):
         self.loop = loop
         self._logger = logger
         self._metric_configs: Dict[str, MetricConfig] = {}
@@ -80,7 +85,9 @@ class QueryLoop:
     async def run_aperiodic_queries(self):
         coros = (
             self._execute_query(query, dbname)
-            for query in self._aperiodic_queries for dbname in query.databases)
+            for query in self._aperiodic_queries
+            for dbname in query.databases
+        )
         await asyncio.gather(*coros, loop=self.loop, return_exceptions=True)
 
     def _setup(self, config: Config):
@@ -112,7 +119,7 @@ class QueryLoop:
         try:
             results = await self._databases[dbname].execute(query)
         except DataBaseError as error:
-            self._increment_queries_count(dbname, 'error')
+            self._increment_queries_count(dbname, "error")
             if error.fatal:
                 self._logger.debug(f'removing doomed query "{query.name}"')
                 self._doomed_queries.add(query.name)
@@ -120,8 +127,9 @@ class QueryLoop:
 
         for result in results:
             self._update_metric(
-                result.metric, result.value, dbname, labels=result.labels)
-        self._increment_queries_count(dbname, 'success')
+                result.metric, result.value, dbname, labels=result.labels
+            )
+        self._increment_queries_count(dbname, "success")
 
     async def _remove_if_dooomed(self, query: Query) -> bool:
         """Remove a query if it will never work.
@@ -143,11 +151,12 @@ class QueryLoop:
         return True
 
     def _update_metric(
-            self,
-            name: str,
-            value: Any,
-            dbname: str,
-            labels: Optional[Mapping[str, str]] = None):
+        self,
+        name: str,
+        value: Any,
+        dbname: str,
+        labels: Optional[Mapping[str, str]] = None,
+    ):
         """Update value for a metric."""
         if value is None:
             # don't fail is queries that count return NULL
@@ -156,18 +165,20 @@ class QueryLoop:
         all_labels = {DATABASE_LABEL: dbname}
         if labels:
             all_labels.update(labels)
-        labels_string = ','.join(
-            f'{label}="{value}"'
-            for label, value in sorted(all_labels.items()))
+        labels_string = ",".join(
+            f'{label}="{value}"' for label, value in sorted(all_labels.items())
+        )
         self._logger.debug(
-            f'updating metric "{name}" {method} {value} {{{labels_string}}}')
+            f'updating metric "{name}" {method} {value} {{{labels_string}}}'
+        )
         metric = self._registry.get_metric(name, all_labels)
         getattr(metric, method)(value)
 
     def _increment_queries_count(self, dbname: str, status: str):
         """Increment count of queries in a status for a database."""
         self._update_metric(
-            QUERIES_METRIC_NAME, 1, dbname, labels={'status': status})
+            QUERIES_METRIC_NAME, 1, dbname, labels={"status": status}
+        )
 
     def _increment_db_error_count(self, dbname: str):
         """Increment number of errors for a database."""

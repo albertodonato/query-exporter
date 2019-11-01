@@ -46,8 +46,9 @@ async def advance_time(event_loop):
         async def _drain_loop(self):
             while True:
                 next_time = self._next_scheduled()
-                if (not self.loop._ready
-                        and (next_time is None or next_time > self.time)):
+                if not self.loop._ready and (
+                    next_time is None or next_time > self.time
+                ):
                     break
                 await asyncio.sleep(0)
 
@@ -59,20 +60,19 @@ def query_tracker(mocker, event_loop):
     """Return a list collecting Query executed by DataBases."""
 
     class QueryTracker:
-
         def __init__(self):
             self.queries = []
             self.results = []
             self.failures = []
 
         async def wait_queries(self, count=1, timeout=5):
-            await self._wait('queries', count, timeout)
+            await self._wait("queries", count, timeout)
 
         async def wait_results(self, count=1, timeout=5):
-            await self._wait('results', count, timeout)
+            await self._wait("results", count, timeout)
 
         async def wait_failures(self, count=1, timeout=5):
-            await self._wait('failures', count, timeout)
+            await self._wait("failures", count, timeout)
 
         async def _wait(self, attr, count, timeout):
             timeout += event_loop.time()
@@ -94,5 +94,5 @@ def query_tracker(mocker, event_loop):
         tracker.results.append(result)
         return result
 
-    mocker.patch.object(DataBase, 'execute', execute)
+    mocker.patch.object(DataBase, "execute", execute)
     yield tracker

@@ -2,9 +2,10 @@ import asyncio
 from collections import defaultdict
 import logging
 
+import yaml
+
 from prometheus_aioexporter import MetricsRegistry
 import pytest
-import yaml
 
 from ..config import load_config
 from ..loop import QueryLoop
@@ -13,24 +14,16 @@ from ..loop import QueryLoop
 @pytest.fixture
 def config_data():
     yield {
-        'databases': {
-            'db': {
-                'dsn': 'sqlite://'
-            }
-        },
-        'metrics': {
-            'm': {
-                'type': 'gauge'
-            }
-        },
-        'queries': {
-            'q': {
-                'interval': 10,
-                'databases': ['db'],
-                'metrics': ['m'],
-                'sql': 'SELECT 100.0'
+        "databases": {"db": {"dsn": "sqlite://"}},
+        "metrics": {"m": {"type": "gauge"}},
+        "queries": {
+            "q": {
+                "interval": 10,
+                "databases": ["db"],
+                "metrics": ["m"],
+                "sql": "SELECT 100.0",
             },
-        }
+        },
     }
 
 
@@ -44,8 +37,8 @@ async def make_query_loop(tmpdir, event_loop, config_data, registry):
     query_loops = []
 
     def make_loop():
-        config_file = (tmpdir / 'config.yaml')
-        config_file.write_text(yaml.dump(config_data), 'utf-8')
+        config_file = tmpdir / "config.yaml"
+        config_file.write_text(yaml.dump(config_data), "utf-8")
         with config_file.open() as fh:
             config = load_config(fh)
         registry.create_metrics(config.metrics)
@@ -57,7 +50,8 @@ async def make_query_loop(tmpdir, event_loop, config_data, registry):
     await asyncio.gather(
         *(query_loop.stop() for query_loop in query_loops),
         loop=event_loop,
-        return_exceptions=True)
+        return_exceptions=True,
+    )
 
 
 @pytest.fixture
@@ -67,10 +61,10 @@ async def query_loop(make_query_loop):
 
 def metric_values(metric, by_labels=()):
     """Return values for the metric."""
-    if metric._type == 'gauge':
-        suffix = ''
-    elif metric._type == 'counter':
-        suffix = '_total'
+    if metric._type == "gauge":
+        suffix = ""
+    elif metric._type == "counter":
+        suffix = "_total"
 
     values = defaultdict(list)
     for sample_suffix, labels, value in metric._samples():
@@ -86,17 +80,16 @@ def metric_values(metric, by_labels=()):
 
 @pytest.mark.asyncio
 class TestQueryLoop:
-
     async def test_start(self, query_loop):
         """The start method starts periodic calls for queries."""
         await query_loop.start()
-        periodic_call = query_loop._periodic_calls['q']
+        periodic_call = query_loop._periodic_calls["q"]
         assert periodic_call.running
 
     async def test_stop(self, query_loop):
         """The stop method stops periodic calls for queries."""
         await query_loop.start()
-        periodic_call = query_loop._periodic_calls['q']
+        periodic_call = query_loop._periodic_calls["q"]
         await query_loop.stop()
         assert not periodic_call.running
 
@@ -105,23 +98,23 @@ class TestQueryLoop:
         await query_loop.start()
         await query_tracker.wait_results()
         # the metric is updated
-        metric = registry.get_metric('m')
+        metric = registry.get_metric("m")
         assert metric_values(metric) == [100.0]
         # the number of queries is updated
-        queries_metric = registry.get_metric('queries')
-        assert metric_values(
-            queries_metric, by_labels=('status', )) == {
-                ('success', ): 1.0
-            }
+        queries_metric = registry.get_metric("queries")
+        assert metric_values(queries_metric, by_labels=("status",)) == {
+            ("success",): 1.0
+        }
 
     async def test_run_query_null_value(
-            self, query_tracker, registry, config_data, make_query_loop):
+        self, query_tracker, registry, config_data, make_query_loop
+    ):
         """A null value in query results is treated like a zero."""
-        config_data['queries']['q']['sql'] = 'SELECT NULL'
+        config_data["queries"]["q"]["sql"] = "SELECT NULL"
         query_loop = make_query_loop()
         await query_loop.start()
         await query_tracker.wait_results()
-        metric = registry.get_metric('m')
+        metric = registry.get_metric("m")
         assert metric_values(metric) == [0]
 
     async def test_run_query_log(self, caplog, query_tracker, query_loop):
@@ -130,51 +123,56 @@ class TestQueryLoop:
         await query_loop.start()
         await query_tracker.wait_queries()
         assert caplog.messages == [
-            'connected to database "db"', 'running query "q" on database "db"',
+            'connected to database "db"',
+            'running query "q" on database "db"',
             'updating metric "m" set 100.0 {database="db"}',
-            'updating metric "queries" inc 1 {database="db",status="success"}'
+            'updating metric "queries" inc 1 {database="db",status="success"}',
         ]
 
     async def test_run_query_log_labels(
-            self, caplog, query_tracker, config_data, make_query_loop):
+        self, caplog, query_tracker, config_data, make_query_loop
+    ):
         """Debug messages include metric labels."""
-        config_data['metrics']['m']['labels'] = ['l']
-        config_data['queries']['q']['sql'] = 'SELECT 100.0 AS m, "foo" AS l'
+        config_data["metrics"]["m"]["labels"] = ["l"]
+        config_data["queries"]["q"]["sql"] = 'SELECT 100.0 AS m, "foo" AS l'
         query_loop = make_query_loop()
         caplog.set_level(logging.DEBUG)
         await query_loop.start()
         await query_tracker.wait_queries()
         assert caplog.messages == [
-            'connected to database "db"', 'running query "q" on database "db"',
+            'connected to database "db"',
+            'running query "q" on database "db"',
             'updating metric "m" set 100.0 {database="db",l="foo"}',
-            'updating metric "queries" inc 1 {database="db",status="success"}'
+            'updating metric "queries" inc 1 {database="db",status="success"}',
         ]
 
     async def test_run_query_increase_db_error_count(
-            self, query_tracker, config_data, make_query_loop, registry):
+        self, query_tracker, config_data, make_query_loop, registry
+    ):
         """Query errors are logged."""
-        config_data['databases']['db']['dsn'] = f'sqlite:////invalid'
+        config_data["databases"]["db"]["dsn"] = f"sqlite:////invalid"
         query_loop = make_query_loop()
         await query_loop.start()
         await query_tracker.wait_failures()
-        queries_metric = registry.get_metric('database_errors')
+        queries_metric = registry.get_metric("database_errors")
         assert metric_values(queries_metric) == [1.0]
 
     async def test_run_query_increase_error_count(
-            self, query_tracker, config_data, make_query_loop, registry):
+        self, query_tracker, config_data, make_query_loop, registry
+    ):
         """Count of errored queries is incremented on error."""
-        config_data['queries']['q']['sql'] = 'SELECT 100.0 AS a, 200.0 AS b'
+        config_data["queries"]["q"]["sql"] = "SELECT 100.0 AS a, 200.0 AS b"
         query_loop = make_query_loop()
         await query_loop.start()
         await query_tracker.wait_failures()
-        queries_metric = registry.get_metric('queries')
-        assert metric_values(
-            queries_metric, by_labels=('status', )) == {
-                ('error', ): 1.0
-            }
+        queries_metric = registry.get_metric("queries")
+        assert metric_values(queries_metric, by_labels=("status",)) == {
+            ("error",): 1.0
+        }
 
     async def test_run_query_at_interval(
-            self, advance_time, query_tracker, query_loop):
+        self, advance_time, query_tracker, query_loop
+    ):
         """Queries are run at the specified time interval."""
         await query_loop.start()
         await advance_time(0)  # kick the first run
@@ -188,9 +186,10 @@ class TestQueryLoop:
         assert len(query_tracker.queries) == 2
 
     async def test_run_periodic_queries_invalid_result_count(
-            self, query_tracker, config_data, make_query_loop, advance_time):
+        self, query_tracker, config_data, make_query_loop, advance_time
+    ):
         """Periodic queries returning invalid elements count are removed."""
-        config_data['queries']['q']['sql'] = 'SELECT 100.0 AS a, 200.0 AS b'
+        config_data["queries"]["q"]["sql"] = "SELECT 100.0 AS a, 200.0 AS b"
         query_loop = make_query_loop()
         await query_loop.start()
         await advance_time(0)  # kick the first run
@@ -203,12 +202,13 @@ class TestQueryLoop:
         assert len(query_tracker.results) == 0
 
     async def test_run_periodic_queries_invalid_result_count_stop_task(
-            self, event_loop, query_tracker, config_data, make_query_loop):
-        config_data['queries']['q']['sql'] = 'SELECT 100.0 AS a, 200.0 AS b'
-        config_data['queries']['q']['interval'] = 1.0
+        self, event_loop, query_tracker, config_data, make_query_loop
+    ):
+        config_data["queries"]["q"]["sql"] = "SELECT 100.0 AS a, 200.0 AS b"
+        config_data["queries"]["q"]["interval"] = 1.0
         query_loop = make_query_loop()
         await query_loop.start()
-        periodic_call = query_loop._periodic_calls['q']
+        periodic_call = query_loop._periodic_calls["q"]
         await asyncio.sleep(1.1, loop=event_loop)
         await query_tracker.wait_failures()
         # the query has been stopped and removed
@@ -216,9 +216,10 @@ class TestQueryLoop:
         assert query_loop._periodic_calls == {}
 
     async def test_run_aperiodic_queries(
-            self, query_tracker, config_data, make_query_loop):
+        self, query_tracker, config_data, make_query_loop
+    ):
         """Queries with null interval can be run explicitly."""
-        del config_data['queries']['q']['interval']
+        del config_data["queries"]["q"]["interval"]
         query_loop = make_query_loop()
         await query_loop.run_aperiodic_queries()
         assert len(query_tracker.queries) == 1
@@ -226,10 +227,11 @@ class TestQueryLoop:
         assert len(query_tracker.queries) == 2
 
     async def test_run_aperiodic_queries_invalid_result_count(
-            self, query_tracker, config_data, make_query_loop):
+        self, query_tracker, config_data, make_query_loop
+    ):
         """Aperiodic queries returning invalid elements count are removed."""
-        config_data['queries']['q']['sql'] = 'SELECT 100.0 AS a, 200.0 AS b'
-        del config_data['queries']['q']['interval']
+        config_data["queries"]["q"]["sql"] = "SELECT 100.0 AS a, 200.0 AS b"
+        del config_data["queries"]["q"]["interval"]
         query_loop = make_query_loop()
         await query_loop.run_aperiodic_queries()
         assert len(query_tracker.queries) == 1

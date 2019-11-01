@@ -24,7 +24,7 @@ from sqlalchemy.exc import ArgumentError
 from sqlalchemy_aio import ASYNCIO_STRATEGY
 
 # the label used to filter metrics by database
-DATABASE_LABEL = 'database'
+DATABASE_LABEL = "database"
 
 # labels that are automatically added to metrics
 AUTOMATIC_LABELS = frozenset([DATABASE_LABEL])
@@ -53,14 +53,15 @@ class InvalidResultCount(Exception):
 
     def __init__(self, expected: int, got: int):
         super().__init__(
-            f'Wrong result count from query: expected {expected}, got {got}')
+            f"Wrong result count from query: expected {expected}, got {got}"
+        )
 
 
 class InvalidResultColumnNames(Exception):
     """Invalid column names in query results."""
 
     def __init__(self):
-        super().__init__('Wrong column names from query')
+        super().__init__("Wrong column names from query")
 
 
 # databse errors that mean the query won't ever succeed
@@ -125,9 +126,10 @@ class Query(NamedTuple):
                 values = dict(zip(query_results.keys, row))
                 for metric in self.metrics:
                     metric_result = MetricResult(
-                        metric.name, values[metric.name],
-                        {label: values[label]
-                         for label in metric.labels})
+                        metric.name,
+                        values[metric.name],
+                        {label: values[label] for label in metric.labels},
+                    )
                     results.append(metric_result)
             return results
         elif set(metrics) == set(query_results.keys):
@@ -138,10 +140,11 @@ class Query(NamedTuple):
             return self._metrics_results(metrics, query_results)
 
     def _metrics_results(
-            self, metric_names: List[str],
-            query_results: QueryResults) -> List[MetricResult]:
+        self, metric_names: List[str], query_results: QueryResults
+    ) -> List[MetricResult]:
         return [
-            MetricResult(name, value, {}) for row in query_results.rows
+            MetricResult(name, value, {})
+            for row in query_results.rows
             for name, value in zip(metric_names, row)
         ]
 
@@ -176,10 +179,12 @@ class DataBase(_DataBase):
                 self.dsn,
                 strategy=ASYNCIO_STRATEGY,
                 loop=loop,
-                execution_options={'autocommit': True})
+                execution_options={"autocommit": True},
+            )
         except ImportError as error:
             raise self._db_error(
-                f'module "{error.name}" not found', fatal=True)
+                f'module "{error.name}" not found', fatal=True
+            )
 
         try:
             self._conn = await engine.connect()
@@ -202,7 +207,8 @@ class DataBase(_DataBase):
             await self.connect()
 
         self._logger.debug(
-            f'running query "{query.name}" on database "{self.name}"')
+            f'running query "{query.name}" on database "{self.name}"'
+        )
         self._pending_queries += 1
         self._conn: Engine
         try:
@@ -210,23 +216,26 @@ class DataBase(_DataBase):
             return query.results(await QueryResults.from_results(result))
         except Exception as error:
             raise self._query_db_error(
-                query.name, error, fatal=isinstance(error, FATAL_ERRORS))
+                query.name, error, fatal=isinstance(error, FATAL_ERRORS)
+            )
         finally:
-            assert self._pending_queries >= 0, 'pending queries is negative'
+            assert self._pending_queries >= 0, "pending queries is negative"
             self._pending_queries -= 1
             if not self.keep_connected and not self._pending_queries:
                 await self.close()
 
     def _query_db_error(
-            self,
-            query_name: str,
-            error: Union[str, Exception],
-            fatal: bool = False):
+        self,
+        query_name: str,
+        error: Union[str, Exception],
+        fatal: bool = False,
+    ):
         """Create and log a DataBaseError for a failed query."""
         message = str(error).strip()
         self._logger.error(
-            f'query "{query_name}" on database "{self.name}" failed: ' +
-            message)
+            f'query "{query_name}" on database "{self.name}" failed: '
+            + message
+        )
         return DataBaseError(message, fatal=fatal)
 
     def _db_error(self, error: Union[str, Exception], fatal: bool = False):
