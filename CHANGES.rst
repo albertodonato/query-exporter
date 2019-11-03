@@ -1,3 +1,9 @@
+v1.9.0 - 2019-11-03
+===================
+
+- Support passing sets of parameters for queries.
+
+
 v1.8.1 - 2019-07-14
 ===================
 
