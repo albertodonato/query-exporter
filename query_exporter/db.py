@@ -168,6 +168,12 @@ class DataBase(_DataBase):
     _logger: logging.Logger = logging.getLogger()
     _pending_queries: int = 0
 
+    async def __aenter__(self):
+        return await self.connect()
+
+    async def __aexit__(self, exc_type, exc_value, traceback):
+        await self.close()
+
     @property
     def connected(self) -> bool:
         """Whether the database is connected."""
@@ -196,6 +202,7 @@ class DataBase(_DataBase):
         except Exception as error:
             raise self._db_error(error)
         self._logger.debug(f'connected to database "{self.name}"')
+        return self
 
     async def close(self):
         """Close the database connection."""
@@ -217,7 +224,7 @@ class DataBase(_DataBase):
         self._pending_queries += 1
         self._conn: Engine
         try:
-            result = await self._conn.execute(query.sql, query.parameters)
+            result = await self.execute_sql(query.sql, query.parameters)
             return query.results(await QueryResults.from_results(result))
         except Exception as error:
             raise self._query_db_error(
@@ -228,6 +235,15 @@ class DataBase(_DataBase):
             self._pending_queries -= 1
             if not self.keep_connected and not self._pending_queries:
                 await self.close()
+
+    async def execute_sql(
+        self, sql: str, parameters: Optional[QueryParameters] = None
+    ) -> ResultProxy:
+        """Execute a raw SQL query."""
+        if parameters is None:
+            parameters = []
+        self._conn: Engine
+        return await self._conn.execute(sql, parameters)
 
     def _query_db_error(
         self,

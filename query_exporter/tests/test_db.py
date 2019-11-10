@@ -206,6 +206,15 @@ class TestDataBase:
         assert not db.keep_connected
 
     @pytest.mark.asyncio
+    async def test_as_context_manager(self, db):
+        """The database can be used as an async context manager."""
+        async with DataBase("db", "sqlite://") as db:
+            result = await db.execute_sql("SELECT 10 AS a, 20 AS b")
+            assert await result.fetchall() == [(10, 20)]
+        # the db is closed at context exit
+        assert not db.connected
+
+    @pytest.mark.asyncio
     async def test_connect(self, caplog, db):
         """The connect connects to the database."""
         with caplog.at_level(logging.DEBUG):
@@ -440,6 +449,13 @@ class TestDataBase:
             await db.execute(query)
         assert str(error.value) == "Wrong column names from query"
         assert error.value.fatal
+
+    @pytest.mark.asyncio
+    async def test_execute_sql(self, db):
+        """It's possible to execute raw SQL."""
+        await db.connect()
+        result = await db.execute_sql("SELECT 10 AS a, 20 AS b")
+        assert await result.fetchall() == [(10, 20)]
 
 
 class TestValidateDSN:
