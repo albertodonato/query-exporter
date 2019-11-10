@@ -8,6 +8,7 @@ import yaml
 import pytest
 
 from ..config import load_config
+from ..db import DataBase
 from ..loop import QueryLoop
 
 
@@ -237,6 +238,7 @@ class TestQueryLoop:
     async def test_run_periodic_queries_invalid_result_count_stop_task(
         self, event_loop, query_tracker, config_data, make_query_loop
     ):
+        """Periodic queries returning invalid result counts are stopped."""
         config_data["queries"]["q"]["sql"] = "SELECT 100.0 AS a, 200.0 AS b"
         config_data["queries"]["q"]["interval"] = 1.0
         query_loop = make_query_loop()
@@ -247,6 +249,35 @@ class TestQueryLoop:
         # the query has been stopped and removed
         assert not periodic_call.running
         assert query_loop._periodic_calls == {}
+
+    async def test_run_periodic_queries_not_removed_if_not_failing_on_all_dbs(
+        self, tmpdir, event_loop, query_tracker, config_data, make_query_loop
+    ):
+        """Periodic queries are removed when they fail on all databases."""
+        db1 = tmpdir / "db1.sqlite"
+        db2 = tmpdir / "db2.sqlite"
+        config_data["databases"] = {
+            "db1": {"dsn": f"sqlite:///{db1}"},
+            "db2": {"dsn": f"sqlite:///{db2}"},
+        }
+        # the table is only found on one database
+        async with DataBase("db1", f"sqlite:///{db1}") as db:
+            await db.execute_sql("CREATE TABLE test (x INTEGER)")
+            await db.execute_sql("INSERT INTO test VALUES (10)")
+        config_data["queries"]["q"]["sql"] = "SELECT x FROM test"
+        config_data["queries"]["q"]["interval"] = 1.0
+        config_data["queries"]["q"]["databases"] = ["db1", "db2"]
+        query_loop = make_query_loop()
+        await query_loop.start()
+        await asyncio.sleep(0.1, loop=event_loop)
+        await query_tracker.wait_failures()
+        assert len(query_tracker.queries) == 2
+        assert len(query_tracker.results) == 1
+        assert len(query_tracker.failures) == 1
+        await asyncio.sleep(1.1, loop=event_loop)
+        # succeeding query is run again, failing one is not
+        assert len(query_tracker.results) == 2
+        assert len(query_tracker.failures) == 1
 
     async def test_run_aperiodic_queries(
         self, query_tracker, config_data, make_query_loop
@@ -272,3 +303,31 @@ class TestQueryLoop:
         await query_loop.run_aperiodic_queries()
         await query_tracker.wait_failures()
         assert len(query_tracker.queries) == 1
+
+    async def test_run_aperiodic_queries_not_removed_if_not_failing_on_all_dbs(
+        self, tmpdir, event_loop, query_tracker, config_data, make_query_loop
+    ):
+        """Periodic queries are removed when they fail on all databases."""
+        db1 = tmpdir / "db1.sqlite"
+        db2 = tmpdir / "db2.sqlite"
+        config_data["databases"] = {
+            "db1": {"dsn": f"sqlite:///{db1}"},
+            "db2": {"dsn": f"sqlite:///{db2}"},
+        }
+        # the table is only found on one database
+        async with DataBase("db1", f"sqlite:///{db1}") as db:
+            await db.execute_sql("CREATE TABLE test (x INTEGER)")
+            await db.execute_sql("INSERT INTO test VALUES (10)")
+        config_data["queries"]["q"]["sql"] = "SELECT x FROM test"
+        config_data["queries"]["q"]["interval"] = None
+        config_data["queries"]["q"]["databases"] = ["db1", "db2"]
+        query_loop = make_query_loop()
+        await query_loop.run_aperiodic_queries()
+        await query_tracker.wait_failures()
+        assert len(query_tracker.queries) == 2
+        assert len(query_tracker.results) == 1
+        assert len(query_tracker.failures) == 1
+        await query_loop.run_aperiodic_queries()
+        # succeeding query is run again, failing one is not
+        assert len(query_tracker.results) == 2
+        assert len(query_tracker.failures) == 1

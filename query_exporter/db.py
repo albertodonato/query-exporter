@@ -21,7 +21,10 @@ from sqlalchemy.engine import (
     ResultProxy,
 )
 from sqlalchemy.engine.url import _parse_rfc1738_args
-from sqlalchemy.exc import ArgumentError
+from sqlalchemy.exc import (
+    ArgumentError,
+    OperationalError,
+)
 from sqlalchemy_aio import ASYNCIO_STRATEGY
 
 # the label used to filter metrics by database
@@ -66,7 +69,7 @@ class InvalidResultColumnNames(Exception):
 
 
 # databse errors that mean the query won't ever succeed
-FATAL_ERRORS = (InvalidResultCount, InvalidResultColumnNames)
+FATAL_ERRORS = (InvalidResultCount, InvalidResultColumnNames, OperationalError)
 
 
 class QueryMetric(NamedTuple):
