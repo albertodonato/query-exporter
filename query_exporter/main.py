@@ -11,6 +11,7 @@ from prometheus_aioexporter import (
 from prometheus_aioexporter.metric import InvalidMetricType
 from toolrack.script import ErrorExitMessage
 
+from . import __version__
 from .config import (
     Config,
     ConfigError,
@@ -29,6 +30,12 @@ class QueryExporterScript(PrometheusExporterScript):
     def configure_argument_parser(self, parser: argparse.ArgumentParser):
         parser.add_argument(
             "config", type=argparse.FileType("r"), help="configuration file"
+        )
+        parser.add_argument(
+            "-V",
+            "--version",
+            action="version",
+            version=f"%(prog)s {__version__}",
         )
 
     def configure(self, args: argparse.Namespace):

@@ -24,8 +24,8 @@ v1.8.0 - 2019-05-25
 v1.7.0 - 2019-04-07
 ===================
 
-- Add a "queries" and "database_errors" metrics lebeled by database (Fixes #1)
-- Support database DSNs defined as "env:<VARNAME>" to supply the dns from the
+- Add a ``queries`` and ``database_errors`` metrics lebeled by database (Fixes #1)
+- Support database DSNs defined as ``env:<VARNAME>`` to supply the dns from the
   environment (Fixes: #5)
 
 
@@ -39,7 +39,7 @@ v1.5.0 - 2018-12-28
 ===================
 
 - Drop support for Python 3.5.
-- Add support for "enum" metrics.
+- Add support for ``enum`` metrics.
 - Add initial snap support.
 - Rework project setup and use pytest.
 
@@ -76,7 +76,7 @@ v1.2.0 - 2017-06-30
 
 - Switch to SQLAlchemy. Multiple database engines are now supported.
 - Needed database libraries must now be installed separately, as there is no
-   explicit dependency in SQLAlchemy.
+  explicit dependency in SQLAlchemy.
 
 
 v1.1.0 - 2017-05-21
@@ -89,7 +89,7 @@ v1.0.0 - 2017-05-13
 ===================
 
 - Replace aiopg with asyncpg. The database dsn string is now specified as a
-   postgres:// URI.
+  ``postgres://`` URI.
 
 
 v0.1.2 - 2017-05-07
