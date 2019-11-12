@@ -74,9 +74,7 @@ def load_config(config_fd, env: Environ = os.environ) -> Config:
     return Config(databases, metrics, queries)
 
 
-def _get_databases(
-    configs: Dict[str, Dict[str, Any]], env: Environ
-) -> List[DataBase]:
+def _get_databases(configs: Dict[str, Dict[str, Any]], env: Environ) -> List[DataBase]:
     """Return a dict mapping names to DataBases names."""
     databases = []
     for name, config in configs.items():
@@ -107,9 +105,7 @@ def _get_metrics(metrics: Dict[str, Dict[str, Any]]) -> List[MetricConfig]:
             config.setdefault("labels", []).extend(AUTOMATIC_LABELS)
             config["labels"].sort()
             description = config.pop("description", "")
-            configs.append(
-                MetricConfig(name, description, metric_type, config)
-            )
+            configs.append(MetricConfig(name, description, metric_type, config))
         except KeyError as e:
             _raise_missing_key(e, "metric", name)
     return configs
@@ -128,9 +124,7 @@ def _validate_metric_config(name: str, config: Dict[str, Any]):
         )
     for label in labels:
         if not _NAME_RE.match(label):
-            raise ConfigError(
-                f'Invalid label name for metric "{name}": {label}'
-            )
+            raise ConfigError(f'Invalid label name for metric "{name}": {label}')
 
 
 def _get_queries(
@@ -199,15 +193,11 @@ def _validate_query_config(
     unknown_databases = set(config["databases"]) - database_names
     if unknown_databases:
         unknown_list = ", ".join(sorted(unknown_databases))
-        raise ConfigError(
-            f'Unknown databases for query "{name}": {unknown_list}'
-        )
+        raise ConfigError(f'Unknown databases for query "{name}": {unknown_list}')
     unknown_metrics = set(config["metrics"]) - metric_names
     if unknown_metrics:
         unknown_list = ", ".join(sorted(unknown_metrics))
-        raise ConfigError(
-            f'Unknown metrics for query "{name}": {unknown_list}'
-        )
+        raise ConfigError(f'Unknown metrics for query "{name}": {unknown_list}')
     parameters = config.get("parameters")
     if parameters:
         error_prefix = f'Invalid parameters definition for query "{name}":'
@@ -215,9 +205,7 @@ def _validate_query_config(
             raise ConfigError(f"{error_prefix} must be a list")
         types = {type(param).__name__ for param in parameters}
         if len(types) > 1:
-            raise ConfigError(
-                f"{error_prefix} must be all lists or dictionaries"
-            )
+            raise ConfigError(f"{error_prefix} must be all lists or dictionaries")
         if types == {"dict"}:
             keys = {frozenset(param.keys()) for param in parameters}
             if len(keys) > 1:

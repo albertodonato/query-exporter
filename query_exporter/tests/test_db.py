@@ -112,9 +112,7 @@ class TestQuery:
             [QueryMetric("metric1", []), QueryMetric("metric2", [])],
             "",
         )
-        query_results = QueryResults(
-            ["metric2", "metric1"], [(11, 22), (33, 44)]
-        )
+        query_results = QueryResults(["metric2", "metric1"], [(11, 22), (33, 44)])
         assert query.results(query_results) == [
             MetricResult("metric2", 11, {}),
             MetricResult("metric1", 22, {}),
@@ -154,18 +152,14 @@ class TestQuery:
 
     def test_results_wrong_result_count_with_label(self):
         """An error is raised if the result column count is wrong."""
-        query = Query(
-            "query", 20, ["db"], [QueryMetric("metric1", ["label1"])], ""
-        )
+        query = Query("query", 20, ["db"], [QueryMetric("metric1", ["label1"])], "")
         query_results = QueryResults(["one"], [(1,)])
         with pytest.raises(InvalidResultCount):
             query.results(query_results)
 
     def test_results_wrong_names_with_labels(self):
         """An error is raised if metric and labels names don't match."""
-        query = Query(
-            "query", 20, ["db"], [QueryMetric("metric1", ["label1"])], ""
-        )
+        query = Query("query", 20, ["db"], [QueryMetric("metric1", ["label1"])], "")
         query_results = QueryResults(["one", "two"], [(1, 2)])
         with pytest.raises(InvalidResultColumnNames):
             query.results(query_results)
@@ -175,9 +169,7 @@ class TestQueryResults:
     @pytest.mark.asyncio
     async def test_from_results(self, event_loop):
         """The from_results method creates a QueryResult."""
-        engine = create_engine(
-            "sqlite://", strategy=ASYNCIO_STRATEGY, loop=event_loop
-        )
+        engine = create_engine("sqlite://", strategy=ASYNCIO_STRATEGY, loop=event_loop)
         async with engine.connect() as conn:
             result = await conn.execute("SELECT 1 AS a, 2 AS b")
             query_results = await QueryResults.from_results(result)
@@ -255,9 +247,7 @@ class TestDataBase:
     async def test_execute_log(self, caplog):
         """A message is logged about the query being executed."""
         db = DataBase("db", "sqlite://")
-        query = Query(
-            "query", 20, ["db"], [QueryMetric("metric", [])], "SELECT 1.0"
-        )
+        query = Query("query", 20, ["db"], [QueryMetric("metric", [])], "SELECT 1.0")
         await db.connect()
         with caplog.at_level(logging.DEBUG):
             await db.execute(query)
@@ -269,38 +259,26 @@ class TestDataBase:
     async def test_execute_keep_connected(self, connected):
         """If keep_connected is set to true, the db is not closed."""
         db = DataBase("db", "sqlite://", keep_connected=connected)
-        query = Query(
-            "query", 20, ["db"], [QueryMetric("metric", [])], "SELECT 1.0"
-        )
+        query = Query("query", 20, ["db"], [QueryMetric("metric", [])], "SELECT 1.0")
         await db.connect()
         await db.execute(query)
         assert db.connected == connected
         await db.close()
 
     @pytest.mark.asyncio
-    async def test_execute_no_keep_disconnect_after_pending_queries(
-        self, event_loop
-    ):
+    async def test_execute_no_keep_disconnect_after_pending_queries(self, event_loop):
         """The db is disconnected only after pending queries are run."""
         db = DataBase("db", "sqlite://", keep_connected=False)
-        query1 = Query(
-            "query1", 5, ["db"], [QueryMetric("metric1", [])], "SELECT 1.0"
-        )
-        query2 = Query(
-            "query", 5, ["db"], [QueryMetric("metric2", [])], "SELECT 2.0"
-        )
+        query1 = Query("query1", 5, ["db"], [QueryMetric("metric1", [])], "SELECT 1.0")
+        query2 = Query("query", 5, ["db"], [QueryMetric("metric2", [])], "SELECT 2.0")
         await db.connect(loop=event_loop)
-        await asyncio.gather(
-            db.execute(query1), db.execute(query2), loop=event_loop
-        )
+        await asyncio.gather(db.execute(query1), db.execute(query2), loop=event_loop)
         assert not db.connected
 
     @pytest.mark.asyncio
     async def test_execute_not_connected(self, db):
         """The execute recconnects to the database if not connected."""
-        query = Query(
-            "query", 20, ["db"], [QueryMetric("metric", [])], "SELECT 1"
-        )
+        query = Query("query", 20, ["db"], [QueryMetric("metric", [])], "SELECT 1")
         result = await db.execute(query)
         assert result == [MetricResult("metric", 1, {})]
         # the connection is kept for reuse
@@ -385,9 +363,7 @@ class TestDataBase:
     @pytest.mark.asyncio
     async def test_execute_query_error(self, caplog, db):
         """If the query fails an error is raised."""
-        query = Query(
-            "query", 20, ["db"], [QueryMetric("metric", [])], "WRONG"
-        )
+        query = Query("query", 20, ["db"], [QueryMetric("metric", [])], "WRONG")
         await db.connect()
         with caplog.at_level(logging.ERROR):
             with pytest.raises(DataBaseError) as error:
@@ -395,24 +371,18 @@ class TestDataBase:
         assert "syntax error" in str(error.value)
         assert (
             'query "query" on database "db" failed: '
-            '(sqlite3.OperationalError) near "WRONG": syntax error'
-            in caplog.text
+            '(sqlite3.OperationalError) near "WRONG": syntax error' in caplog.text
         )
 
     @pytest.mark.asyncio
     async def test_execute_query_invalid_count(self, caplog, db):
         """If the number of fields don't match, an error is raised."""
-        query = Query(
-            "query", 20, ["db"], [QueryMetric("metric", [])], "SELECT 1, 2"
-        )
+        query = Query("query", 20, ["db"], [QueryMetric("metric", [])], "SELECT 1, 2")
         await db.connect()
         with caplog.at_level(logging.ERROR):
             with pytest.raises(DataBaseError) as error:
                 await db.execute(query)
-        assert (
-            str(error.value)
-            == "Wrong result count from query: expected 1, got 2"
-        )
+        assert str(error.value) == "Wrong result count from query: expected 1, got 2"
         assert error.value.fatal
         assert caplog.messages == [
             'query "query" on database "db" failed: '
@@ -428,10 +398,7 @@ class TestDataBase:
         await db.connect()
         with pytest.raises(DataBaseError) as error:
             await db.execute(query)
-        assert (
-            str(error.value)
-            == "Wrong result count from query: expected 2, got 1"
-        )
+        assert str(error.value) == "Wrong result count from query: expected 2, got 1"
         assert error.value.fatal
 
     @pytest.mark.asyncio

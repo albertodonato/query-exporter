@@ -115,13 +115,7 @@ class TestQueryLoop:
         ],
     )
     async def test_run_query_with_parameters(
-        self,
-        query_tracker,
-        registry,
-        config_data,
-        make_query_loop,
-        query,
-        params,
+        self, query_tracker, registry, config_data, make_query_loop, query, params,
     ):
         """Queries are run with declared parameters."""
         config_data["metrics"]["m"]["type"] = "counter"
@@ -200,13 +194,9 @@ class TestQueryLoop:
         await query_loop.start()
         await query_tracker.wait_failures()
         queries_metric = registry.get_metric("queries")
-        assert metric_values(queries_metric, by_labels=("status",)) == {
-            ("error",): 1.0
-        }
+        assert metric_values(queries_metric, by_labels=("status",)) == {("error",): 1.0}
 
-    async def test_run_query_at_interval(
-        self, advance_time, query_tracker, query_loop
-    ):
+    async def test_run_query_at_interval(self, advance_time, query_tracker, query_loop):
         """Queries are run at the specified time interval."""
         await query_loop.start()
         await advance_time(0)  # kick the first run

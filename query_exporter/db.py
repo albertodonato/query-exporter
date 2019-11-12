@@ -196,9 +196,7 @@ class DataBase(_DataBase):
                 execution_options={"autocommit": True},
             )
         except ImportError as error:
-            raise self._db_error(
-                f'module "{error.name}" not found', fatal=True
-            )
+            raise self._db_error(f'module "{error.name}" not found', fatal=True)
 
         try:
             self._conn = await engine.connect()
@@ -221,9 +219,7 @@ class DataBase(_DataBase):
         if not self.connected:
             await self.connect()
 
-        self._logger.debug(
-            f'running query "{query.name}" on database "{self.name}"'
-        )
+        self._logger.debug(f'running query "{query.name}" on database "{self.name}"')
         self._pending_queries += 1
         self._conn: Engine
         try:
@@ -249,16 +245,12 @@ class DataBase(_DataBase):
         return await self._conn.execute(sql, parameters)
 
     def _query_db_error(
-        self,
-        query_name: str,
-        error: Union[str, Exception],
-        fatal: bool = False,
+        self, query_name: str, error: Union[str, Exception], fatal: bool = False,
     ):
         """Create and log a DataBaseError for a failed query."""
         message = str(error).strip()
         self._logger.error(
-            f'query "{query_name}" on database "{self.name}" failed: '
-            + message
+            f'query "{query_name}" on database "{self.name}" failed: ' + message
         )
         return DataBaseError(message, fatal=fatal)
 

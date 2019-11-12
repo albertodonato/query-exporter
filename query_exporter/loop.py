@@ -95,8 +95,7 @@ class QueryLoop:
     def _setup(self, config: Config):
         """Initialize instance attributes."""
         self._metric_configs = {
-            metric_config.name: metric_config
-            for metric_config in config.metrics
+            metric_config.name: metric_config for metric_config in config.metrics
         }
         for database in config.databases:
             database.set_logger(self._logger)
@@ -124,8 +123,7 @@ class QueryLoop:
             self._increment_queries_count(dbname, "error")
             if error.fatal:
                 self._logger.debug(
-                    f'removing doomed query "{query.name}" '
-                    f'for database "{dbname}"'
+                    f'removing doomed query "{query.name}" ' f'for database "{dbname}"'
                 )
                 self._doomed_queries[query.name].add(dbname)
             return
@@ -182,9 +180,7 @@ class QueryLoop:
 
     def _increment_queries_count(self, dbname: str, status: str):
         """Increment count of queries in a status for a database."""
-        self._update_metric(
-            QUERIES_METRIC_NAME, 1, dbname, labels={"status": status}
-        )
+        self._update_metric(QUERIES_METRIC_NAME, 1, dbname, labels={"status": status})
 
     def _increment_db_error_count(self, dbname: str):
         """Increment number of errors for a database."""

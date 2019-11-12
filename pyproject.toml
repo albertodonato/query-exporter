@@ -1,6 +1,3 @@
-[tool.black]
-line-length = 79
-
 [tool.isort]
 combine_as_imports = true
 force_grid_wrap = 2

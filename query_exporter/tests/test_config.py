@@ -169,9 +169,7 @@ class TestLoadConfig:
 
     def test_load_databases_dsn_invalid_env(self, write_config):
         """An error is raised if the DSN from environment is invalid."""
-        config_file = write_config(
-            {"databases": {"db1": {"dsn": "env:NOT-VALID"}}}
-        )
+        config_file = write_config({"databases": {"db1": {"dsn": "env:NOT-VALID"}}})
         with pytest.raises(ConfigError) as err, config_file.open() as fd:
             load_config(fd)
         assert str(err.value) == 'Invalid variable name: "NOT-VALID"'
@@ -224,17 +222,12 @@ class TestLoadConfig:
         config_file = write_config(config)
         with pytest.raises(ConfigError) as err, config_file.open() as fd:
             load_config(fd)
-        assert (
-            str(err.value)
-            == 'Reserved labels declared for metric "m": database'
-        )
+        assert str(err.value) == 'Reserved labels declared for metric "m": database'
 
     def test_load_metrics_unsupported_type(self, write_config):
         """An error is raised if an unsupported metric type is passed."""
         config = {
-            "metrics": {
-                "metric1": {"type": "info", "description": "info metric"}
-            }
+            "metrics": {"metric1": {"type": "info", "description": "info metric"}}
         }
         config_file = write_config(config)
         with pytest.raises(ConfigError) as err, config_file.open() as fd:
@@ -367,9 +360,7 @@ class TestLoadConfig:
             ),
         ],
     )
-    def test_configuration_incorrect(
-        self, config, error_message, write_config
-    ):
+    def test_configuration_incorrect(self, config, error_message, write_config):
         """An error is raised if configuration is incorrect."""
         config_file = write_config(config)
         with pytest.raises(ConfigError) as err, config_file.open() as fd:
@@ -402,9 +393,7 @@ class TestLoadConfig:
             (None, None),
         ],
     )
-    def test_load_queries_interval(
-        self, interval, value, config_full, write_config
-    ):
+    def test_load_queries_interval(self, interval, value, config_full, write_config):
         """The query interval can be specified with suffixes."""
         config_full["queries"]["q"]["interval"] = interval
         config_file = write_config(config_full)
@@ -413,9 +402,7 @@ class TestLoadConfig:
         [query] = config.queries
         assert query.interval == value
 
-    def test_load_queries_interval_not_specified(
-        self, config_full, write_config
-    ):
+    def test_load_queries_interval_not_specified(self, config_full, write_config):
         """If the interval is not specified, it's set to None."""
         del config_full["queries"]["q"]["interval"]
         config_file = write_config(config_full)
@@ -425,9 +412,7 @@ class TestLoadConfig:
         assert query.interval is None
 
     @pytest.mark.parametrize("interval", ["1x", "wrong", "1.5m", 0, -20])
-    def test_load_queries_invalid_interval(
-        self, interval, config_full, write_config
-    ):
+    def test_load_queries_invalid_interval(self, interval, config_full, write_config):
         """An invalid query interval raises an error."""
         config_full["queries"]["q"]["interval"] = interval
         config_file = write_config(config_full)
