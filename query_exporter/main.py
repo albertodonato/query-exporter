@@ -38,7 +38,7 @@ class QueryExporterScript(PrometheusExporterScript):
     def configure(self, args: argparse.Namespace):
         config = self._load_config(args.config)
         self.create_metrics(config.metrics)
-        self.query_loop = QueryLoop(config, self.registry, self.logger, self.loop)
+        self.query_loop = QueryLoop(config, self.registry, self.logger)
 
     async def on_application_startup(self, application: Application):
         application["exporter"].set_metric_update_handler(self._update_handler)

@@ -167,9 +167,9 @@ class TestQuery:
 
 class TestQueryResults:
     @pytest.mark.asyncio
-    async def test_from_results(self, event_loop):
+    async def test_from_results(self):
         """The from_results method creates a QueryResult."""
-        engine = create_engine("sqlite://", strategy=ASYNCIO_STRATEGY, loop=event_loop)
+        engine = create_engine("sqlite://", strategy=ASYNCIO_STRATEGY)
         async with engine.connect() as conn:
             result = await conn.execute("SELECT 1 AS a, 2 AS b")
             query_results = await QueryResults.from_results(result)
@@ -215,21 +215,21 @@ class TestDataBase:
         assert caplog.messages == ['connected to database "db"']
 
     @pytest.mark.asyncio
-    async def test_connect_missing_engine_module(self, caplog, event_loop):
+    async def test_connect_missing_engine_module(self, caplog):
         """An error is raised if a module for the engine is missing."""
         db = DataBase("db", "postgresql:///foo")
         with caplog.at_level(logging.ERROR):
             with pytest.raises(DataBaseError) as error:
-                await db.connect(loop=event_loop)
+                await db.connect()
         assert str(error.value) == 'module "psycopg2" not found'
         assert 'module "psycopg2" not found' in caplog.text
 
     @pytest.mark.asyncio
-    async def test_connect_error(self, event_loop):
+    async def test_connect_error(self):
         """A DataBaseError is raised if database connection fails."""
         db = DataBase("db", f"sqlite:////invalid")
         with pytest.raises(DataBaseError) as error:
-            await db.connect(loop=event_loop)
+            await db.connect()
         assert "unable to open database file" in str(error.value)
 
     @pytest.mark.asyncio
@@ -266,13 +266,13 @@ class TestDataBase:
         await db.close()
 
     @pytest.mark.asyncio
-    async def test_execute_no_keep_disconnect_after_pending_queries(self, event_loop):
+    async def test_execute_no_keep_disconnect_after_pending_queries(self):
         """The db is disconnected only after pending queries are run."""
         db = DataBase("db", "sqlite://", keep_connected=False)
         query1 = Query("query1", 5, ["db"], [QueryMetric("metric1", [])], "SELECT 1.0")
         query2 = Query("query", 5, ["db"], [QueryMetric("metric2", [])], "SELECT 2.0")
-        await db.connect(loop=event_loop)
-        await asyncio.gather(db.execute(query1), db.execute(query2), loop=event_loop)
+        await db.connect()
+        await asyncio.gather(db.execute(query1), db.execute(query2))
         assert not db.connected
 
     @pytest.mark.asyncio

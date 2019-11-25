@@ -43,13 +43,9 @@ class QueryLoop:
     }
 
     def __init__(
-        self,
-        config: Config,
-        registry: MetricsRegistry,
-        logger: Logger,
-        loop: asyncio.AbstractEventLoop,
+        self, config: Config, registry: MetricsRegistry, logger: Logger,
     ):
-        self.loop = loop
+        self.loop = asyncio.get_event_loop()
         self._logger = logger
         self._metric_configs: Dict[str, MetricConfig] = {}
         self._databases: Dict[str, DataBase] = {}
@@ -66,7 +62,7 @@ class QueryLoop:
         """Start periodic queries execution."""
         for db in self._databases.values():
             try:
-                await db.connect(loop=self.loop)
+                await db.connect()
             except DataBaseError:
                 self._increment_db_error_count(db.name)
 
@@ -78,10 +74,10 @@ class QueryLoop:
     async def stop(self):
         """Stop periodic query execution."""
         coros = (call.stop() for call in self._periodic_calls.values())
-        await asyncio.gather(*coros, loop=self.loop, return_exceptions=True)
+        await asyncio.gather(*coros, return_exceptions=True)
         self._periodic_calls.clear()
         coros = (db.close() for db in self._databases.values())
-        await asyncio.gather(*coros, loop=self.loop, return_exceptions=True)
+        await asyncio.gather(*coros, return_exceptions=True)
 
     async def run_aperiodic_queries(self):
         """Run queries that don't have a period set."""
@@ -90,7 +86,7 @@ class QueryLoop:
             for query in self._aperiodic_queries
             for dbname in query.databases
         )
-        await asyncio.gather(*coros, loop=self.loop, return_exceptions=True)
+        await asyncio.gather(*coros, return_exceptions=True)
 
     def _setup(self, config: Config):
         """Initialize instance attributes."""

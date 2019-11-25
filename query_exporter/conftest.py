@@ -79,7 +79,7 @@ def query_tracker(mocker, event_loop):
             while event_loop.time() < timeout:
                 if len(getattr(self, attr)) >= count:
                     break
-                await asyncio.sleep(0.05, loop=event_loop)
+                await asyncio.sleep(0.05)
 
     tracker = QueryTracker()
     orig_execute = DataBase.execute

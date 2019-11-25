@@ -1,6 +1,5 @@
 """Database wrapper."""
 
-import asyncio
 from itertools import chain
 import logging
 from typing import (
@@ -186,13 +185,12 @@ class DataBase(_DataBase):
         """Set a logger for the DataBase"""
         self._logger = logger
 
-    async def connect(self, loop: Optional[asyncio.AbstractEventLoop] = None):
+    async def connect(self):
         """Connect to the database."""
         try:
             engine = sqlalchemy.create_engine(
                 self.dsn,
                 strategy=ASYNCIO_STRATEGY,
-                loop=loop,
                 execution_options={"autocommit": True},
             )
         except ImportError as error:

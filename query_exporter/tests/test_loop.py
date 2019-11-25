@@ -34,7 +34,7 @@ def registry():
 
 
 @pytest.fixture
-async def make_query_loop(tmpdir, event_loop, config_data, registry):
+async def make_query_loop(tmpdir, config_data, registry):
     query_loops = []
 
     def make_loop():
@@ -43,15 +43,13 @@ async def make_query_loop(tmpdir, event_loop, config_data, registry):
         with config_file.open() as fh:
             config = load_config(fh)
         registry.create_metrics(config.metrics)
-        query_loop = QueryLoop(config, registry, logging, event_loop)
+        query_loop = QueryLoop(config, registry, logging)
         query_loops.append(query_loop)
         return query_loop
 
     yield make_loop
     await asyncio.gather(
-        *(query_loop.stop() for query_loop in query_loops),
-        loop=event_loop,
-        return_exceptions=True,
+        *(query_loop.stop() for query_loop in query_loops), return_exceptions=True,
     )
 
 
@@ -226,7 +224,7 @@ class TestQueryLoop:
         assert len(query_tracker.results) == 0
 
     async def test_run_periodic_queries_invalid_result_count_stop_task(
-        self, event_loop, query_tracker, config_data, make_query_loop
+        self, query_tracker, config_data, make_query_loop
     ):
         """Periodic queries returning invalid result counts are stopped."""
         config_data["queries"]["q"]["sql"] = "SELECT 100.0 AS a, 200.0 AS b"
@@ -234,14 +232,14 @@ class TestQueryLoop:
         query_loop = make_query_loop()
         await query_loop.start()
         periodic_call = query_loop._periodic_calls["q"]
-        await asyncio.sleep(1.1, loop=event_loop)
+        await asyncio.sleep(1.1)
         await query_tracker.wait_failures()
         # the query has been stopped and removed
         assert not periodic_call.running
         assert query_loop._periodic_calls == {}
 
     async def test_run_periodic_queries_not_removed_if_not_failing_on_all_dbs(
-        self, tmpdir, event_loop, query_tracker, config_data, make_query_loop
+        self, tmpdir, query_tracker, config_data, make_query_loop
     ):
         """Periodic queries are removed when they fail on all databases."""
         db1 = tmpdir / "db1.sqlite"
@@ -259,12 +257,12 @@ class TestQueryLoop:
         config_data["queries"]["q"]["databases"] = ["db1", "db2"]
         query_loop = make_query_loop()
         await query_loop.start()
-        await asyncio.sleep(0.1, loop=event_loop)
+        await asyncio.sleep(0.1)
         await query_tracker.wait_failures()
         assert len(query_tracker.queries) == 2
         assert len(query_tracker.results) == 1
         assert len(query_tracker.failures) == 1
-        await asyncio.sleep(1.1, loop=event_loop)
+        await asyncio.sleep(1.1)
         # succeeding query is run again, failing one is not
         assert len(query_tracker.results) == 2
         assert len(query_tracker.failures) == 1
@@ -295,7 +293,7 @@ class TestQueryLoop:
         assert len(query_tracker.queries) == 1
 
     async def test_run_aperiodic_queries_not_removed_if_not_failing_on_all_dbs(
-        self, tmpdir, event_loop, query_tracker, config_data, make_query_loop
+        self, tmpdir, query_tracker, config_data, make_query_loop
     ):
         """Periodic queries are removed when they fail on all databases."""
         db1 = tmpdir / "db1.sqlite"
