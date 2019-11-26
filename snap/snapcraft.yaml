@@ -52,6 +52,7 @@ parts:
     build-packages:
       - libmysqlclient-dev
       - libpq-dev
+      - libssl-dev
     stage-packages:
       - libmysqlclient20
       - libpq5
