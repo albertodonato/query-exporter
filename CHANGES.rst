@@ -1,3 +1,10 @@
+v1.9.1 - 2019-11-26
+===================
+
+- Track doomed queries on a per-database basis (#16)
+- add --version option
+
+
 v1.9.0 - 2019-11-03
 ===================
 
