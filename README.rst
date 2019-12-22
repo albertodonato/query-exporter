@@ -1,7 +1,7 @@
 Export Prometheus metrics from SQL queries
 ==========================================
 
-|Latest Version| |Build Status| |Coverage Status| |Snap Status|
+|Latest Version| |Build Status| |Coverage Status| |Snap Status| |Docker Pulls|
 
 ``query-exporter`` is a Prometheus_ exporter which allows collecting metrics
 from database queries, at specified time intervals.
@@ -326,6 +326,16 @@ The snap has builtin support for the following databases:
 - SQLite
 
 
+Run in Docker
+-------------
+
+``query-exporter`` can be run inside Docker_ containers, and is availble from the `Docker Hub`_::
+
+  docker run -p 9560:9560/tcp -v $CONFDIR:/config --rm -it adonato/query-exporter:latest /config/config.yaml
+
+where ``$CONFDIR`` points to the directory containing your config file.
+
+
 .. _Prometheus: https://prometheus.io/
 .. _SQLAlchemy: https://www.sqlalchemy.org/
 .. _`SQLAlchemy documentation`:
@@ -333,14 +343,24 @@ The snap has builtin support for the following databases:
 .. _`supported databases`:
    http://docs.sqlalchemy.org/en/latest/core/engines.html#supported-databases
 .. _`Snap Store`: https://snapcraft.io
+.. _Docker: http://docker.com/
+.. _`Docker Hub`: https://hub.docker.com/r/adonato/query-exporter
 
 .. |Latest Version| image:: https://img.shields.io/pypi/v/query-exporter.svg
+   :alt: Latest Version
    :target: https://pypi.python.org/pypi/query-exporter
 .. |Build Status| image:: https://img.shields.io/travis/albertodonato/query-exporter.svg
+   :alt: Build Status
    :target: https://travis-ci.org/albertodonato/query-exporter
 .. |Coverage Status| image:: https://img.shields.io/codecov/c/github/albertodonato/query-exporter/master.svg
+   :alt: Coverage Status
    :target: https://codecov.io/gh/albertodonato/query-exporter
 .. |Snap Status| image:: https://build.snapcraft.io/badge/albertodonato/query-exporter.svg
+   :alt: Snap Status
    :target: https://build.snapcraft.io/user/albertodonato/query-exporter
 .. |Get it from the Snap Store| image:: https://snapcraft.io/static/images/badges/en/snap-store-black.svg
+   :alt: Get it from the Snap Store
    :target: https://snapcraft.io/query-exporter
+.. |Docker Pulls| image:: https://img.shields.io/docker/pulls/adonato/query-exporter
+   :alt: Docker Pulls
+   :target: https://hub.docker.com/r/adonato/query-exporter
