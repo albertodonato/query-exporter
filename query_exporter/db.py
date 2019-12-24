@@ -119,10 +119,10 @@ class Query(NamedTuple):
         if not query_results.rows:
             return []
 
-        result_keys = set(query_results.keys)
+        result_keys = sorted(query_results.keys)
         labels = self.labels()
         metrics = [metric.name for metric in self.metrics]
-        expected_keys = set(metrics) | labels
+        expected_keys = sorted(set(metrics) | labels)
         if len(expected_keys) != len(result_keys):
             raise InvalidResultCount(len(expected_keys), len(result_keys))
         if labels:

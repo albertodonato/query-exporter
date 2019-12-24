@@ -305,6 +305,24 @@ class TestDataBase:
         ]
 
     @pytest.mark.asyncio
+    async def test_execute_field_order_same_column_names(self, db):
+        """If field order is used, column names can be the same."""
+        sql = "SELECT 10 AS a, 20 AS a"
+        query = Query(
+            "query",
+            20,
+            ["db"],
+            [QueryMetric("metric1", []), QueryMetric("metric2", [])],
+            sql,
+        )
+        await db.connect()
+        result = await db.execute(query)
+        assert result == [
+            MetricResult("metric1", 10, {}),
+            MetricResult("metric2", 20, {}),
+        ]
+
+    @pytest.mark.asyncio
     async def test_execute_matching_column_names(self, db):
         """The execute method executes a query."""
         sql = """
