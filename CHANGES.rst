@@ -1,8 +1,15 @@
+v1.9.2 - 2019-12-24
+===================
+
+- Fix failure when multiple query columns have the same name (#18)
+- Add Dockerfile (#17)
+
+
 v1.9.1 - 2019-11-26
 ===================
 
 - Track doomed queries on a per-database basis (#16)
-- add --version option
+- Add --version option
 
 
 v1.9.0 - 2019-11-03
