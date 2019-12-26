@@ -331,9 +331,7 @@ Run in Docker
 
 ``query-exporter`` can be run inside Docker_ containers, and is availble from the `Docker Hub`_::
 
-  docker run -p 9560:9560/tcp -v $CONFDIR:/config --rm -it adonato/query-exporter:latest /config/config.yaml
-
-where ``$CONFDIR`` points to the directory containing your config file.
+  docker run -p 9560:9560/tcp -v "$PWD/config.yaml:/config.yaml" --rm -it adonato/query-exporter:latest -- /config.yaml
 
 
 .. _Prometheus: https://prometheus.io/
