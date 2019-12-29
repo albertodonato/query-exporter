@@ -1,5 +1,6 @@
 import asyncio
 from collections import defaultdict
+from decimal import Decimal
 import logging
 
 from prometheus_aioexporter import MetricsRegistry
@@ -142,6 +143,15 @@ class TestQueryLoop:
         await query_tracker.wait_results()
         metric = registry.get_metric("m")
         assert metric_values(metric) == [0]
+
+    async def test_update_metric_decimal_value(self, registry, make_query_loop):
+        """A Decimal value in query results is converted to float."""
+        query_loop = make_query_loop()
+        query_loop._update_metric("m", Decimal("100.123"), "db")
+        metric = registry.get_metric("m")
+        [value] = metric_values(metric)
+        assert value == 100.123
+        assert isinstance(value, float)
 
     async def test_run_query_log(self, caplog, query_tracker, query_loop):
         """Debug messages are logged on query execution."""
