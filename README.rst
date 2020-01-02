@@ -319,7 +319,7 @@ To configure the daemon:
   configuration
 - run ``sudo snap restart query-exporter``
 
-The snap has builtin support for the following databases:
+The snap has support for connecting the following databases:
 
 - MySQL
 - PostgreSQL
@@ -331,7 +331,14 @@ Run in Docker
 
 ``query-exporter`` can be run inside Docker_ containers, and is availble from the `Docker Hub`_::
 
-  docker run -p 9560:9560/tcp -v "$PWD/config.yaml:/config.yaml" --rm -it adonato/query-exporter:latest -- /config.yaml
+  docker run -p 9560:9560/tcp -v "$PWD/config.yaml:/config.yaml" --rm -it \
+      adonato/query-exporter:latest -- /config.yaml
+
+The image has support for connecting the following databases:
+
+- MySQL
+- PostgreSQL
+- SQLite
 
 
 .. _Prometheus: https://prometheus.io/
