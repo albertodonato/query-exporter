@@ -1,3 +1,5 @@
+![query-exporter logo](./logo.svg)
+
 Export Prometheus metrics from SQL queries
 ==========================================
 

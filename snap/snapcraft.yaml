@@ -23,6 +23,7 @@ description: |
     - SQLite
 
 license: GPL-3.0+
+icon: logo.svg
 confinement: strict
 grade: stable
 base: core18
