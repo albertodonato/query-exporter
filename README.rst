@@ -1,4 +1,4 @@
-![query-exporter logo](./logo.svg)
+|query-exporter logo|
 
 Export Prometheus metrics from SQL queries
 ==========================================
@@ -353,6 +353,8 @@ The image has support for connecting the following databases:
 .. _Docker: http://docker.com/
 .. _`Docker Hub`: https://hub.docker.com/r/adonato/query-exporter
 
+.. |query-exporter logo| image:: ./logo.svg
+   :alt: query-exporter logo
 .. |Latest Version| image:: https://img.shields.io/pypi/v/query-exporter.svg
    :alt: Latest Version
    :target: https://pypi.python.org/pypi/query-exporter
