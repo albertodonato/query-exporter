@@ -236,7 +236,7 @@ class DataBase(_DataBase):
         if parameters is None:
             parameters = {}
         self._conn: Engine
-        return await self._conn.execute(sql, parameters)
+        return await self._conn.execute(sqlalchemy.text(sql), parameters)
 
     def _query_db_error(
         self, query_name: str, error: Union[str, Exception], fatal: bool = False,
