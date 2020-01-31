@@ -2,8 +2,11 @@
 
 from distutils.version import LooseVersion
 
-import pkg_resources
+from pkg_resources import get_distribution
 
-__all__ = ["__version__"]
+__all__ = ["PACKAGE", "__version__"]
 
-__version__ = LooseVersion(pkg_resources.require("query_exporter")[0].version)
+
+PACKAGE = get_distribution("query_exporter")
+
+__version__ = LooseVersion(PACKAGE.version)

@@ -1,0 +1,139 @@
+$schema: http://json-schema.org/draft-07/schema#
+$id: https://github.com/albertodonato/query-exporter/schemas/config-schema.json
+title: query-exporter config file schema
+
+type: object
+additionalProperties: false
+required:
+  - databases
+  - metrics
+  - queries
+properties:
+  databases:
+    title: Databases to connect to
+    type: object
+    additionalProperties: false
+    patternProperties:
+      ^[a-z][a-z0-9-]+$:
+        $ref: "#/definitions/database"
+  metrics:
+    title: Definition for metrics to expose
+    type: object
+    additionalProperties: false
+    patternProperties:
+      "^[a-zA-Z_][a-zA-Z0-9_]*$":
+        $ref: "#/definitions/metric"
+  queries:
+    title: Definitions for SQL queries to perform
+    type: object
+    additionalProperties: false
+    patternProperties:
+      .*:
+        $ref: "#/definitions/query"
+
+definitions:
+  label:
+    title: String for metrics and label names
+    type: string
+    pattern: ^[a-zA-Z_][a-zA-Z0-9_]*$
+
+  database:
+    title: A database to run queries on
+    type: object
+    additionalProperties: false
+    required:
+      - dsn
+    properties:
+      dsn:
+        title: The database DSN string
+        description: >
+          A string with database connection string, in the format
+          dialect[+driver]://[username:password][@host:port]/database[?option=value&...]
+        type: string
+      keep-connected:
+        type: boolean
+        description: >
+          whether to keep the connection open for the database between queries,
+          or disconnect after each run.
+        default: true
+
+  metric:
+    title: A Prometheus metric to export
+    type: object
+    additionalProperties: false
+    required:
+      - type
+    properties:
+      type:
+        title: The metric type
+        type: string
+        enum:
+          - counter
+          - enum
+          - gauge
+          - histogram
+          - summary
+      description:
+        title: A text description of the metric use
+        type: string
+      labels:
+        title: Labels associated to the metric
+        type: array
+        items:
+          $ref: "#/definitions/label"
+      buckets:
+        label: For histogram metrics, values for buckets
+        type: array
+        items:
+          type: number
+      states:
+        label: For enum metrics, possible states
+        items:
+          type: string
+
+  query:
+    title: Definition for a SQL query to run
+    description: >
+      A SQL query can be run on multiple databases, and update one or more metrics.
+    additionalProperties: false
+    required:
+      - databases
+      - metrics
+      - sql
+    properties:
+      databases:
+        title: Name of databases to run the query on
+        type: array
+        items:
+          type: string
+      interval:
+        title: The time interval at which queries are run
+        description: >
+          If specified as a pure number, it's interpreted as seconds.
+
+          Valid suffixes as "s", "m", "h", "d".
+
+          If not specified or specified as null, the query will be run on HTTP
+          requests.
+        anyOf:
+          - type: integer
+            minimum: 1
+          - type: string
+            pattern: ^[0-9]+[smhd]?$
+          - type: "null"
+      metrics:
+        title: List of metrics that the query updates
+        type: array
+        items:
+          type: string
+      parameters:
+        title: Parameters set for the query
+        description: >
+          Queries can have named parameters (in the form ":param").
+
+          If they are defined, this must be a list of parameters set for the query.
+          The query will be run once for each set.
+        type: array
+      sql:
+        title: The SQL code for the query
+        type: string

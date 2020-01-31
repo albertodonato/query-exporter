@@ -12,9 +12,11 @@ from typing import (
     NamedTuple,
 )
 
+import jsonschema
 from prometheus_aioexporter import MetricConfig
 import yaml
 
+from . import PACKAGE
 from .db import (
     AUTOMATIC_LABELS,
     DataBase,
@@ -41,8 +43,8 @@ QUERIES_METRIC = MetricConfig(
     {"labels": [DATABASE_LABEL, "status"]},
 )
 
-# regexp for validating metrics and label names
-_NAME_RE = re.compile(r"[a-zA-Z_][a-zA-Z0-9_]*$")
+# regexp for validating environment variables names
+_ENV_VAR_RE = re.compile(r"[a-zA-Z_][a-zA-Z0-9_]*$")
 
 
 class ConfigError(Exception):
@@ -57,16 +59,14 @@ class Config(NamedTuple):
     queries: List[Query]
 
 
-# Supported metric types.
-SUPPORTED_METRICS = ("counter", "enum", "gauge", "histogram", "summary")
-
 # Type matching os.environ.
 Environ = Mapping[str, str]
 
 
 def load_config(config_fd, env: Environ = os.environ) -> Config:
-    """Load YaML config from file."""
+    """Load YAML config from file."""
     config = defaultdict(dict, yaml.safe_load(config_fd))
+    _validate_config(config)
     databases = _get_databases(config["databases"], env)
     metrics = _get_metrics(config["metrics"])
     database_names = frozenset(database.name for database in databases)
@@ -85,8 +85,6 @@ def _get_databases(configs: Dict[str, Dict[str, Any]], env: Environ) -> List[Dat
                 keep_connected=bool(config.get("keep-connected", True)),
             )
             databases.append(db)
-        except KeyError as e:
-            _raise_missing_key(e, "database", name)
         except Exception as e:
             raise ConfigError(str(e))
     return databases
@@ -97,24 +95,17 @@ def _get_metrics(metrics: Dict[str, Dict[str, Any]]) -> List[MetricConfig]:
     # add global metrics
     configs = [DB_ERRORS_METRIC, QUERIES_METRIC]
     for name, config in metrics.items():
-        try:
-            _validate_metric_config(name, config)
-            metric_type = config.pop("type")
-            if metric_type not in SUPPORTED_METRICS:
-                raise ConfigError(f'Unsupported metric type: "{metric_type}"')
-            config.setdefault("labels", []).extend(AUTOMATIC_LABELS)
-            config["labels"].sort()
-            description = config.pop("description", "")
-            configs.append(MetricConfig(name, description, metric_type, config))
-        except KeyError as e:
-            _raise_missing_key(e, "metric", name)
+        _validate_metric_config(name, config)
+        metric_type = config.pop("type")
+        config.setdefault("labels", []).extend(AUTOMATIC_LABELS)
+        config["labels"].sort()
+        description = config.pop("description", "")
+        configs.append(MetricConfig(name, description, metric_type, config))
     return configs
 
 
 def _validate_metric_config(name: str, config: Dict[str, Any]):
     """Validate a metric configuration stanza."""
-    if not _NAME_RE.match(name):
-        raise ConfigError(f"Invalid metric name: {name}")
     labels = set(config.get("labels", ()))
     overlap_labels = labels & AUTOMATIC_LABELS
     if overlap_labels:
@@ -122,9 +113,6 @@ def _validate_metric_config(name: str, config: Dict[str, Any]):
         raise ConfigError(
             f'Reserved labels declared for metric "{name}": {overlap_list}'
         )
-    for label in labels:
-        if not _NAME_RE.match(label):
-            raise ConfigError(f'Invalid label name for metric "{name}": {label}')
 
 
 def _get_queries(
@@ -137,35 +125,32 @@ def _get_queries(
     metric_names = frozenset(all_metrics)
     queries: List[Query] = []
     for name, config in configs.items():
-        try:
-            _validate_query_config(name, config, database_names, metric_names)
-            _convert_query_interval(name, config)
-            query_metrics = _get_query_metrics(config, all_metrics)
-            parameters = config.get("parameters")
-            if parameters:
-                queries.extend(
-                    Query(
-                        f"{name}[params{index}]",
-                        config["interval"],
-                        config["databases"],
-                        query_metrics,
-                        config["sql"].strip(),
-                        parameters=params,
-                    )
-                    for index, params in enumerate(parameters)
+        _validate_query_config(name, config, database_names, metric_names)
+        _convert_query_interval(name, config)
+        query_metrics = _get_query_metrics(config, all_metrics)
+        parameters = config.get("parameters")
+        if parameters:
+            queries.extend(
+                Query(
+                    f"{name}[params{index}]",
+                    config["interval"],
+                    config["databases"],
+                    query_metrics,
+                    config["sql"].strip(),
+                    parameters=params,
                 )
-            else:
-                queries.append(
-                    Query(
-                        name,
-                        config["interval"],
-                        config["databases"],
-                        query_metrics,
-                        config["sql"].strip(),
-                    )
+                for index, params in enumerate(parameters)
+            )
+        else:
+            queries.append(
+                Query(
+                    name,
+                    config["interval"],
+                    config["databases"],
+                    query_metrics,
+                    config["sql"].strip(),
                 )
-        except KeyError as e:
-            _raise_missing_key(e, "query", name)
+            )
     return queries
 
 
@@ -216,9 +201,6 @@ def _convert_query_interval(name: str, config: Dict[str, Any]):
         return
 
     multiplier = 1
-
-    config_error = ConfigError(f'Invalid interval for query "{name}"')
-
     if isinstance(interval, str):
         # convert to seconds
         multipliers = {"s": 1, "m": 60, "h": 3600, "d": 3600 * 24}
@@ -227,24 +209,13 @@ def _convert_query_interval(name: str, config: Dict[str, Any]):
             interval = interval[:-1]
             multiplier = multipliers[suffix]
 
-        if "." in interval:
-            raise config_error
-
-    try:
-        interval = int(interval)
-    except ValueError:
-        raise config_error
-
-    if interval <= 0:
-        raise config_error
-
-    config["interval"] = interval * multiplier
+    config["interval"] = int(interval) * multiplier
 
 
 def _resolve_dsn(dsn: str, env: Environ) -> str:
     if dsn.startswith("env:"):
         _, varname = dsn.split(":", 1)
-        if not _NAME_RE.match(varname):
+        if not _ENV_VAR_RE.match(varname):
             raise ValueError(f'Invalid variable name: "{varname}"')
         if varname not in env:
             raise ValueError(f'Undefined variable: "{varname}"')
@@ -254,7 +225,14 @@ def _resolve_dsn(dsn: str, env: Environ) -> str:
     return dsn
 
 
-def _raise_missing_key(key_error: KeyError, entry_type: str, entry_name: str):
-    raise ConfigError(
-        f'Missing key "{key_error.args[0]}" for {entry_type} "{entry_name}"'
+def _validate_config(config: Dict[str, Any]):
+    schema_path = PACKAGE.get_resource_filename(  # type: ignore
+        None, "query_exporter/schemas/config.yaml"
     )
+    with open(schema_path) as fd:
+        schema = yaml.safe_load(fd)
+    try:
+        jsonschema.validate(config, schema)
+    except jsonschema.ValidationError as e:
+        path = "/".join(str(item) for item in e.absolute_path)
+        raise ConfigError(f"Invalid config at {path}: {e.message}")
