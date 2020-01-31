@@ -141,7 +141,7 @@ def _get_queries(
             _validate_query_config(name, config, database_names, metric_names)
             _convert_query_interval(name, config)
             query_metrics = _get_query_metrics(config, all_metrics)
-            parameters = config.get("parameters", [])
+            parameters = config.get("parameters")
             if parameters:
                 queries.extend(
                     Query(
@@ -200,19 +200,12 @@ def _validate_query_config(
         raise ConfigError(f'Unknown metrics for query "{name}": {unknown_list}')
     parameters = config.get("parameters")
     if parameters:
-        error_prefix = f'Invalid parameters definition for query "{name}":'
-        if type(parameters) is not list:
-            raise ConfigError(f"{error_prefix} must be a list")
-        types = {type(param).__name__ for param in parameters}
-        if len(types) > 1:
-            raise ConfigError(f"{error_prefix} must be all lists or dictionaries")
-        if types == {"dict"}:
-            keys = {frozenset(param.keys()) for param in parameters}
-            if len(keys) > 1:
-                raise ConfigError(
-                    f"{error_prefix} parameters dictionaries must all "
-                    "have the same keys"
-                )
+        keys = {frozenset(param.keys()) for param in parameters}
+        if len(keys) > 1:
+            raise ConfigError(
+                f'Invalid parameters definition for query "{name}": '
+                "parameters dictionaries must all have the same keys"
+            )
 
 
 def _convert_query_interval(name: str, config: Dict[str, Any]):

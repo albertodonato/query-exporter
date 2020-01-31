@@ -9,7 +9,6 @@ from typing import (
     List,
     NamedTuple,
     Optional,
-    Sequence,
     Tuple,
     Union,
 )
@@ -98,9 +97,6 @@ class MetricResult(NamedTuple):
     labels: Dict[str, str]
 
 
-QueryParameters = List[Union[List[Sequence], Dict[str, Any]]]
-
-
 class Query(NamedTuple):
     """Query definition and configuration."""
 
@@ -109,7 +105,7 @@ class Query(NamedTuple):
     databases: List[str]
     metrics: List[QueryMetric]
     sql: str
-    parameters: Optional[QueryParameters] = []
+    parameters: Optional[Dict[str, Any]] = None
 
     def labels(self) -> FrozenSet[str]:
         return frozenset(chain(*(metric.labels for metric in self.metrics)))
@@ -234,11 +230,11 @@ class DataBase(_DataBase):
                 await self.close()
 
     async def execute_sql(
-        self, sql: str, parameters: Optional[QueryParameters] = None
+        self, sql: str, parameters: Optional[Dict[str, str]] = None
     ) -> ResultProxy:
         """Execute a raw SQL query."""
         if parameters is None:
-            parameters = []
+            parameters = {}
         self._conn: Engine
         return await self._conn.execute(sql, parameters)
 

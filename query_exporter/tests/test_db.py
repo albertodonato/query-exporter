@@ -49,9 +49,9 @@ class TestQuery:
             QueryMetric("metric2", ["label2"]),
         ]
         assert query.sql == "SELECT 1"
-        assert query.parameters == []
+        assert query.parameters is None
 
-    def test_instantiae_with_parameters(self):
+    def test_instantiate_with_parameters(self):
         """A query can be instantiated with parameters."""
         query = Query(
             "query",
@@ -62,9 +62,9 @@ class TestQuery:
                 QueryMetric("metric2", ["label2"]),
             ],
             "SELECT 1",
-            parameters=[("foo", 1), ("bar", 2)],
+            parameters={"foo": 1, "bar": 2},
         )
-        assert query.parameters == [("foo", 1), ("bar", 2)]
+        assert query.parameters == {"foo": 1, "bar": 2}
 
     def test_labels(self):
         """All labels for the query can be returned."""

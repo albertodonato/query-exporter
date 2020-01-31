@@ -82,34 +82,6 @@ CONFIG_INVALID_LABEL_NAME = {
     "metrics": {"m": {"labels": ["wrong-name"]}},
 }
 
-CONFIG_INVALID_METRICS_PARAMS_TYPE = {
-    "databases": {"db": {"dsn": "postgres:///foo"}},
-    "metrics": {"m": {"type": "gauge"}},
-    "queries": {
-        "q": {
-            "interval": 10,
-            "databases": ["db"],
-            "metrics": ["m"],
-            "sql": "SELECT 1",
-            "parameters": {"invalid": "params"},
-        }
-    },
-}
-
-CONFIG_INVALID_METRICS_PARAMS_MIXED = {
-    "databases": {"db": {"dsn": "postgres:///foo"}},
-    "metrics": {"m": {"type": "gauge"}},
-    "queries": {
-        "q": {
-            "interval": 10,
-            "databases": ["db"],
-            "metrics": ["m"],
-            "sql": "SELECT :param AS m",
-            "parameters": [{"invalid": "params"}, ["invalid", "params"]],
-        },
-    },
-}
-
 CONFIG_INVALID_METRICS_PARAMS_DIFFERENT_KEYS = {
     "databases": {"db": {"dsn": "postgres:///foo"}},
     "metrics": {"m": {"type": "gauge"}},
@@ -268,19 +240,20 @@ class TestLoadConfig:
         assert query1.databases == ["db1"]
         assert query1.metrics == [QueryMetric("m1", ["l1", "l2"])]
         assert query1.sql == "SELECT 1"
-        assert query1.parameters == []
+        assert query1.parameters is None
         assert query2.name == "q2"
         assert query2.databases == ["db2"]
         assert query2.metrics == [QueryMetric("m2", [])]
         assert query2.sql == "SELECT 2"
-        assert query2.parameters == []
+        assert query2.parameters is None
 
     def test_load_queries_section_with_parameters(self, write_config):
+        """Queries can have parameters."""
         config = {
             "databases": {"db": {"dsn": "postgres:///foo"}},
             "metrics": {"m": {"type": "summary", "labels": ["l"]}},
             "queries": {
-                "q1": {
+                "q": {
                     "interval": 10,
                     "databases": ["db"],
                     "metrics": ["m"],
@@ -290,47 +263,28 @@ class TestLoadConfig:
                         {"param1": "label2", "param2": 20},
                     ],
                 },
-                "q2": {
-                    "interval": 10,
-                    "databases": ["db"],
-                    "metrics": ["m"],
-                    "sql": "SELECT ? AS l, ? AS m",
-                    "parameters": [["label1", 10], ["label2", 20]],
-                },
             },
         }
         config_file = write_config(config)
         with config_file.open() as fd:
             result = load_config(fd)
-        query11, query12, query21, query22 = sorted(
-            result.queries, key=attrgetter("name")
-        )
-        assert query11.name == "q1[params0]"
-        assert query11.databases == ["db"]
-        assert query11.metrics == [QueryMetric("m", ["l"])]
-        assert query11.sql == "SELECT :param1 AS l, :param2 AS m"
-        assert query11.parameters == {
+        query1, query2 = sorted(result.queries, key=attrgetter("name"))
+        assert query1.name == "q[params0]"
+        assert query1.databases == ["db"]
+        assert query1.metrics == [QueryMetric("m", ["l"])]
+        assert query1.sql == "SELECT :param1 AS l, :param2 AS m"
+        assert query1.parameters == {
             "param1": "label1",
             "param2": 10,
         }
-        assert query12.name == "q1[params1]"
-        assert query12.databases == ["db"]
-        assert query12.metrics == [QueryMetric("m", ["l"])]
-        assert query12.sql == "SELECT :param1 AS l, :param2 AS m"
-        assert query12.parameters == {
+        assert query2.name == "q[params1]"
+        assert query2.databases == ["db"]
+        assert query2.metrics == [QueryMetric("m", ["l"])]
+        assert query2.sql == "SELECT :param1 AS l, :param2 AS m"
+        assert query2.parameters == {
             "param1": "label2",
             "param2": 20,
         }
-        assert query21.name == "q2[params0]"
-        assert query21.databases == ["db"]
-        assert query21.metrics == [QueryMetric("m", ["l"])]
-        assert query21.sql == "SELECT ? AS l, ? AS m"
-        assert query21.parameters == ["label1", 10]
-        assert query22.name == "q2[params1]"
-        assert query22.databases == ["db"]
-        assert query22.metrics == [QueryMetric("m", ["l"])]
-        assert query22.sql == "SELECT ? AS l, ? AS m"
-        assert query22.parameters == ["label2", 20]
 
     @pytest.mark.parametrize(
         "config,error_message",
@@ -343,15 +297,6 @@ class TestLoadConfig:
             (
                 CONFIG_INVALID_LABEL_NAME,
                 'Invalid label name for metric "m": wrong-name',
-            ),
-            (
-                CONFIG_INVALID_METRICS_PARAMS_TYPE,
-                'Invalid parameters definition for query "q": must be a list',
-            ),
-            (
-                CONFIG_INVALID_METRICS_PARAMS_MIXED,
-                'Invalid parameters definition for query "q": '
-                "must be all lists or dictionaries",
             ),
             (
                 CONFIG_INVALID_METRICS_PARAMS_DIFFERENT_KEYS,
