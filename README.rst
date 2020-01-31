@@ -151,15 +151,6 @@ arbitrary and only used to identify queries in logs.
 
 Each query definition can have the following keys:la-
 
-``interval``:
-  the time interval at which queries are run.
-
-  The value is interpreted as seconds if no suffix is specified; valid suffixes
-  are ``s``, ``m``, ``h``, ``d``. Only integer values are accepted.
-
-  If no value is specified (or specified as ``null``), the query is only
-  executed upon HTTP requests.
-
 ``databases``:
   the list of databases to run the query on.
 
@@ -168,30 +159,19 @@ Each query definition can have the following keys:la-
   Metrics are automatically tagged with the ``database`` label so that
   indipendent series are generated for each database that a query is run on.
 
+``interval``:
+  the time interval at which the query is run.
+
+  The value is interpreted as seconds if no suffix is specified; valid suffixes
+  are ``s``, ``m``, ``h``, ``d``. Only integer values are accepted.
+
+  If no value is specified (or specified as ``null``), the query is only
+  executed upon HTTP requests.
+
 ``metrics``:
   the list of metrics that the query updates.
 
   Names must match those defined in the ``metrics`` section.
-
-``sql``:
-  the SQL text of the query.
-
-  The query must return a number of rows that match the number of ``metrics``
-  specified for the query plus labels for those metrics (if any).
-
-  The names of returned columns should match those of declared metrics and
-  their labels.  As an exception, if no metric for the query has labels and
-  column names don't match those of metrics, the order of metrics declaration
-  is used. For example:
-
-  .. code:: yaml
-
-      query:
-        databases: [db]
-        metrics: [metric1, metric2]
-        sql: SELECT 10.0, 20.0
-
-  will update ``metric1`` to ``10.0`` and ``metric2`` to ``20.0``.
 
 ``parameters``:
   an optional list of parameters sets to run the query with.
@@ -217,6 +197,26 @@ Each query definition can have the following keys:la-
             param2: 20
           - param1: 30
             param2: 40
+
+``sql``:
+  the SQL text of the query.
+
+  The query must return a number of rows that match the number of ``metrics``
+  specified for the query plus labels for those metrics (if any).
+
+  The names of returned columns should match those of declared metrics and
+  their labels.  As an exception, if no metric for the query has labels and
+  column names don't match those of metrics, the order of metrics declaration
+  is used. For example:
+
+  .. code:: yaml
+
+      query:
+        databases: [db]
+        metrics: [metric1, metric2]
+        sql: SELECT 10.0, 20.0
+
+  will update ``metric1`` to ``10.0`` and ``metric2`` to ``20.0``.
 
 
 Metrics endpoint
