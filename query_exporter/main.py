@@ -34,9 +34,16 @@ class QueryExporterScript(PrometheusExporterScript):
         parser.add_argument(
             "-V", "--version", action="version", version=f"%(prog)s {__version__}",
         )
+        parser.add_argument(
+            "--check-only",
+            action="store_true",
+            help="only check configuration, don't run the exporter",
+        )
 
     def configure(self, args: argparse.Namespace):
         config = self._load_config(args.config)
+        if args.check_only:
+            self.exit()
         self.create_metrics(config.metrics)
         self.query_loop = QueryLoop(config, self.registry, self.logger)
 
