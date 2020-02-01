@@ -15,12 +15,16 @@ from typing import (
 
 import sqlalchemy
 from sqlalchemy.engine import (
-    Engine,
+    Connection,
     ResultProxy,
 )
-from sqlalchemy.engine.url import _parse_rfc1738_args
+from sqlalchemy.engine.url import (
+    _parse_rfc1738_args,
+    URL,
+)
 from sqlalchemy.exc import (
     ArgumentError,
+    NoSuchModuleError,
     OperationalError,
 )
 from sqlalchemy_aio import ASYNCIO_STRATEGY
@@ -155,14 +159,14 @@ class Query(NamedTuple):
 class _DataBase(NamedTuple):
 
     name: str
-    dsn: str
+    url: URL
     keep_connected: bool = True
 
 
 class DataBase(_DataBase):
     """A database to perform Queries."""
 
-    _conn: Union[Engine, None] = None
+    _conn: Optional[Connection] = None
     _logger: logging.Logger = logging.getLogger()
     _pending_queries: int = 0
 
@@ -185,7 +189,7 @@ class DataBase(_DataBase):
         """Connect to the database."""
         try:
             engine = sqlalchemy.create_engine(
-                self.dsn,
+                self.url,
                 strategy=ASYNCIO_STRATEGY,
                 execution_options={"autocommit": True},
             )
@@ -215,7 +219,7 @@ class DataBase(_DataBase):
 
         self._logger.debug(f'running query "{query.name}" on database "{self.name}"')
         self._pending_queries += 1
-        self._conn: Engine
+        self._conn: Connection
         try:
             result = await self.execute_sql(query.sql, query.parameters)
             return query.results(await QueryResults.from_results(result))
@@ -235,7 +239,7 @@ class DataBase(_DataBase):
         """Execute a raw SQL query."""
         if parameters is None:
             parameters = {}
-        self._conn: Engine
+        self._conn: Connection
         return await self._conn.execute(sqlalchemy.text(sql), parameters)
 
     def _query_db_error(
@@ -255,13 +259,15 @@ class DataBase(_DataBase):
         return DataBaseError(message, fatal=fatal)
 
 
-def validate_dsn(dsn: str):
-    """Validate a database DSN.
+def get_db_url(dsn: str) -> URL:
+    """Validate a database DSN and return a URL for it.
 
     Raises InvalideDatabaseDSN if invalid.
 
     """
     try:
-        _parse_rfc1738_args(dsn)
-    except (ArgumentError, ValueError):
+        url = _parse_rfc1738_args(dsn)
+        url.get_dialect()
+    except (ArgumentError, ValueError, NoSuchModuleError):
         raise InvalidDatabaseDSN(dsn)
+    return url

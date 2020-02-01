@@ -14,6 +14,7 @@ from typing import (
 
 import jsonschema
 from prometheus_aioexporter import MetricConfig
+from sqlalchemy.engine.url import URL
 import yaml
 
 from . import PACKAGE
@@ -21,9 +22,9 @@ from .db import (
     AUTOMATIC_LABELS,
     DataBase,
     DATABASE_LABEL,
+    get_db_url,
     Query,
     QueryMetric,
-    validate_dsn,
 )
 
 # metric for counting database errors
@@ -81,7 +82,7 @@ def _get_databases(configs: Dict[str, Dict[str, Any]], env: Environ) -> List[Dat
         try:
             db = DataBase(
                 name,
-                _resolve_dsn(config["dsn"], env),
+                _resolve_dsn_to_url(config["dsn"], env),
                 keep_connected=bool(config.get("keep-connected", True)),
             )
             databases.append(db)
@@ -212,7 +213,7 @@ def _convert_query_interval(name: str, config: Dict[str, Any]):
     config["interval"] = int(interval) * multiplier
 
 
-def _resolve_dsn(dsn: str, env: Environ) -> str:
+def _resolve_dsn_to_url(dsn: str, env: Environ) -> URL:
     if dsn.startswith("env:"):
         _, varname = dsn.split(":", 1)
         if not _ENV_VAR_RE.match(varname):
@@ -221,8 +222,7 @@ def _resolve_dsn(dsn: str, env: Environ) -> str:
             raise ValueError(f'Undefined variable: "{varname}"')
         dsn = env[varname]
 
-    validate_dsn(dsn)
-    return dsn
+    return get_db_url(dsn)
 
 
 def _validate_config(config: Dict[str, Any]):

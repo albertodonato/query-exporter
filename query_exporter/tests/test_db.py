@@ -10,6 +10,7 @@ import pytest
 from ..db import (
     DataBase,
     DataBaseError,
+    get_db_url,
     InvalidDatabaseDSN,
     InvalidResultColumnNames,
     InvalidResultCount,
@@ -17,7 +18,6 @@ from ..db import (
     Query,
     QueryMetric,
     QueryResults,
-    validate_dsn,
 )
 
 
@@ -189,7 +189,7 @@ class TestDataBase:
         """A DataBase can be instantiated with the specified arguments, db."""
         db = DataBase("db", "sqlite:///foo")
         assert db.name == "db"
-        assert db.dsn == "sqlite:///foo"
+        assert str(db.url) == "sqlite:///foo"
         assert db.keep_connected
 
     def test_instantiate_no_keep_connected(self):
@@ -443,12 +443,18 @@ class TestDataBase:
         assert await result.fetchall() == [(10, 20)]
 
 
-class TestValidateDSN:
+class TestGetDBURL:
     def test_valid(self):
-        """validate_dsn returns nothing if the DSN is valid."""
-        assert validate_dsn("postgresql://user:pass@host/database") is None
+        """get_db_url returns a URL if the DSN is valid."""
+        url = get_db_url("postgresql://user:pass@host/database")
+        assert url.drivername == "postgresql"
+        assert url.username == "user"
+        assert url.password == "pass"
+        assert url.host == "host"
+        assert url.database == "database"
 
-    def test_invalid(self):
-        """validate_dsn raises an error if the DSN is invalid."""
+    @pytest.mark.parametrize("dsn", ["foo-bar", "unknown:///db"])
+    def test_invalid(self, dsn):
+        """get_db_url raises an error if the DSN is invalid."""
         with pytest.raises(InvalidDatabaseDSN):
-            validate_dsn("foo-bar")
+            get_db_url(dsn)
