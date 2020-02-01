@@ -16,6 +16,7 @@ from typing import (
 import sqlalchemy
 from sqlalchemy.engine import (
     Connection,
+    Engine,
     ResultProxy,
 )
 from sqlalchemy.engine.url import (
@@ -156,19 +157,24 @@ class Query(NamedTuple):
         ]
 
 
-class _DataBase(NamedTuple):
-
-    name: str
-    url: URL
-    keep_connected: bool = True
-
-
-class DataBase(_DataBase):
+class DataBase:
     """A database to perform Queries."""
 
+    _engine: Engine
     _conn: Optional[Connection] = None
     _logger: logging.Logger = logging.getLogger()
     _pending_queries: int = 0
+
+    def __init__(self, name: str, url: URL, keep_connected: bool = True):
+        self.name = name
+        self.url = url
+        self.keep_connected = keep_connected
+        try:
+            self._engine = sqlalchemy.create_engine(
+                url, strategy=ASYNCIO_STRATEGY, execution_options={"autocommit": True},
+            )
+        except ImportError as error:
+            raise self._db_error(f'module "{error.name}" not found', fatal=True)
 
     async def __aenter__(self):
         return await self.connect()
@@ -188,16 +194,7 @@ class DataBase(_DataBase):
     async def connect(self):
         """Connect to the database."""
         try:
-            engine = sqlalchemy.create_engine(
-                self.url,
-                strategy=ASYNCIO_STRATEGY,
-                execution_options={"autocommit": True},
-            )
-        except ImportError as error:
-            raise self._db_error(f'module "{error.name}" not found', fatal=True)
-
-        try:
-            self._conn = await engine.connect()
+            self._conn = await self._engine.connect()
         except Exception as error:
             raise self._db_error(error)
         self._logger.debug(f'connected to database "{self.name}"')

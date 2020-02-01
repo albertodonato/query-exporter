@@ -16,7 +16,7 @@ from ..db import QueryMetric
 @pytest.fixture
 def config_full():
     yield {
-        "databases": {"db": {"dsn": "postgresql:///foo"}},
+        "databases": {"db": {"dsn": "sqlite://"}},
         "metrics": {"m": {"type": "gauge", "labels": ["l1", "l2"]}},
         "queries": {
             "q": {
@@ -55,7 +55,7 @@ CONFIG_UNKNOWN_DBS = {
 }
 
 CONFIG_UNKNOWN_METRICS = {
-    "databases": {"db": {"dsn": "postgresql:///foo"}},
+    "databases": {"db": {"dsn": "sqlite://"}},
     "metrics": {},
     "queries": {
         "q": {
@@ -74,25 +74,25 @@ CONFIG_MISSING_DB_KEY = {
 }
 
 CONFIG_MISSING_METRIC_TYPE = {
-    "databases": {"db": {"dsn": "postgresql:///foo"}},
+    "databases": {"db": {"dsn": "sqlite://"}},
     "metrics": {"m": {}},
     "queries": {},
 }
 
 CONFIG_INVALID_METRIC_NAME = {
-    "databases": {"db": {"dsn": "postgresql:///foo"}},
+    "databases": {"db": {"dsn": "sqlite://"}},
     "metrics": {"is wrong": {"type": "gauge"}},
     "queries": {},
 }
 
 CONFIG_INVALID_LABEL_NAME = {
-    "databases": {"db": {"dsn": "postgresql:///foo"}},
+    "databases": {"db": {"dsn": "sqlite://"}},
     "metrics": {"m": {"type": "gauge", "labels": ["wrong-name"]}},
     "queries": {},
 }
 
 CONFIG_INVALID_METRICS_PARAMS_DIFFERENT_KEYS = {
-    "databases": {"db": {"dsn": "postgresql:///foo"}},
+    "databases": {"db": {"dsn": "sqlite://"}},
     "metrics": {"m": {"type": "gauge"}},
     "queries": {
         "q": {
@@ -111,8 +111,8 @@ class TestLoadConfig:
         """The 'databases' section is loaded from the config file."""
         config = {
             "databases": {
-                "db1": {"dsn": "postgresql:///foo"},
-                "db2": {"dsn": "postgresql:///bar", "keep-connected": False},
+                "db1": {"dsn": "sqlite:///foo"},
+                "db2": {"dsn": "sqlite:///bar", "keep-connected": False},
             },
             "metrics": {},
             "queries": {},
@@ -122,10 +122,10 @@ class TestLoadConfig:
             result = load_config(fd)
         database1, database2 = sorted(result.databases, key=attrgetter("name"))
         assert database1.name == "db1"
-        assert str(database1.url) == "postgresql:///foo"
+        assert str(database1.url) == "sqlite:///foo"
         assert database1.keep_connected
         assert database2.name == "db2"
-        assert str(database2.url) == "postgresql:///bar"
+        assert str(database2.url) == "sqlite:///bar"
         assert not database2.keep_connected
 
     def test_load_databases_dsn_from_env(self, write_config):
@@ -137,9 +137,9 @@ class TestLoadConfig:
         }
         config_file = write_config(config)
         with config_file.open() as fd:
-            config = load_config(fd, env={"FOO": "postgresql:///foo"})
+            config = load_config(fd, env={"FOO": "sqlite://"})
             [database] = config.databases
-        assert str(database.url) == "postgresql:///foo"
+        assert str(database.url) == "sqlite://"
 
     def test_load_databases_missing_dsn(self, write_config):
         """An error is raised if the 'dsn' key is missing for a database."""
@@ -191,7 +191,7 @@ class TestLoadConfig:
     def test_load_metrics_section(self, write_config):
         """The 'metrics' section is loaded from the config file."""
         config = {
-            "databases": {"db1": {"dsn": "postgresql:///foo"}},
+            "databases": {"db1": {"dsn": "sqlite://"}},
             "metrics": {
                 "metric1": {
                     "type": "summary",
@@ -239,7 +239,7 @@ class TestLoadConfig:
     def test_load_metrics_reserved_label(self, write_config):
         """An error is raised if reserved labels are used."""
         config = {
-            "databases": {"db1": {"dsn": "postgresql:///foo"}},
+            "databases": {"db1": {"dsn": "sqlite://"}},
             "metrics": {"m": {"type": "gauge", "labels": ["database"]}},
             "queries": {},
         }
@@ -251,7 +251,7 @@ class TestLoadConfig:
     def test_load_metrics_unsupported_type(self, write_config):
         """An error is raised if an unsupported metric type is passed."""
         config = {
-            "databases": {"db1": {"dsn": "postgresql:///foo"}},
+            "databases": {"db1": {"dsn": "sqlite://"}},
             "metrics": {"metric1": {"type": "info", "description": "info metric"}},
             "queries": {},
         }
@@ -267,8 +267,8 @@ class TestLoadConfig:
         """The 'queries` section is loaded from the config file."""
         config = {
             "databases": {
-                "db1": {"dsn": "postgresql:///foo"},
-                "db2": {"dsn": "postgresql:///bar"},
+                "db1": {"dsn": "sqlite:///foo"},
+                "db2": {"dsn": "sqlite:///bar"},
             },
             "metrics": {
                 "m1": {"type": "summary", "labels": ["l1", "l2"]},
@@ -307,7 +307,7 @@ class TestLoadConfig:
     def test_load_queries_section_with_parameters(self, write_config):
         """Queries can have parameters."""
         config = {
-            "databases": {"db": {"dsn": "postgresql:///foo"}},
+            "databases": {"db": {"dsn": "sqlite://"}},
             "metrics": {"m": {"type": "summary", "labels": ["l"]}},
             "queries": {
                 "q": {
@@ -383,7 +383,7 @@ class TestLoadConfig:
     def test_load_queries_missing_interval_default_to_none(self, write_config):
         """If the interval is not specified, it defaults to None."""
         config = {
-            "databases": {"db": {"dsn": "postgresql:///foo"}},
+            "databases": {"db": {"dsn": "sqlite://"}},
             "metrics": {"m": {"type": "summary"}},
             "queries": {
                 "q": {"databases": ["db"], "metrics": ["m"], "sql": "SELECT 1"}

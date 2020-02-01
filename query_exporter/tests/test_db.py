@@ -197,6 +197,14 @@ class TestDataBase:
         db = DataBase("db", "sqlite:///foo", keep_connected=False)
         assert not db.keep_connected
 
+    def test_instantiate_missing_engine_module(self, caplog):
+        """An error is raised if a module for the engine is missing."""
+        with caplog.at_level(logging.ERROR):
+            with pytest.raises(DataBaseError) as error:
+                DataBase("db", "postgresql:///foo")
+        assert str(error.value) == 'module "psycopg2" not found'
+        assert 'module "psycopg2" not found' in caplog.text
+
     @pytest.mark.asyncio
     async def test_as_context_manager(self, db):
         """The database can be used as an async context manager."""
@@ -213,16 +221,6 @@ class TestDataBase:
             await db.connect()
         assert isinstance(db._conn, AsyncConnection)
         assert caplog.messages == ['connected to database "db"']
-
-    @pytest.mark.asyncio
-    async def test_connect_missing_engine_module(self, caplog):
-        """An error is raised if a module for the engine is missing."""
-        db = DataBase("db", "postgresql:///foo")
-        with caplog.at_level(logging.ERROR):
-            with pytest.raises(DataBaseError) as error:
-                await db.connect()
-        assert str(error.value) == 'module "psycopg2" not found'
-        assert 'module "psycopg2" not found' in caplog.text
 
     @pytest.mark.asyncio
     async def test_connect_error(self):
