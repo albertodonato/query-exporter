@@ -16,12 +16,7 @@ from typing import (
 import sqlalchemy
 from sqlalchemy.engine import (
     Connection,
-    Engine,
     ResultProxy,
-)
-from sqlalchemy.engine.url import (
-    _parse_rfc1738_args,
-    URL,
 )
 from sqlalchemy.exc import (
     ArgumentError,
@@ -29,6 +24,7 @@ from sqlalchemy.exc import (
     OperationalError,
 )
 from sqlalchemy_aio import ASYNCIO_STRATEGY
+from sqlalchemy_aio.engine import AsyncioEngine
 
 # the label used to filter metrics by database
 DATABASE_LABEL = "database"
@@ -46,13 +42,6 @@ class DataBaseError(Exception):
     def __init__(self, message: str, fatal: bool = False):
         super().__init__(message)
         self.fatal = fatal
-
-
-class InvalidDatabaseDSN(Exception):
-    """Database DSN is invalid."""
-
-    def __init__(self, dsn: str):
-        super().__init__(f'Invalid database DSN: "{dsn}"')
 
 
 class InvalidResultCount(Exception):
@@ -160,21 +149,23 @@ class Query(NamedTuple):
 class DataBase:
     """A database to perform Queries."""
 
-    _engine: Engine
+    _engine: AsyncioEngine
     _conn: Optional[Connection] = None
     _logger: logging.Logger = logging.getLogger()
     _pending_queries: int = 0
 
-    def __init__(self, name: str, url: URL, keep_connected: bool = True):
+    def __init__(self, name: str, dsn: str, keep_connected: bool = True):
         self.name = name
-        self.url = url
+        self.dsn = dsn
         self.keep_connected = keep_connected
         try:
             self._engine = sqlalchemy.create_engine(
-                url, strategy=ASYNCIO_STRATEGY, execution_options={"autocommit": True},
+                dsn, strategy=ASYNCIO_STRATEGY, execution_options={"autocommit": True},
             )
         except ImportError as error:
             raise self._db_error(f'module "{error.name}" not found', fatal=True)
+        except (ArgumentError, ValueError, NoSuchModuleError):
+            raise self._db_error(f'Invalid database DSN: "{self.dsn}"', fatal=True)
 
     async def __aenter__(self):
         return await self.connect()
@@ -254,17 +245,3 @@ class DataBase:
         message = str(error).strip()
         self._logger.error(f'error from database "{self.name}": {message}')
         return DataBaseError(message, fatal=fatal)
-
-
-def get_db_url(dsn: str) -> URL:
-    """Validate a database DSN and return a URL for it.
-
-    Raises InvalideDatabaseDSN if invalid.
-
-    """
-    try:
-        url = _parse_rfc1738_args(dsn)
-        url.get_dialect()
-    except (ArgumentError, ValueError, NoSuchModuleError):
-        raise InvalidDatabaseDSN(dsn)
-    return url

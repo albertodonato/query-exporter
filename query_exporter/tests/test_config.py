@@ -122,10 +122,10 @@ class TestLoadConfig:
             result = load_config(fd)
         database1, database2 = sorted(result.databases, key=attrgetter("name"))
         assert database1.name == "db1"
-        assert str(database1.url) == "sqlite:///foo"
+        assert database1.dsn == "sqlite:///foo"
         assert database1.keep_connected
         assert database2.name == "db2"
-        assert str(database2.url) == "sqlite:///bar"
+        assert database2.dsn == "sqlite:///bar"
         assert not database2.keep_connected
 
     def test_load_databases_dsn_from_env(self, write_config):
@@ -139,7 +139,7 @@ class TestLoadConfig:
         with config_file.open() as fd:
             config = load_config(fd, env={"FOO": "sqlite://"})
             [database] = config.databases
-        assert str(database.url) == "sqlite://"
+        assert database.dsn == "sqlite://"
 
     def test_load_databases_missing_dsn(self, write_config):
         """An error is raised if the 'dsn' key is missing for a database."""

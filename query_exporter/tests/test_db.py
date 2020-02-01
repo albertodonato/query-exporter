@@ -10,8 +10,6 @@ import pytest
 from ..db import (
     DataBase,
     DataBaseError,
-    get_db_url,
-    InvalidDatabaseDSN,
     InvalidResultColumnNames,
     InvalidResultCount,
     MetricResult,
@@ -189,7 +187,7 @@ class TestDataBase:
         """A DataBase can be instantiated with the specified arguments, db."""
         db = DataBase("db", "sqlite:///foo")
         assert db.name == "db"
-        assert str(db.url) == "sqlite:///foo"
+        assert db.dsn == "sqlite:///foo"
         assert db.keep_connected
 
     def test_instantiate_no_keep_connected(self):
@@ -204,6 +202,15 @@ class TestDataBase:
                 DataBase("db", "postgresql:///foo")
         assert str(error.value) == 'module "psycopg2" not found'
         assert 'module "psycopg2" not found' in caplog.text
+
+    @pytest.mark.parametrize("dsn", ["foo-bar", "unknown:///db"])
+    def test_instantiate_invalid_dsn(self, caplog, dsn):
+        """An error is raised if a the provided DSN is invalid."""
+        with caplog.at_level(logging.ERROR):
+            with pytest.raises(DataBaseError) as error:
+                DataBase("db", dsn)
+        assert str(error.value) == f'Invalid database DSN: "{dsn}"'
+        assert f'Invalid database DSN: "{dsn}"' in caplog.text
 
     @pytest.mark.asyncio
     async def test_as_context_manager(self, db):
@@ -439,20 +446,3 @@ class TestDataBase:
         await db.connect()
         result = await db.execute_sql("SELECT 10 AS a, 20 AS b")
         assert await result.fetchall() == [(10, 20)]
-
-
-class TestGetDBURL:
-    def test_valid(self):
-        """get_db_url returns a URL if the DSN is valid."""
-        url = get_db_url("postgresql://user:pass@host/database")
-        assert url.drivername == "postgresql"
-        assert url.username == "user"
-        assert url.password == "pass"
-        assert url.host == "host"
-        assert url.database == "database"
-
-    @pytest.mark.parametrize("dsn", ["foo-bar", "unknown:///db"])
-    def test_invalid(self, dsn):
-        """get_db_url raises an error if the DSN is invalid."""
-        with pytest.raises(InvalidDatabaseDSN):
-            get_db_url(dsn)
