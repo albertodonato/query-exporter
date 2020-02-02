@@ -1,7 +1,37 @@
+v2.0.0 - 2019-02-02
+===================
+
+- Support only named parameters (e.g.: ``:param``) in queries (#21, #24)
+- Add JSON-schema validation for config file (#23)
+- Validate at startup if database engines from DSNs are supported and
+  corresponding modules are available
+- Check that names for queries ``parameters`` match the ones in queries SQL.
+- Add ``--check-only`` command line option to just validate configuration.
+- Drop support for matching query columns positionally, only support name
+  match. This is to avoid confusing behavior with positional match, and make
+  queries more explicit
+
+**NOTE**:
+
+ some of the changes above for query definitions are backwards incompatible;
+ thus queries might need updating. Specifically:
+
+ - Only named parameters with the ``:param`` style are now supported, queries
+   using positional parameters or other styles of named parameters need to be
+   udpated.
+ - Literal ``:`` at the beginning of a word need to be escaped (with backslash)
+   to avoid confusion with parameter markers. Colons that appear inside words
+   don't need to be escaped.
+ - Column names for query results must now always match metric and label names
+   involved in the query. Position-based match for queries without labels is no
+   longer supported. Queries can be updated adding ``AS <metric_name>``
+   expressions.
+
+
 v1.9.3 - 2019-12-29
 ===================
 
-- Convert Decimal query results to float (#19)
+- Convert ``Decimal`` query results to float (#19)
 
 
 v1.9.2 - 2019-12-24
@@ -15,7 +45,7 @@ v1.9.1 - 2019-11-26
 ===================
 
 - Track doomed queries on a per-database basis (#16)
-- Add --version option
+- Add ``--version`` option
 
 
 v1.9.0 - 2019-11-03
