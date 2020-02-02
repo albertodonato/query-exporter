@@ -218,6 +218,13 @@ Each query definition can have the following keys:la-
 
   will update ``metric1`` to ``10.0`` and ``metric2`` to ``20.0``.
 
+  **Note**: since ``:`` is used for parameter markers (see ``parameters``
+   above), literal single ``:`` at the beginning of a word must be escaped with
+   backslash (e.g. ``SELECT '\:bar' FROM table``).  There's no need to escape
+   when the colon occurs inside a word (e.g. ``SELECT 'foo:bar' FROM table``).
+  
+            
+
 
 Metrics endpoint
 ----------------

@@ -31,7 +31,6 @@ def config_full():
 
 @pytest.fixture
 def write_config(tmpdir):
-
     path = tmpdir / "config"
 
     def write(data):
