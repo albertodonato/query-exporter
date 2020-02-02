@@ -10,6 +10,7 @@ import pytest
 from ..db import (
     DataBase,
     DataBaseError,
+    InvalidQueryParameters,
     InvalidResultColumnNames,
     InvalidResultCount,
     MetricResult,
@@ -47,7 +48,7 @@ class TestQuery:
             QueryMetric("metric2", ["label2"]),
         ]
         assert query.sql == "SELECT 1"
-        assert query.parameters is None
+        assert query.parameters == {}
 
     def test_instantiate_with_parameters(self):
         """A query can be instantiated with parameters."""
@@ -59,10 +60,27 @@ class TestQuery:
                 QueryMetric("metric1", ["label1", "label2"]),
                 QueryMetric("metric2", ["label2"]),
             ],
-            "SELECT 1",
-            parameters={"foo": 1, "bar": 2},
+            "SELECT metric1, metric2, label1, label2 FROM table"
+            " WHERE x < :param1 AND  y > :param2",
+            parameters={"param1": 1, "param2": 2},
         )
-        assert query.parameters == {"foo": 1, "bar": 2}
+        assert query.parameters == {"param1": 1, "param2": 2}
+
+    def test_instantiate_parameters_not_matching(self):
+        """If parameters don't match those in SQL, an error is raised."""
+        with pytest.raises(InvalidQueryParameters):
+            Query(
+                "query",
+                20,
+                ["db1", "db2"],
+                [
+                    QueryMetric("metric1", ["label1", "label2"]),
+                    QueryMetric("metric2", ["label2"]),
+                ],
+                "SELECT metric1, metric2, label1, label2 FROM table"
+                " WHERE x < :param1 AND  y > :param3",
+                parameters={"param1": 1, "param2": 2},
+            )
 
     def test_labels(self):
         """All labels for the query can be returned."""

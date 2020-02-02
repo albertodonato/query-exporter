@@ -60,6 +60,15 @@ class InvalidResultColumnNames(Exception):
         super().__init__("Wrong column names from query")
 
 
+class InvalidQueryParameters(Exception):
+    """Query parameter names don't match those in query SQL."""
+
+    def __init__(self, query_name: str):
+        super().__init__(
+            f'Parameters for query "{query_name}" don\'t match those from SQL'
+        )
+
+
 # databse errors that mean the query won't ever succeed
 FATAL_ERRORS = (InvalidResultCount, InvalidResultColumnNames, OperationalError)
 
@@ -91,17 +100,28 @@ class MetricResult(NamedTuple):
     labels: Dict[str, str]
 
 
-class Query(NamedTuple):
+class Query:
     """Query definition and configuration."""
 
-    name: str
-    interval: int
-    databases: List[str]
-    metrics: List[QueryMetric]
-    sql: str
-    parameters: Optional[Dict[str, Any]] = None
+    def __init__(
+        self,
+        name: str,
+        interval: int,
+        databases: List[str],
+        metrics: List[QueryMetric],
+        sql: str,
+        parameters: Optional[Dict[str, Any]] = None,
+    ):
+        self.name = name
+        self.interval = interval
+        self.databases = databases
+        self.metrics = metrics
+        self.sql = sql
+        self.parameters = parameters or {}
+        self._check_parameters()
 
     def labels(self) -> FrozenSet[str]:
+        """Resturn all labels for metrics in the query."""
         return frozenset(chain(*(metric.labels for metric in self.metrics)))
 
     def results(self, query_results: QueryResults) -> List[MetricResult]:
@@ -144,6 +164,12 @@ class Query(NamedTuple):
             for row in query_results.rows
             for name, value in zip(metric_names, row)
         ]
+
+    def _check_parameters(self):
+        expr = sqlalchemy.text(self.sql)
+        query_params = set(expr.compile().params)
+        if set(self.parameters) != query_params:
+            raise InvalidQueryParameters(self.name)
 
 
 class DataBase:
@@ -209,7 +235,7 @@ class DataBase:
         self._pending_queries += 1
         self._conn: Connection
         try:
-            result = await self.execute_sql(query.sql, query.parameters)
+            result = await self._execute_query(query)
             return query.results(await QueryResults.from_results(result))
         except Exception as error:
             raise self._query_db_error(
@@ -222,13 +248,17 @@ class DataBase:
                 await self.close()
 
     async def execute_sql(
-        self, sql: str, parameters: Optional[Dict[str, str]] = None
+        self, sql: str, parameters: Optional[Dict[str, Any]] = None
     ) -> ResultProxy:
         """Execute a raw SQL query."""
         if parameters is None:
             parameters = {}
         self._conn: Connection
         return await self._conn.execute(sqlalchemy.text(sql), parameters)
+
+    async def _execute_query(self, query: Query) -> ResultProxy:
+        """Execute a query."""
+        return await self.execute_sql(query.sql, parameters=query.parameters)
 
     def _query_db_error(
         self, query_name: str, error: Union[str, Exception], fatal: bool = False,

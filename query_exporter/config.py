@@ -21,6 +21,7 @@ from .db import (
     AUTOMATIC_LABELS,
     DataBase,
     DATABASE_LABEL,
+    InvalidQueryParameters,
     Query,
     QueryMetric,
 )
@@ -128,28 +129,31 @@ def _get_queries(
         _convert_query_interval(name, config)
         query_metrics = _get_query_metrics(config, all_metrics)
         parameters = config.get("parameters")
-        if parameters:
-            queries.extend(
-                Query(
-                    f"{name}[params{index}]",
-                    config["interval"],
-                    config["databases"],
-                    query_metrics,
-                    config["sql"].strip(),
-                    parameters=params,
+        try:
+            if parameters:
+                queries.extend(
+                    Query(
+                        f"{name}[params{index}]",
+                        config["interval"],
+                        config["databases"],
+                        query_metrics,
+                        config["sql"].strip(),
+                        parameters=params,
+                    )
+                    for index, params in enumerate(parameters)
                 )
-                for index, params in enumerate(parameters)
-            )
-        else:
-            queries.append(
-                Query(
-                    name,
-                    config["interval"],
-                    config["databases"],
-                    query_metrics,
-                    config["sql"].strip(),
+            else:
+                queries.append(
+                    Query(
+                        name,
+                        config["interval"],
+                        config["databases"],
+                        query_metrics,
+                        config["sql"].strip(),
+                    )
                 )
-            )
+        except InvalidQueryParameters as e:
+            raise ConfigError(str(e))
     return queries
 
 

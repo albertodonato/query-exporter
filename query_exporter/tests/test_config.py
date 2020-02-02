@@ -264,7 +264,7 @@ class TestLoadConfig:
         )
 
     def test_load_queries_section(self, write_config):
-        """The 'queries` section is loaded from the config file."""
+        """The 'queries' section is loaded from the config file."""
         config = {
             "databases": {
                 "db1": {"dsn": "sqlite:///foo"},
@@ -297,12 +297,12 @@ class TestLoadConfig:
         assert query1.databases == ["db1"]
         assert query1.metrics == [QueryMetric("m1", ["l1", "l2"])]
         assert query1.sql == "SELECT 1"
-        assert query1.parameters is None
+        assert query1.parameters == {}
         assert query2.name == "q2"
         assert query2.databases == ["db2"]
         assert query2.metrics == [QueryMetric("m2", [])]
         assert query2.sql == "SELECT 2"
-        assert query2.parameters is None
+        assert query2.parameters == {}
 
     def test_load_queries_section_with_parameters(self, write_config):
         """Queries can have parameters."""
@@ -342,6 +342,32 @@ class TestLoadConfig:
             "param1": "label2",
             "param2": 20,
         }
+
+    def test_load_queries_section_with_wrong_parameters(self, write_config):
+        """An error is raised if query parameters don't match."""
+        config = {
+            "databases": {"db": {"dsn": "sqlite://"}},
+            "metrics": {"m": {"type": "summary", "labels": ["l"]}},
+            "queries": {
+                "q": {
+                    "interval": 10,
+                    "databases": ["db"],
+                    "metrics": ["m"],
+                    "sql": "SELECT :param1 AS l, :param3 AS m",
+                    "parameters": [
+                        {"param1": "label1", "param2": 10},
+                        {"param1": "label2", "param2": 20},
+                    ],
+                },
+            },
+        }
+        config_file = write_config(config)
+        with pytest.raises(ConfigError) as err, config_file.open() as fd:
+            load_config(fd)
+        assert (
+            str(err.value)
+            == 'Parameters for query "q[params0]" don\'t match those from SQL'
+        )
 
     @pytest.mark.parametrize(
         "config,error_message",
