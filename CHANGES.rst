@@ -12,8 +12,7 @@ v2.0.0 - 2019-02-02
   queries more explicit
 
 **NOTE**:
-
- some of the changes above for query definitions are backwards incompatible;
+ some of the changes above for query definitions are backwards incompatible,
  thus queries might need updating. Specifically:
 
  - Only named parameters with the ``:param`` style are now supported, queries
@@ -24,8 +23,8 @@ v2.0.0 - 2019-02-02
    don't need to be escaped.
  - Column names for query results must now always match metric and label names
    involved in the query. Position-based match for queries without labels is no
-   longer supported. Queries can be updated adding ``AS <metric_name>``
-   expressions.
+   longer supported. Queries can be updated adding ``AS
+   <metric_name|label_name>`` expressions.
 
 
 v1.9.3 - 2019-12-29
