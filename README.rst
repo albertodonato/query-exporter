@@ -57,7 +57,7 @@ A sample configuration file for the application looks like this:
         interval: 5
         databases: [db1]
         metrics: [metric1]
-        sql: SELECT random() / 1000000000000000
+        sql: SELECT random() / 1000000000000000 AS metric1
       query2:
         interval: 20
         databases: [db1, db2]
@@ -73,9 +73,10 @@ A sample configuration file for the application looks like this:
         metrics: [metric4]
         sql: |
           SELECT value FROM (
-            SELECT "foo" AS value UNION
-            SELECT "bar" UNION
-            SELECT "baz")
+            SELECT "foo" AS metric4 UNION
+            SELECT "bar" AS metric3 UNION
+            SELECT "baz" AS metric4
+          )
           ORDER BY random()
           LIMIT 1
 
@@ -190,7 +191,7 @@ Each query definition can have the following keys:la-
         databases: [db]
         metrics: [metric]
         sql: |
-          SELECT COUNT(*) FROM table
+          SELECT COUNT(*) AS metric FROM table
           WHERE id > :param1 AND id < :param2
         parameters:
           - param1: 10
@@ -201,20 +202,15 @@ Each query definition can have the following keys:la-
 ``sql``:
   the SQL text of the query.
 
-  The query must return a number of rows that match the number of ``metrics``
-  specified for the query plus labels for those metrics (if any).
-
-  The names of returned columns should match those of declared metrics and
-  their labels.  As an exception, if no metric for the query has labels and
-  column names don't match those of metrics, the order of metrics declaration
-  is used. For example:
+  The query must return columns with names that match those of the metrics
+  defined in ``metrics``, plus those of labels (if any) for all these metrics.
 
   .. code:: yaml
 
       query:
         databases: [db]
         metrics: [metric1, metric2]
-        sql: SELECT 10.0, 20.0
+        sql: SELECT 10.0 AS metric1, 20.0 AS metric2
 
   will update ``metric1`` to ``10.0`` and ``metric2`` to ``20.0``.
 
@@ -222,8 +218,6 @@ Each query definition can have the following keys:la-
    above), literal single ``:`` at the beginning of a word must be escaped with
    backslash (e.g. ``SELECT '\:bar' FROM table``).  There's no need to escape
    when the colon occurs inside a word (e.g. ``SELECT 'foo:bar' FROM table``).
-  
-            
 
 
 Metrics endpoint

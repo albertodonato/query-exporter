@@ -102,24 +102,7 @@ class TestQuery:
         query_results = QueryResults(["one"], [])
         assert query.results(query_results) == []
 
-    def test_results_metrics_by_order(self):
-        """The results method returns results by metrics order."""
-        query = Query(
-            "query",
-            20,
-            ["db"],
-            [QueryMetric("metric1", []), QueryMetric("metric2", [])],
-            "",
-        )
-        query_results = QueryResults(["one", "two"], [(11, 22), (33, 44)])
-        assert query.results(query_results) == [
-            MetricResult("metric1", 11, {}),
-            MetricResult("metric2", 22, {}),
-            MetricResult("metric1", 33, {}),
-            MetricResult("metric2", 44, {}),
-        ]
-
-    def test_results_metrics_by_name(self):
+    def test_results_metrics(self):
         """The results method returns results by matching metrics name."""
         query = Query(
             "query",
@@ -130,10 +113,10 @@ class TestQuery:
         )
         query_results = QueryResults(["metric2", "metric1"], [(11, 22), (33, 44)])
         assert query.results(query_results) == [
-            MetricResult("metric2", 11, {}),
             MetricResult("metric1", 22, {}),
-            MetricResult("metric2", 33, {}),
+            MetricResult("metric2", 11, {}),
             MetricResult("metric1", 44, {}),
+            MetricResult("metric2", 33, {}),
         ]
 
     def test_results_metrics_with_labels(self):
@@ -270,7 +253,9 @@ class TestDataBase:
     async def test_execute_log(self, caplog):
         """A message is logged about the query being executed."""
         db = DataBase("db", "sqlite://")
-        query = Query("query", 20, ["db"], [QueryMetric("metric", [])], "SELECT 1.0")
+        query = Query(
+            "query", 20, ["db"], [QueryMetric("metric", [])], "SELECT 1.0 AS metric"
+        )
         await db.connect()
         with caplog.at_level(logging.DEBUG):
             await db.execute(query)
@@ -282,7 +267,9 @@ class TestDataBase:
     async def test_execute_keep_connected(self, connected):
         """If keep_connected is set to true, the db is not closed."""
         db = DataBase("db", "sqlite://", keep_connected=connected)
-        query = Query("query", 20, ["db"], [QueryMetric("metric", [])], "SELECT 1.0")
+        query = Query(
+            "query", 20, ["db"], [QueryMetric("metric", [])], "SELECT 1.0 AS metric"
+        )
         await db.connect()
         await db.execute(query)
         assert db.connected == connected
@@ -292,8 +279,12 @@ class TestDataBase:
     async def test_execute_no_keep_disconnect_after_pending_queries(self):
         """The db is disconnected only after pending queries are run."""
         db = DataBase("db", "sqlite://", keep_connected=False)
-        query1 = Query("query1", 5, ["db"], [QueryMetric("metric1", [])], "SELECT 1.0")
-        query2 = Query("query", 5, ["db"], [QueryMetric("metric2", [])], "SELECT 2.0")
+        query1 = Query(
+            "query1", 5, ["db"], [QueryMetric("metric1", [])], "SELECT 1.0 AS metric1"
+        )
+        query2 = Query(
+            "query1", 5, ["db"], [QueryMetric("metric2", [])], "SELECT 1.0 AS metric2"
+        )
         await db.connect()
         await asyncio.gather(db.execute(query1), db.execute(query2))
         assert not db.connected
@@ -301,16 +292,21 @@ class TestDataBase:
     @pytest.mark.asyncio
     async def test_execute_not_connected(self, db):
         """The execute recconnects to the database if not connected."""
-        query = Query("query", 20, ["db"], [QueryMetric("metric", [])], "SELECT 1")
+        query = Query(
+            "query", 20, ["db"], [QueryMetric("metric", [])], "SELECT 1 AS metric"
+        )
         result = await db.execute(query)
         assert result == [MetricResult("metric", 1, {})]
         # the connection is kept for reuse
         assert not db._conn.closed
 
     @pytest.mark.asyncio
-    async def test_execute_field_order(self, db):
+    async def test_execute(self, db):
         """The execute method executes a query."""
-        sql = "SELECT * FROM (SELECT 10, 20 UNION SELECT 30, 40)"
+        sql = (
+            "SELECT * FROM (SELECT 10 AS metric1, 20 AS metric2 UNION"
+            " SELECT 30 AS metric1, 40 AS metric2)"
+        )
         query = Query(
             "query",
             20,
@@ -328,51 +324,8 @@ class TestDataBase:
         ]
 
     @pytest.mark.asyncio
-    async def test_execute_field_order_same_column_names(self, db):
-        """If field order is used, column names can be the same."""
-        sql = "SELECT 10 AS a, 20 AS a"
-        query = Query(
-            "query",
-            20,
-            ["db"],
-            [QueryMetric("metric1", []), QueryMetric("metric2", [])],
-            sql,
-        )
-        await db.connect()
-        result = await db.execute(query)
-        assert result == [
-            MetricResult("metric1", 10, {}),
-            MetricResult("metric2", 20, {}),
-        ]
-
-    @pytest.mark.asyncio
-    async def test_execute_matching_column_names(self, db):
-        """The execute method executes a query."""
-        sql = """
-            SELECT metric2, metric1 FROM (
-              SELECT 10 AS metric2, 20 AS metric1 UNION
-              SELECT 30 AS metric2, 40 AS metric1
-            )
-            """
-        query = Query(
-            "query",
-            20,
-            ["db"],
-            [QueryMetric("metric1", []), QueryMetric("metric2", [])],
-            sql,
-        )
-        await db.connect()
-        result = await db.execute(query)
-        assert result == [
-            MetricResult("metric2", 10, {}),
-            MetricResult("metric1", 20, {}),
-            MetricResult("metric2", 30, {}),
-            MetricResult("metric1", 40, {}),
-        ]
-
-    @pytest.mark.asyncio
     async def test_execute_with_labels(self, db):
-        """The execute method executes a query."""
+        """The execute method executes a query with labels."""
         sql = """
             SELECT metric2, metric1, label2, label1 FROM (
               SELECT 11 AS metric2, 22 AS metric1,
@@ -418,7 +371,13 @@ class TestDataBase:
     @pytest.mark.asyncio
     async def test_execute_query_invalid_count(self, caplog, db):
         """If the number of fields don't match, an error is raised."""
-        query = Query("query", 20, ["db"], [QueryMetric("metric", [])], "SELECT 1, 2")
+        query = Query(
+            "query",
+            20,
+            ["db"],
+            [QueryMetric("metric", [])],
+            "SELECT 1 AS metric, 2 AS other",
+        )
         await db.connect()
         with caplog.at_level(logging.ERROR):
             with pytest.raises(DataBaseError) as error:
@@ -434,7 +393,11 @@ class TestDataBase:
     async def test_execute_query_invalid_count_with_labels(self, db):
         """If the number of fields don't match, an error is raised."""
         query = Query(
-            "query", 20, ["db"], [QueryMetric("metric", ["label"])], "SELECT 1"
+            "query",
+            20,
+            ["db"],
+            [QueryMetric("metric", ["label"])],
+            "SELECT 1 as metric",
         )
         await db.connect()
         with pytest.raises(DataBaseError) as error:
@@ -462,5 +425,5 @@ class TestDataBase:
     async def test_execute_sql(self, db):
         """It's possible to execute raw SQL."""
         await db.connect()
-        result = await db.execute_sql("SELECT 10 AS a, 20 AS b")
+        result = await db.execute_sql("SELECT 10, 20")
         assert await result.fetchall() == [(10, 20)]

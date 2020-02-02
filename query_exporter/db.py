@@ -135,35 +135,19 @@ class Query:
         expected_keys = sorted(set(metrics) | labels)
         if len(expected_keys) != len(result_keys):
             raise InvalidResultCount(len(expected_keys), len(result_keys))
-        if labels:
-            if result_keys != expected_keys:
-                raise InvalidResultColumnNames()
-            results = []
-            for row in query_results.rows:
-                values = dict(zip(query_results.keys, row))
-                for metric in self.metrics:
-                    metric_result = MetricResult(
-                        metric.name,
-                        values[metric.name],
-                        {label: values[label] for label in metric.labels},
-                    )
-                    results.append(metric_result)
-            return results
-        elif set(metrics) == set(query_results.keys):
-            # column names match metric names, use column order
-            return self._metrics_results(query_results.keys, query_results)
-        else:
-            # use declared metrics name order
-            return self._metrics_results(metrics, query_results)
-
-    def _metrics_results(
-        self, metric_names: List[str], query_results: QueryResults
-    ) -> List[MetricResult]:
-        return [
-            MetricResult(name, value, {})
-            for row in query_results.rows
-            for name, value in zip(metric_names, row)
-        ]
+        if result_keys != expected_keys:
+            raise InvalidResultColumnNames()
+        results = []
+        for row in query_results.rows:
+            values = dict(zip(query_results.keys, row))
+            for metric in self.metrics:
+                metric_result = MetricResult(
+                    metric.name,
+                    values[metric.name],
+                    {label: values[label] for label in metric.labels},
+                )
+                results.append(metric_result)
+        return results
 
     def _check_parameters(self):
         expr = sqlalchemy.text(self.sql)

@@ -23,7 +23,7 @@ def config_data():
                 "interval": 10,
                 "databases": ["db"],
                 "metrics": ["m"],
-                "sql": "SELECT 100.0",
+                "sql": "SELECT 100.0 AS m",
             },
         },
     }
@@ -130,7 +130,7 @@ class TestQueryLoop:
         self, query_tracker, registry, config_data, make_query_loop
     ):
         """A null value in query results is treated like a zero."""
-        config_data["queries"]["q"]["sql"] = "SELECT NULL"
+        config_data["queries"]["q"]["sql"] = "SELECT NULL AS m"
         query_loop = make_query_loop()
         await query_loop.start()
         await query_tracker.wait_results()
@@ -253,9 +253,9 @@ class TestQueryLoop:
         }
         # the table is only found on one database
         async with DataBase("db1", f"sqlite:///{db1}") as db:
-            await db.execute_sql("CREATE TABLE test (x INTEGER)")
+            await db.execute_sql("CREATE TABLE test (m INTEGER)")
             await db.execute_sql("INSERT INTO test VALUES (10)")
-        config_data["queries"]["q"]["sql"] = "SELECT x FROM test"
+        config_data["queries"]["q"]["sql"] = "SELECT m FROM test"
         config_data["queries"]["q"]["interval"] = 1.0
         config_data["queries"]["q"]["databases"] = ["db1", "db2"]
         query_loop = make_query_loop()
@@ -307,9 +307,9 @@ class TestQueryLoop:
         }
         # the table is only found on one database
         async with DataBase("db1", f"sqlite:///{db1}") as db:
-            await db.execute_sql("CREATE TABLE test (x INTEGER)")
+            await db.execute_sql("CREATE TABLE test (m INTEGER)")
             await db.execute_sql("INSERT INTO test VALUES (10)")
-        config_data["queries"]["q"]["sql"] = "SELECT x FROM test"
+        config_data["queries"]["q"]["sql"] = "SELECT m FROM test"
         config_data["queries"]["q"]["interval"] = None
         config_data["queries"]["q"]["databases"] = ["db1", "db2"]
         query_loop = make_query_loop()
