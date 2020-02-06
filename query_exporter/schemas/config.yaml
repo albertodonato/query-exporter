@@ -51,10 +51,10 @@ definitions:
           dialect[+driver]://[username:password][@host:port]/database[?option=value&...]
         type: string
       keep-connected:
-        type: boolean
+        title: Whether to keep the connection open for the database between queries
         description: >
-          whether to keep the connection open for the database between queries,
-          or disconnect after each run.
+          When set to false, it will disconnect from the database after each run.
+        type: boolean
         default: true
 
   metric:
@@ -95,6 +95,7 @@ definitions:
     title: Definition for a SQL query to run
     description: >
       A SQL query can be run on multiple databases, and update one or more metrics.
+    type: object
     additionalProperties: false
     required:
       - databases
