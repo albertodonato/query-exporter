@@ -313,9 +313,10 @@ To configure the daemon:
 
 The snap has support for connecting the following databases:
 
-- MySQL
 - PostgreSQL
+- MySQL
 - SQLite
+- Microsoft SQL Server
 
 
 Run in Docker
@@ -331,6 +332,7 @@ The image has support for connecting the following databases:
 - MySQL
 - PostgreSQL
 - SQLite
+- Microsoft SQL Server
 
 
 .. _Prometheus: https://prometheus.io/

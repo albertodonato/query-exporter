@@ -18,9 +18,10 @@ description: |
 
   Currently supported databases are:
 
-    - MySQL
     - PostgreSQL
+    - MySQL
     - SQLite
+    - Microsoft SQL Server
 
 license: GPL-3.0+
 icon: logo.svg
@@ -50,12 +51,15 @@ parts:
     python-packages:
       - mysql
       - psycopg2
+      - pyodbc
     build-packages:
       - libmysqlclient-dev
       - libpq-dev
       - libssl-dev
+      - unixodbc-dev
     stage-packages:
       - libmysqlclient20
+      - libodbc1
       - libpq5
     filesets:
       bins:

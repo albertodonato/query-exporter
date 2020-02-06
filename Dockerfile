@@ -2,19 +2,28 @@ FROM python:3.8-slim AS build-image
 
 RUN apt update
 RUN apt install -y --no-install-recommends \
-    build-essential libpq-dev default-libmysqlclient-dev
+    build-essential \
+    default-libmysqlclient-dev \
+    libpq-dev \
+    unixodbc-dev
 
 ADD . /srcdir
 RUN python3 -m venv /virtualenv
 ENV PATH="/virtualenv/bin:$PATH"
-RUN pip install /srcdir psycopg2 mysqlclient
+RUN pip install \
+    /srcdir \
+    mysqlclient \
+    pyodbc \
+    psycopg2
 
 
 FROM python:3.8-slim
 
 RUN apt update
 RUN apt install -y --no-install-recommends \
-    libpq5 libmariadb-dev-compat
+    libmariadb-dev-compat \
+    libodbc1 \
+    libpq5
 COPY --from=build-image /virtualenv /virtualenv
 ENV PATH="/virtualenv/bin:$PATH"
 
