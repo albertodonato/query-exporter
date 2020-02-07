@@ -1,3 +1,10 @@
+v2.0.1 - 2019-02-07
+===================
+
+- Fix validation for entries in the ``queries`` section for config file.
+- Add MSSQL support for Snap and Docker.
+
+
 v2.0.0 - 2019-02-02
 ===================
 
