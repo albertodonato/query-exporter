@@ -329,8 +329,8 @@ Run in Docker
 
 The image has support for connecting the following databases:
 
-- MySQL
 - PostgreSQL
+- MySQL
 - SQLite
 - Microsoft SQL Server
 
