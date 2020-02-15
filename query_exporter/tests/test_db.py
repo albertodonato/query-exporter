@@ -355,20 +355,6 @@ class TestDataBase:
         ]
 
     @pytest.mark.asyncio
-    async def test_execute_query_error(self, caplog, db):
-        """If the query fails an error is raised."""
-        query = Query("query", 20, ["db"], [QueryMetric("metric", [])], "WRONG")
-        await db.connect()
-        with caplog.at_level(logging.ERROR):
-            with pytest.raises(DataBaseError) as error:
-                await db.execute(query)
-        assert "syntax error" in str(error.value)
-        assert (
-            'query "query" on database "db" failed: '
-            '(sqlite3.OperationalError) near "WRONG": syntax error' in caplog.text
-        )
-
-    @pytest.mark.asyncio
     async def test_execute_query_invalid_count(self, caplog, db):
         """If the number of fields don't match, an error is raised."""
         query = Query(

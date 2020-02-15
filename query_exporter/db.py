@@ -21,7 +21,6 @@ from sqlalchemy.engine import (
 from sqlalchemy.exc import (
     ArgumentError,
     NoSuchModuleError,
-    OperationalError,
 )
 from sqlalchemy_aio import ASYNCIO_STRATEGY
 from sqlalchemy_aio.engine import AsyncioEngine
@@ -69,8 +68,12 @@ class InvalidQueryParameters(Exception):
         )
 
 
-# databse errors that mean the query won't ever succeed
-FATAL_ERRORS = (InvalidResultCount, InvalidResultColumnNames, OperationalError)
+# database errors that mean the query won't ever succeed.  Not all possible
+# fatal errors are tracked here, because some DBAPI errors can happen in
+# circumstances which can be fatal or not.  Since there doesn't seem to be a
+# reliable way to know, there might be cases when a query will never succeed
+# but will end up being retried.
+FATAL_ERRORS = (InvalidResultCount, InvalidResultColumnNames)
 
 
 class QueryMetric(NamedTuple):

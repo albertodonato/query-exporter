@@ -179,7 +179,7 @@ class TestQueryLoop:
         self, query_tracker, config_data, make_query_loop, registry
     ):
         """Query errors are logged."""
-        config_data["databases"]["db"]["dsn"] = f"sqlite:////invalid"
+        config_data["databases"]["db"]["dsn"] = "sqlite:////invalid"
         query_loop = make_query_loop()
         await query_loop.start()
         await query_tracker.wait_failures()
@@ -251,13 +251,16 @@ class TestQueryLoop:
             "db1": {"dsn": f"sqlite:///{db1}"},
             "db2": {"dsn": f"sqlite:///{db2}"},
         }
-        # the table is only found on one database
-        async with DataBase("db1", f"sqlite:///{db1}") as db:
+        config_data["queries"]["q"].update(
+            {"databases": ["db1", "db2"], "sql": "SELECT * FROM test", "interval": 1.0}
+        )
+        async with DataBase("db", f"sqlite:///{db1}") as db:
             await db.execute_sql("CREATE TABLE test (m INTEGER)")
             await db.execute_sql("INSERT INTO test VALUES (10)")
-        config_data["queries"]["q"]["sql"] = "SELECT m FROM test"
-        config_data["queries"]["q"]["interval"] = 1.0
-        config_data["queries"]["q"]["databases"] = ["db1", "db2"]
+        # the query on the second database returns more columns
+        async with DataBase("db", f"sqlite:///{db2}") as db:
+            await db.execute_sql("CREATE TABLE test (m INTEGER, other INTERGER)")
+            await db.execute_sql("INSERT INTO test VALUES (10, 20)")
         query_loop = make_query_loop()
         await query_loop.start()
         await asyncio.sleep(0.1)
@@ -305,13 +308,20 @@ class TestQueryLoop:
             "db1": {"dsn": f"sqlite:///{db1}"},
             "db2": {"dsn": f"sqlite:///{db2}"},
         }
-        # the table is only found on one database
-        async with DataBase("db1", f"sqlite:///{db1}") as db:
+        config_data["queries"]["q"].update(
+            {
+                "databases": ["db1", "db2"],
+                "sql": "SELECT * FROM test",
+                "interval": None,
+            }
+        )
+        async with DataBase("db", f"sqlite:///{db1}") as db:
             await db.execute_sql("CREATE TABLE test (m INTEGER)")
             await db.execute_sql("INSERT INTO test VALUES (10)")
-        config_data["queries"]["q"]["sql"] = "SELECT m FROM test"
-        config_data["queries"]["q"]["interval"] = None
-        config_data["queries"]["q"]["databases"] = ["db1", "db2"]
+        # the query on the second database returns more columns
+        async with DataBase("db", f"sqlite:///{db2}") as db:
+            await db.execute_sql("CREATE TABLE test (m INTEGER, other INTERGER)")
+            await db.execute_sql("INSERT INTO test VALUES (10, 20)")
         query_loop = make_query_loop()
         await query_loop.run_aperiodic_queries()
         await query_tracker.wait_failures()
