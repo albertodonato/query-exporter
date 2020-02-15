@@ -1,7 +1,10 @@
 """Script entry point."""
 
 import argparse
-from typing import List
+from typing import (
+    IO,
+    List,
+)
 
 from aiohttp.web import Application
 from prometheus_aioexporter import (
@@ -58,7 +61,7 @@ class QueryExporterScript(PrometheusExporterScript):
         """Run queries with no specified interval on each request."""
         await self.query_loop.run_aperiodic_queries()
 
-    def _load_config(self, config_file) -> Config:
+    def _load_config(self, config_file: IO) -> Config:
         """Load the application configuration."""
         try:
             config = load_config(config_file)

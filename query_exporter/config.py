@@ -7,6 +7,7 @@ from typing import (
     Any,
     Dict,
     FrozenSet,
+    IO,
     List,
     Mapping,
     NamedTuple,
@@ -63,7 +64,7 @@ class Config(NamedTuple):
 Environ = Mapping[str, str]
 
 
-def load_config(config_fd, env: Environ = os.environ) -> Config:
+def load_config(config_fd: IO, env: Environ = os.environ) -> Config:
     """Load YAML config from file."""
     config = defaultdict(dict, yaml.safe_load(config_fd))
     _validate_config(config)
