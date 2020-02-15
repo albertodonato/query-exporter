@@ -1,15 +1,22 @@
+v2.0.2 - 2019-02-15
+===================
+
+- Don't disable queries failing because of ``OperationalError`` as it might not
+  be a fatal error (#25)
+
+
 v2.0.1 - 2019-02-07
 ===================
 
-- Fix validation for entries in the ``queries`` section for config file.
-- Add MSSQL support for Snap and Docker.
+- Fix validation for entries in the ``queries`` section for config file
+- Add MSSQL support for Snap and Docker
 
 
 v2.0.0 - 2019-02-02
 ===================
 
-- Support only named parameters (e.g.: ``:param``) in queries (#21, #24)
-- Add JSON-schema validation for config file (#23)
+- Support only named parameters (e.g.: ``:param``) in queries (#21, #24).
+- Add JSON-schema validation for config file (#23).
 - Validate at startup if database engines from DSNs are supported and
   corresponding modules are available
 - Check that names for queries ``parameters`` match the ones in queries SQL.
