@@ -64,7 +64,7 @@ class QueryExporterScript(PrometheusExporterScript):
     def _load_config(self, config_file: IO) -> Config:
         """Load the application configuration."""
         try:
-            config = load_config(config_file)
+            config = load_config(config_file, self.logger)
         except (InvalidMetricType, ConfigError) as error:
             raise ErrorExitMessage(str(error))
         finally:

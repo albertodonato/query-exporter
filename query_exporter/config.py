@@ -1,6 +1,7 @@
 """Configuration management functions."""
 
 from collections import defaultdict
+from logging import Logger
 import os
 import re
 from typing import (
@@ -11,6 +12,7 @@ from typing import (
     List,
     Mapping,
     NamedTuple,
+    Set,
 )
 
 import jsonschema
@@ -43,6 +45,7 @@ QUERIES_METRIC = MetricConfig(
     "counter",
     {"labels": [DATABASE_LABEL, "status"]},
 )
+GLOBAL_METRICS = frozenset([DB_ERRORS_METRIC_NAME, QUERIES_METRIC_NAME])
 
 # regexp for validating environment variables names
 _ENV_VAR_RE = re.compile(r"[a-zA-Z_][a-zA-Z0-9_]*$")
@@ -64,14 +67,16 @@ class Config(NamedTuple):
 Environ = Mapping[str, str]
 
 
-def load_config(config_fd: IO, env: Environ = os.environ) -> Config:
+def load_config(config_fd: IO, logger: Logger, env: Environ = os.environ) -> Config:
     """Load YAML config from file."""
-    config = defaultdict(dict, yaml.safe_load(config_fd))
-    _validate_config(config)
-    databases = _get_databases(config["databases"], env)
-    metrics = _get_metrics(config["metrics"])
-    queries = _get_queries(config["queries"], frozenset(databases), metrics)
-    return Config(databases, metrics, queries)
+    data = defaultdict(dict, yaml.safe_load(config_fd))
+    _validate_config(data)
+    databases = _get_databases(data["databases"], env)
+    metrics = _get_metrics(data["metrics"])
+    queries = _get_queries(data["queries"], frozenset(databases), metrics)
+    config = Config(databases, metrics, queries)
+    _warn_if_unused(config, logger)
+    return config
 
 
 def _get_databases(
@@ -242,3 +247,23 @@ def _validate_config(config: Dict[str, Any]):
     except jsonschema.ValidationError as e:
         path = "/".join(str(item) for item in e.absolute_path)
         raise ConfigError(f"Invalid config at {path}: {e.message}")
+
+
+def _warn_if_unused(config: Config, logger: Logger):
+    """Warn if there are unused databases or metrics defined."""
+    used_dbs: Set[str] = set()
+    used_metrics: Set[str] = set()
+    for query in config.queries.values():
+        used_dbs.update(query.databases)
+        used_metrics.update(metric.name for metric in query.metrics)
+
+    unused_dbs = sorted(set(config.databases) - used_dbs)
+    if unused_dbs:
+        logger.warning(
+            f"unused entries in \"databases\" section: {', '.join(unused_dbs)}"
+        )
+    unused_metrics = sorted(set(config.metrics) - GLOBAL_METRICS - used_metrics)
+    if unused_metrics:
+        logger.warning(
+            f"unused entries in \"metrics\" section: {', '.join(unused_metrics)}"
+        )

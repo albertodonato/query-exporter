@@ -81,15 +81,21 @@ definitions:
         type: array
         items:
           $ref: "#/definitions/label"
+        minItems: 1
+        uniqueItems: true
       buckets:
         label: For histogram metrics, values for buckets
         type: array
         items:
           type: number
+        minItems: 1
+        uniqueItems: true
       states:
         label: For enum metrics, possible states
         items:
           type: string
+        minItems: 1
+        uniqueItems: true
 
   query:
     title: Definition for a SQL query to run
@@ -107,6 +113,8 @@ definitions:
         type: array
         items:
           type: string
+        minItems: 1
+        uniqueItems: true
       interval:
         title: The time interval at which queries are run
         description: >
@@ -127,14 +135,20 @@ definitions:
         type: array
         items:
           type: string
+        minItems: 1
+        uniqueItems: true
       parameters:
-        title: Parameters set for the query
+        title: Parameter sets for the query
         description: >
           Queries can have named parameters (in the form ":param").
 
           If they are defined, this must be a list of parameters set for the query.
           The query will be run once for each set.
         type: array
+        items:
+          type: object
+        minItems: 1
+        uniqueItems: true
       sql:
         title: The SQL code for the query
         type: string

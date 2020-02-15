@@ -42,7 +42,7 @@ async def make_query_loop(tmpdir, config_data, registry):
         config_file = tmpdir / "config.yaml"
         config_file.write_text(yaml.dump(config_data), "utf-8")
         with config_file.open() as fh:
-            config = load_config(fh)
+            config = load_config(fh, logging.getLogger())
         registry.create_metrics(config.metrics.values())
         query_loop = QueryLoop(config, registry, logging)
         query_loops.append(query_loop)
