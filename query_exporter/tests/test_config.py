@@ -1,5 +1,3 @@
-from operator import attrgetter
-
 import yaml
 
 import pytest
@@ -7,8 +5,10 @@ import pytest
 from ..config import (
     ConfigError,
     DB_ERRORS_METRIC,
+    DB_ERRORS_METRIC_NAME,
     load_config,
     QUERIES_METRIC,
+    QUERIES_METRIC_NAME,
 )
 from ..db import QueryMetric
 
@@ -119,7 +119,9 @@ class TestLoadConfig:
         config_file = write_config(config)
         with config_file.open() as fd:
             result = load_config(fd)
-        database1, database2 = sorted(result.databases, key=attrgetter("name"))
+        assert {"db1", "db2"} == set(result.databases)
+        database1 = result.databases["db1"]
+        database2 = result.databases["db2"]
         assert database1.name == "db1"
         assert database1.dsn == "sqlite:///foo"
         assert database1.keep_connected
@@ -137,8 +139,7 @@ class TestLoadConfig:
         config_file = write_config(config)
         with config_file.open() as fd:
             config = load_config(fd, env={"FOO": "sqlite://"})
-            [database] = config.databases
-        assert database.dsn == "sqlite://"
+        assert config.databases["db1"].dsn == "sqlite://"
 
     def test_load_databases_missing_dsn(self, write_config):
         """An error is raised if the 'dsn' key is missing for a database."""
@@ -213,18 +214,18 @@ class TestLoadConfig:
         config_file = write_config(config)
         with config_file.open() as fd:
             result = load_config(fd)
-        db_errors_metric, metric1, metric2, metric3, queries_metric = sorted(
-            result.metrics, key=attrgetter("name")
-        )
+        metric1 = result.metrics["metric1"]
         assert metric1.type == "summary"
         assert metric1.description == "metric one"
         assert metric1.config == {"labels": ["database", "label1", "label2"]}
+        metric2 = result.metrics["metric2"]
         assert metric2.type == "histogram"
         assert metric2.description == "metric two"
         assert metric2.config == {
             "labels": ["database"],
             "buckets": [10, 100, 1000],
         }
+        metric3 = result.metrics["metric3"]
         assert metric3.type == "enum"
         assert metric3.description == "metric three"
         assert metric3.config == {
@@ -232,8 +233,8 @@ class TestLoadConfig:
             "states": ["on", "off"],
         }
         # global metrics
-        assert db_errors_metric == DB_ERRORS_METRIC
-        assert queries_metric == QUERIES_METRIC
+        assert result.metrics[DB_ERRORS_METRIC_NAME] == DB_ERRORS_METRIC
+        assert result.metrics[QUERIES_METRIC_NAME] == QUERIES_METRIC
 
     def test_load_metrics_reserved_label(self, write_config):
         """An error is raised if reserved labels are used."""
@@ -291,12 +292,13 @@ class TestLoadConfig:
         config_file = write_config(config)
         with config_file.open() as fd:
             result = load_config(fd)
-        query1, query2 = sorted(result.queries, key=attrgetter("name"))
+        query1 = result.queries["q1"]
         assert query1.name == "q1"
         assert query1.databases == ["db1"]
         assert query1.metrics == [QueryMetric("m1", ["l1", "l2"])]
         assert query1.sql == "SELECT 1"
         assert query1.parameters == {}
+        query2 = result.queries["q2"]
         assert query2.name == "q2"
         assert query2.databases == ["db2"]
         assert query2.metrics == [QueryMetric("m2", [])]
@@ -324,7 +326,7 @@ class TestLoadConfig:
         config_file = write_config(config)
         with config_file.open() as fd:
             result = load_config(fd)
-        query1, query2 = sorted(result.queries, key=attrgetter("name"))
+        query1 = result.queries["q[params0]"]
         assert query1.name == "q[params0]"
         assert query1.databases == ["db"]
         assert query1.metrics == [QueryMetric("m", ["l"])]
@@ -333,6 +335,7 @@ class TestLoadConfig:
             "param1": "label1",
             "param2": 10,
         }
+        query2 = result.queries["q[params1]"]
         assert query2.name == "q[params1]"
         assert query2.databases == ["db"]
         assert query2.metrics == [QueryMetric("m", ["l"])]
@@ -417,7 +420,7 @@ class TestLoadConfig:
         config_file = write_config(config)
         with config_file.open() as fd:
             config = load_config(fd)
-        assert config.queries[0].interval is None
+        assert config.queries["q"].interval is None
 
     @pytest.mark.parametrize(
         "interval,value",
@@ -437,8 +440,7 @@ class TestLoadConfig:
         config_file = write_config(config_full)
         with config_file.open() as fd:
             config = load_config(fd)
-        [query] = config.queries
-        assert query.interval == value
+        assert config.queries["q"].interval == value
 
     def test_load_queries_interval_not_specified(self, config_full, write_config):
         """If the interval is not specified, it's set to None."""
@@ -446,8 +448,7 @@ class TestLoadConfig:
         config_file = write_config(config_full)
         with config_file.open() as fd:
             config = load_config(fd)
-        [query] = config.queries
-        assert query.interval is None
+        assert config.queries["q"].interval is None
 
     @pytest.mark.parametrize("interval", ["1x", "wrong", "1.5m"])
     def test_load_queries_invalid_interval_string(

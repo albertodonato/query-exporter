@@ -54,9 +54,9 @@ class ConfigError(Exception):
 class Config(NamedTuple):
     """Top-level configuration."""
 
-    databases: List[DataBase]
-    metrics: List[MetricConfig]
-    queries: List[Query]
+    databases: Dict[str, DataBase]
+    metrics: Dict[str, MetricConfig]
+    queries: Dict[str, Query]
 
 
 # Type matching os.environ.
@@ -69,38 +69,41 @@ def load_config(config_fd, env: Environ = os.environ) -> Config:
     _validate_config(config)
     databases = _get_databases(config["databases"], env)
     metrics = _get_metrics(config["metrics"])
-    database_names = frozenset(database.name for database in databases)
-    queries = _get_queries(config["queries"], database_names, metrics)
+    queries = _get_queries(config["queries"], frozenset(databases), metrics)
     return Config(databases, metrics, queries)
 
 
-def _get_databases(configs: Dict[str, Dict[str, Any]], env: Environ) -> List[DataBase]:
-    """Return a dict mapping names to DataBases names."""
-    databases = []
-    for name, config in configs.items():
-        try:
-            db = DataBase(
+def _get_databases(
+    configs: Dict[str, Dict[str, Any]], env: Environ
+) -> Dict[str, DataBase]:
+    """Return a dict mapping names to DataBases."""
+    try:
+        return {
+            name: DataBase(
                 name,
                 _resolve_dsn(config["dsn"], env),
                 keep_connected=bool(config.get("keep-connected", True)),
             )
-            databases.append(db)
-        except Exception as e:
-            raise ConfigError(str(e))
-    return databases
+            for name, config in configs.items()
+        }
+    except Exception as e:
+        raise ConfigError(str(e))
 
 
-def _get_metrics(metrics: Dict[str, Dict[str, Any]]) -> List[MetricConfig]:
-    """Return metrics configuration."""
+def _get_metrics(metrics: Dict[str, Dict[str, Any]]) -> Dict[str, MetricConfig]:
+    """Return a dict mapping metric names to their configuration."""
     # add global metrics
-    configs = [DB_ERRORS_METRIC, QUERIES_METRIC]
+    configs = {
+        DB_ERRORS_METRIC_NAME: DB_ERRORS_METRIC,
+        QUERIES_METRIC_NAME: QUERIES_METRIC,
+    }
     for name, config in metrics.items():
         _validate_metric_config(name, config)
         metric_type = config.pop("type")
         config.setdefault("labels", []).extend(AUTOMATIC_LABELS)
         config["labels"].sort()
         description = config.pop("description", "")
-        configs.append(MetricConfig(name, description, metric_type, config))
+        configs[name] = MetricConfig(name, description, metric_type, config)
     return configs
 
 
@@ -118,39 +121,39 @@ def _validate_metric_config(name: str, config: Dict[str, Any]):
 def _get_queries(
     configs: Dict[str, Dict[str, Any]],
     database_names: FrozenSet[str],
-    metrics: List[MetricConfig],
-) -> List[Query]:
+    metrics: Dict[str, MetricConfig],
+) -> Dict[str, Query]:
     """Return a list of Queries from config."""
-    all_metrics = {metric.name: metric for metric in metrics}
-    metric_names = frozenset(all_metrics)
-    queries: List[Query] = []
+    metric_names = frozenset(metrics)
+    queries: Dict[str, Query] = {}
     for name, config in configs.items():
         _validate_query_config(name, config, database_names, metric_names)
         _convert_query_interval(name, config)
-        query_metrics = _get_query_metrics(config, all_metrics)
+        query_metrics = _get_query_metrics(config, metrics)
         parameters = config.get("parameters")
         try:
             if parameters:
-                queries.extend(
-                    Query(
+                queries.update(
+                    (
                         f"{name}[params{index}]",
-                        config["interval"],
-                        config["databases"],
-                        query_metrics,
-                        config["sql"].strip(),
-                        parameters=params,
+                        Query(
+                            f"{name}[params{index}]",
+                            config["interval"],
+                            config["databases"],
+                            query_metrics,
+                            config["sql"].strip(),
+                            parameters=params,
+                        ),
                     )
                     for index, params in enumerate(parameters)
                 )
             else:
-                queries.append(
-                    Query(
-                        name,
-                        config["interval"],
-                        config["databases"],
-                        query_metrics,
-                        config["sql"].strip(),
-                    )
+                queries[name] = Query(
+                    name,
+                    config["interval"],
+                    config["databases"],
+                    query_metrics,
+                    config["sql"].strip(),
                 )
         except InvalidQueryParameters as e:
             raise ConfigError(str(e))

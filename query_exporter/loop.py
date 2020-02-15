@@ -7,16 +7,14 @@ from logging import Logger
 from typing import (
     Any,
     Dict,
+    Iterable,
     List,
     Mapping,
     Optional,
     Set,
 )
 
-from prometheus_aioexporter import (
-    MetricConfig,
-    MetricsRegistry,
-)
+from prometheus_aioexporter import MetricsRegistry
 from toolrack.aio import PeriodicCall
 
 from .config import (
@@ -47,21 +45,20 @@ class QueryLoop:
         self, config: Config, registry: MetricsRegistry, logger: Logger,
     ):
         self.loop = asyncio.get_event_loop()
-        self._logger = logger
-        self._metric_configs: Dict[str, MetricConfig] = {}
-        self._databases: Dict[str, DataBase] = {}
+        self._config = config
         self._registry = registry
+        self._logger = logger
         self._periodic_queries: List[Query] = []
         self._aperiodic_queries: List[Query] = []
         # map query names to their PeriodicCall
         self._periodic_calls: Dict[str, PeriodicCall] = {}
         # map query names to list of database names
         self._doomed_queries: Dict[str, Set[str]] = defaultdict(set)
-        self._setup(config)
+        self._setup()
 
     async def start(self):
         """Start periodic queries execution."""
-        for db in self._databases.values():
+        for db in self._databases:
             try:
                 await db.connect()
             except DataBaseError:
@@ -77,7 +74,7 @@ class QueryLoop:
         coros = (call.stop() for call in self._periodic_calls.values())
         await asyncio.gather(*coros, return_exceptions=True)
         self._periodic_calls.clear()
-        coros = (db.close() for db in self._databases.values())
+        coros = (db.close() for db in self._databases)
         await asyncio.gather(*coros, return_exceptions=True)
 
     async def run_aperiodic_queries(self):
@@ -89,16 +86,17 @@ class QueryLoop:
         )
         await asyncio.gather(*coros, return_exceptions=True)
 
-    def _setup(self, config: Config):
-        """Initialize instance attributes."""
-        self._metric_configs = {
-            metric_config.name: metric_config for metric_config in config.metrics
-        }
-        for database in config.databases:
-            database.set_logger(self._logger)
-            self._databases[database.name] = database
+    @property
+    def _databases(self) -> Iterable[DataBase]:
+        """Return an iterable with defined Databases."""
+        return self._config.databases.values()
 
-        for query in config.queries:
+    def _setup(self):
+        """Initialize instance attributes."""
+        for database in self._databases:
+            database.set_logger(self._logger)
+
+        for query in self._config.queries.values():
             if query.interval is None:
                 self._aperiodic_queries.append(query)
             else:
@@ -115,7 +113,7 @@ class QueryLoop:
             return
 
         try:
-            results = await self._databases[dbname].execute(query)
+            results = await self._config.databases[dbname].execute(query)
         except DataBaseError as error:
             self._increment_queries_count(dbname, "error")
             if error.fatal:
@@ -164,7 +162,7 @@ class QueryLoop:
             value = 0.0
         elif isinstance(value, Decimal):
             value = float(value)
-        method = self._METRIC_METHODS[self._metric_configs[name].type]
+        method = self._METRIC_METHODS[self._config.metrics[name].type]
         all_labels = {DATABASE_LABEL: dbname}
         if labels:
             all_labels.update(labels)
