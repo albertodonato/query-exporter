@@ -1,4 +1,4 @@
-# Collection of metrics and stats for PostgreSQL's stats collector
+# Collection of metrics and stats for PostgreSQL's stats collector.
 #
 # See https://www.postgresql.org/docs/current/monitoring-stats.html for more
 # details.
@@ -76,7 +76,7 @@ metrics:
     labels: [datname]
   pg_db_deadlocks:
     type: counter
-    descrption: Number of deadlocks detected
+    description: Number of deadlocks detected
     labels: [datname]
   pg_db_blk_read_time:
     type: counter
@@ -88,7 +88,7 @@ metrics:
     labels: [datname]
   pg_table_seq_scan:
     type: counter
-    description=: Number of sequential scans initiated on the table
+    description: Number of sequential scans initiated on the table
     labels: [relname]
   pg_table_seq_tup_read:
     type: counter
@@ -104,7 +104,7 @@ metrics:
     labels: [relname]
   pg_table_tup_insert:
     type: counter
-    descrption: Number of rows inserted
+    description: Number of rows inserted
     labels: [relname]
   pg_table_tup_update:
     type: counter
@@ -132,7 +132,7 @@ metrics:
     labels: [relname]
   pg_table_autovacuum:
     type: counter
-    description=: Number of times this table has been vacuumed by the autovacuum daemon
+    description: Number of times this table has been vacuumed by the autovacuum daemon
     labels: [relname]
   pg_table_analyze:
     type: counter
@@ -176,7 +176,7 @@ metrics:
     labels: [relname]
   pg_idx_scan:
     type: counter
-    descrption: Number of index scans initiated by the index
+    description: Number of index scans initiated by the index
     labels: [relname, indexrelname]
   pg_idx_tup_read:
     type: counter
@@ -215,11 +215,11 @@ metrics:
     labels: [relname]
   pg_idx_usage_rows:
     type: gauge
-    descrption: Rows in table
+    description: Rows in table
     labels: [relname]
   pg_idx_cache_read:
     type: summary
-    descrption: Number of disk blocks read for the index
+    description: Number of disk blocks read for the index
   pg_idx_cache_hit:
     type: summary
     description: Number of buffer hits for the index
