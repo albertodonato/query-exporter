@@ -185,16 +185,22 @@ async def db():
 
 class TestDataBase:
     def test_instantiate(self):
-        """A DataBase can be instantiated with the specified arguments, db."""
+        """A DataBase can be instantiated with the specified arguments."""
         db = DataBase("db", "sqlite:///foo")
         assert db.name == "db"
         assert db.dsn == "sqlite:///foo"
         assert db.keep_connected
+        assert db.labels == {}
 
     def test_instantiate_no_keep_connected(self):
         """keep_connected can be set to false."""
         db = DataBase("db", "sqlite:///foo", keep_connected=False)
         assert not db.keep_connected
+
+    def test_instantiate_with_labels(self):
+        """Static labels can be passed to a database."""
+        db = DataBase("db", "sqlite:///foo", labels={"l1": "v1", "l2": "v2"})
+        assert db.labels == {"l1": "v1", "l2": "v2"}
 
     def test_instantiate_missing_engine_module(self, caplog):
         """An error is raised if a module for the engine is missing."""

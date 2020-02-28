@@ -6,10 +6,8 @@ import pytest
 
 from ..config import (
     ConfigError,
-    DB_ERRORS_METRIC,
     DB_ERRORS_METRIC_NAME,
     load_config,
-    QUERIES_METRIC,
     QUERIES_METRIC_NAME,
 )
 from ..db import QueryMetric
@@ -197,6 +195,45 @@ class TestLoadConfig:
             load_config(fd, logger, env={})
         assert str(err.value) == 'Undefined variable: "FOO"'
 
+    def test_load_databases_labels(self, logger, write_config):
+        """Labels can be defined for databases."""
+        config = {
+            "databases": {
+                "db": {
+                    "dsn": "sqlite://",
+                    "labels": {"label1": "value1", "label2": "value2"},
+                }
+            },
+            "metrics": {},
+            "queries": {},
+        }
+        config_file = write_config(config)
+        with config_file.open() as fd:
+            result = load_config(fd, logger)
+        db = result.databases["db"]
+        assert db.labels == {"label1": "value1", "label2": "value2"}
+
+    def test_load_databases_labels_not_all_same(self, logger, write_config):
+        """If not all databases have the same labels, an error is raised."""
+        config = {
+            "databases": {
+                "db1": {
+                    "dsn": "sqlite://",
+                    "labels": {"label1": "value1", "label2": "value2"},
+                },
+                "db2": {
+                    "dsn": "sqlite://",
+                    "labels": {"label2": "value2", "label3": "value3"},
+                },
+            },
+            "metrics": {},
+            "queries": {},
+        }
+        config_file = write_config(config)
+        with pytest.raises(ConfigError) as err, config_file.open() as fd:
+            load_config(fd, logger, env={})
+        assert str(err.value) == "Not all databases define the same labels"
+
     def test_load_metrics_section(self, logger, write_config):
         """The 'metrics' section is loaded from the config file."""
         config = {
@@ -242,10 +279,10 @@ class TestLoadConfig:
             "states": ["on", "off"],
         }
         # global metrics
-        assert result.metrics[DB_ERRORS_METRIC_NAME] == DB_ERRORS_METRIC
-        assert result.metrics[QUERIES_METRIC_NAME] == QUERIES_METRIC
+        assert result.metrics.get(DB_ERRORS_METRIC_NAME) is not None
+        assert result.metrics.get(QUERIES_METRIC_NAME) is not None
 
-    def test_load_metrics_reserved_label(self, logger, write_config):
+    def test_load_metrics_overlap_reserved_label(self, logger, write_config):
         """An error is raised if reserved labels are used."""
         config = {
             "databases": {"db1": {"dsn": "sqlite://"}},
@@ -255,7 +292,25 @@ class TestLoadConfig:
         config_file = write_config(config)
         with pytest.raises(ConfigError) as err, config_file.open() as fd:
             load_config(fd, logger)
-        assert str(err.value) == 'Reserved labels declared for metric "m": database'
+        assert (
+            str(err.value)
+            == 'Labels for metric "m" overlap with reserved/database ones: database'
+        )
+
+    def test_load_metrics_overlap_database_label(self, logger, write_config):
+        """An error is raised if database labels are used for metrics."""
+        config = {
+            "databases": {"db1": {"dsn": "sqlite://", "labels": {"l1": "v1"}}},
+            "metrics": {"m": {"type": "gauge", "labels": ["l1"]}},
+            "queries": {},
+        }
+        config_file = write_config(config)
+        with pytest.raises(ConfigError) as err, config_file.open() as fd:
+            load_config(fd, logger)
+        assert (
+            str(err.value)
+            == 'Labels for metric "m" overlap with reserved/database ones: l1'
+        )
 
     def test_load_metrics_unsupported_type(self, logger, write_config):
         """An error is raised if an unsupported metric type is passed."""

@@ -1,6 +1,7 @@
 """Configuration management functions."""
 
 from collections import defaultdict
+from copy import deepcopy
 from logging import Logger
 import os
 import re
@@ -13,6 +14,7 @@ from typing import (
     Mapping,
     NamedTuple,
     Set,
+    Tuple,
 )
 
 import jsonschema
@@ -21,7 +23,6 @@ import yaml
 
 from . import PACKAGE
 from .db import (
-    AUTOMATIC_LABELS,
     DataBase,
     DATABASE_LABEL,
     InvalidQueryParameters,
@@ -31,19 +32,16 @@ from .db import (
 
 # metric for counting database errors
 DB_ERRORS_METRIC_NAME = "database_errors"
-DB_ERRORS_METRIC = MetricConfig(
-    DB_ERRORS_METRIC_NAME,
-    "Number of database errors",
-    "counter",
-    {"labels": [DATABASE_LABEL]},
+_DB_ERRORS_METRIC_CONFIG = MetricConfig(
+    DB_ERRORS_METRIC_NAME, "Number of database errors", "counter", {"labels": []},
 )
 # metric for counting performed queries
 QUERIES_METRIC_NAME = "queries"
-QUERIES_METRIC = MetricConfig(
+_QUERIES_METRIC_CONFIG = MetricConfig(
     QUERIES_METRIC_NAME,
     "Number of database queries",
     "counter",
-    {"labels": [DATABASE_LABEL, "status"]},
+    {"labels": ["status"]},
 )
 GLOBAL_METRICS = frozenset([DB_ERRORS_METRIC_NAME, QUERIES_METRIC_NAME])
 
@@ -71,9 +69,10 @@ def load_config(config_fd: IO, logger: Logger, env: Environ = os.environ) -> Con
     """Load YAML config from file."""
     data = defaultdict(dict, yaml.safe_load(config_fd))
     _validate_config(data)
-    databases = _get_databases(data["databases"], env)
-    metrics = _get_metrics(data["metrics"])
-    queries = _get_queries(data["queries"], frozenset(databases), metrics)
+    databases, database_labels = _get_databases(data["databases"], env)
+    extra_labels = frozenset([DATABASE_LABEL]) | database_labels
+    metrics = _get_metrics(data["metrics"], extra_labels)
+    queries = _get_queries(data["queries"], frozenset(databases), metrics, extra_labels)
     config = Config(databases, metrics, queries)
     _warn_if_unused(config, logger)
     return config
@@ -81,46 +80,67 @@ def load_config(config_fd: IO, logger: Logger, env: Environ = os.environ) -> Con
 
 def _get_databases(
     configs: Dict[str, Dict[str, Any]], env: Environ
-) -> Dict[str, DataBase]:
+) -> Tuple[Dict[str, DataBase], FrozenSet[str]]:
     """Return a dict mapping names to DataBases."""
+    databases = {}
+    all_db_labels: Set[FrozenSet[str]] = set()  # set of all labels sets
     try:
-        return {
-            name: DataBase(
+        for name, config in configs.items():
+            labels = config.get("labels")
+            all_db_labels.add(frozenset((labels) if labels else frozenset()))
+            databases[name] = DataBase(
                 name,
                 _resolve_dsn(config["dsn"], env),
                 keep_connected=bool(config.get("keep-connected", True)),
+                labels=labels,
             )
-            for name, config in configs.items()
-        }
     except Exception as e:
         raise ConfigError(str(e))
 
+    db_labels: FrozenSet[str]
+    if not all_db_labels:
+        db_labels = frozenset()
+    elif len(all_db_labels) > 1:
+        raise ConfigError("Not all databases define the same labels")
+    else:
+        db_labels = all_db_labels.pop()
 
-def _get_metrics(metrics: Dict[str, Dict[str, Any]]) -> Dict[str, MetricConfig]:
+    return databases, db_labels
+
+
+def _get_metrics(
+    metrics: Dict[str, Dict[str, Any]], extra_labels: FrozenSet[str]
+) -> Dict[str, MetricConfig]:
     """Return a dict mapping metric names to their configuration."""
-    # add global metrics
-    configs = {
-        DB_ERRORS_METRIC_NAME: DB_ERRORS_METRIC,
-        QUERIES_METRIC_NAME: QUERIES_METRIC,
-    }
+    configs = {}
+    # global metrics
+    for metric_config in (_DB_ERRORS_METRIC_CONFIG, _QUERIES_METRIC_CONFIG):
+        # make a copy since labels are not immutable
+        metric_config = deepcopy(metric_config)
+        metric_config.config["labels"].extend(extra_labels)
+        metric_config.config["labels"].sort()
+        configs[metric_config.name] = metric_config
+    # other metrics
     for name, config in metrics.items():
-        _validate_metric_config(name, config)
+        _validate_metric_config(name, config, extra_labels)
         metric_type = config.pop("type")
-        config.setdefault("labels", []).extend(AUTOMATIC_LABELS)
+        config.setdefault("labels", []).extend(extra_labels)
         config["labels"].sort()
         description = config.pop("description", "")
         configs[name] = MetricConfig(name, description, metric_type, config)
     return configs
 
 
-def _validate_metric_config(name: str, config: Dict[str, Any]):
+def _validate_metric_config(
+    name: str, config: Dict[str, Any], extra_labels: FrozenSet[str]
+):
     """Validate a metric configuration stanza."""
     labels = set(config.get("labels", ()))
-    overlap_labels = labels & AUTOMATIC_LABELS
+    overlap_labels = labels & extra_labels
     if overlap_labels:
         overlap_list = ", ".join(sorted(overlap_labels))
         raise ConfigError(
-            f'Reserved labels declared for metric "{name}": {overlap_list}'
+            f'Labels for metric "{name}" overlap with reserved/database ones: {overlap_list}'
         )
 
 
@@ -128,6 +148,7 @@ def _get_queries(
     configs: Dict[str, Dict[str, Any]],
     database_names: FrozenSet[str],
     metrics: Dict[str, MetricConfig],
+    extra_labels: FrozenSet[str],
 ) -> Dict[str, Query]:
     """Return a list of Queries from config."""
     metric_names = frozenset(metrics)
@@ -135,7 +156,7 @@ def _get_queries(
     for name, config in configs.items():
         _validate_query_config(name, config, database_names, metric_names)
         _convert_query_interval(name, config)
-        query_metrics = _get_query_metrics(config, metrics)
+        query_metrics = _get_query_metrics(config, metrics, extra_labels)
         parameters = config.get("parameters")
         try:
             if parameters:
@@ -167,12 +188,14 @@ def _get_queries(
 
 
 def _get_query_metrics(
-    config: Dict[str, Any], metrics: Dict[str, MetricConfig]
+    config: Dict[str, Any],
+    metrics: Dict[str, MetricConfig],
+    extra_labels: FrozenSet[str],
 ) -> List[QueryMetric]:
     """Return QueryMetrics for a query."""
 
     def _metric_labels(labels: List[str]) -> List[str]:
-        return sorted(set(labels) - AUTOMATIC_LABELS)
+        return sorted(set(labels) - extra_labels)
 
     return [
         QueryMetric(name, _metric_labels(metrics[name].config["labels"]))

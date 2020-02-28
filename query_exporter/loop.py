@@ -62,7 +62,7 @@ class QueryLoop:
             try:
                 await db.connect()
             except DataBaseError:
-                self._increment_db_error_count(db.name)
+                self._increment_db_error_count(db)
 
         for query in self._periodic_queries:
             call = PeriodicCall(self.loop, self._run_query, query)
@@ -112,10 +112,11 @@ class QueryLoop:
         if await self._remove_if_dooomed(query, dbname):
             return
 
+        db = self._config.databases[dbname]
         try:
-            results = await self._config.databases[dbname].execute(query)
+            results = await db.execute(query)
         except DataBaseError as error:
-            self._increment_queries_count(dbname, "error")
+            self._increment_queries_count(db, "error")
             if error.fatal:
                 self._logger.debug(
                     f'removing doomed query "{query.name}" ' f'for database "{dbname}"'
@@ -124,10 +125,8 @@ class QueryLoop:
             return
 
         for result in results:
-            self._update_metric(
-                result.metric, result.value, dbname, labels=result.labels
-            )
-        self._increment_queries_count(dbname, "success")
+            self._update_metric(db, result.metric, result.value, labels=result.labels)
+        self._increment_queries_count(db, "success")
 
     async def _remove_if_dooomed(self, query: Query, dbname: str) -> bool:
         """Remove a query if it will never work.
@@ -151,9 +150,9 @@ class QueryLoop:
 
     def _update_metric(
         self,
+        database: DataBase,
         name: str,
         value: Any,
-        dbname: str,
         labels: Optional[Mapping[str, str]] = None,
     ):
         """Update value for a metric."""
@@ -163,7 +162,8 @@ class QueryLoop:
         elif isinstance(value, Decimal):
             value = float(value)
         method = self._METRIC_METHODS[self._config.metrics[name].type]
-        all_labels = {DATABASE_LABEL: dbname}
+        all_labels = {DATABASE_LABEL: database.name}
+        all_labels.update(database.labels)
         if labels:
             all_labels.update(labels)
         labels_string = ",".join(
@@ -172,13 +172,13 @@ class QueryLoop:
         self._logger.debug(
             f'updating metric "{name}" {method} {value} {{{labels_string}}}'
         )
-        metric = self._registry.get_metric(name, all_labels)
+        metric = self._registry.get_metric(name, labels=all_labels)
         getattr(metric, method)(value)
 
-    def _increment_queries_count(self, dbname: str, status: str):
+    def _increment_queries_count(self, database: DataBase, status: str):
         """Increment count of queries in a status for a database."""
-        self._update_metric(QUERIES_METRIC_NAME, 1, dbname, labels={"status": status})
+        self._update_metric(database, QUERIES_METRIC_NAME, 1, labels={"status": status})
 
-    def _increment_db_error_count(self, dbname: str):
+    def _increment_db_error_count(self, database: DataBase):
         """Increment number of errors for a database."""
-        self._update_metric(DB_ERRORS_METRIC_NAME, 1, dbname)
+        self._update_metric(database, DB_ERRORS_METRIC_NAME, 1)

@@ -25,11 +25,8 @@ from sqlalchemy.exc import (
 from sqlalchemy_aio import ASYNCIO_STRATEGY
 from sqlalchemy_aio.engine import AsyncioEngine
 
-# the label used to filter metrics by database
+# label used to tag metrics by database
 DATABASE_LABEL = "database"
-
-# labels that are automatically added to metrics
-AUTOMATIC_LABELS = frozenset([DATABASE_LABEL])
 
 
 class DataBaseError(Exception):
@@ -167,10 +164,17 @@ class DataBase:
     _logger: logging.Logger = logging.getLogger()
     _pending_queries: int = 0
 
-    def __init__(self, name: str, dsn: str, keep_connected: bool = True):
+    def __init__(
+        self,
+        name: str,
+        dsn: str,
+        keep_connected: Optional[bool] = True,
+        labels: Optional[Dict[str, str]] = None,
+    ):
         self.name = name
         self.dsn = dsn
         self.keep_connected = keep_connected
+        self.labels = labels or {}
         try:
             self._engine = sqlalchemy.create_engine(
                 dsn, strategy=ASYNCIO_STRATEGY, execution_options={"autocommit": True},

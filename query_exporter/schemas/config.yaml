@@ -56,6 +56,17 @@ definitions:
           When set to false, it will disconnect from the database after each run.
         type: boolean
         default: true
+      labels:
+        title: Additional static labels
+        description: >
+          Label names and values to apply to metrics when run on the database.
+
+          All databases need to declare the same set of label names.
+        type: object
+        additionalProperties: false
+        patternProperties:
+          ^[a-zA-Z_][a-zA-Z0-9_]*$:
+            type: string
 
   metric:
     title: A Prometheus metric to export

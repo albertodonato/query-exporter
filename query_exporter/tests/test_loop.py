@@ -137,10 +137,29 @@ class TestQueryLoop:
         metric = registry.get_metric("m")
         assert metric_values(metric) == [0]
 
+    async def test_run_query_metrics_with_database_labels(
+        self, query_tracker, registry, config_data, make_query_loop
+    ):
+        """If databases have extra labels, they're set for metrics."""
+        config_data["databases"] = {
+            "db1": {"dsn": "sqlite://", "labels": {"l1": "v1", "l2": "v2"}},
+            "db2": {"dsn": "sqlite://", "labels": {"l1": "v3", "l2": "v4"}},
+        }
+        config_data["queries"]["q"]["databases"] = ["db1", "db2"]
+        query_loop = make_query_loop()
+        await query_loop.start()
+        await query_tracker.wait_results()
+        metric = registry.get_metric("m")
+        assert metric_values(metric, by_labels=("database", "l1", "l2")) == {
+            ("db1", "v1", "v2"): 100.0,
+            ("db2", "v3", "v4"): 100.0,
+        }
+
     async def test_update_metric_decimal_value(self, registry, make_query_loop):
         """A Decimal value in query results is converted to float."""
+        db = DataBase("db", f"sqlite://")
         query_loop = make_query_loop()
-        query_loop._update_metric("m", Decimal("100.123"), "db")
+        query_loop._update_metric(db, "m", Decimal("100.123"))
         metric = registry.get_metric("m")
         [value] = metric_values(metric)
         assert value == 100.123
