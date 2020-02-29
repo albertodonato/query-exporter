@@ -31,9 +31,15 @@ A sample configuration file for the application looks like this:
     databases:
       db1:
         dsn: sqlite://
+        labels:
+          region: us1
+          app: app1
       db2:
         dsn: sqlite://
         keep-connected: false
+        labels:
+          region: us2
+          app: app1
 
     metrics:
       metric1:
@@ -105,6 +111,10 @@ Each database defintions can have the following keys:
   disconnect after each one. If not specified, defaults to ``true``.  Setting
   this option to ``false`` might be useful if queries on a database are run
   with very long interval, to avoid holding idle connections.
+
+``labels``:
+  an optional mapping of label names and values to tag metrics collected from each database.
+  When labels are used, all databases must define the same set of labels.
 
 ``metrics`` section
 ~~~~~~~~~~~~~~~~~~~
