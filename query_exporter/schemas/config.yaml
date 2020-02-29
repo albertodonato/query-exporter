@@ -14,14 +14,14 @@ properties:
     type: object
     additionalProperties: false
     patternProperties:
-      ^[a-z][a-z0-9-]+$:
+      ^[a-zA-Z_:][a-zA-Z0-9_:]*$:
         $ref: "#/definitions/database"
   metrics:
     title: Definition for metrics to expose
     type: object
     additionalProperties: false
     patternProperties:
-      "^[a-zA-Z_][a-zA-Z0-9_]*$":
+      ^[a-zA-Z_:][a-zA-Z0-9_:]*$:
         $ref: "#/definitions/metric"
   queries:
     title: Definitions for SQL queries to perform
@@ -65,7 +65,7 @@ definitions:
         type: object
         additionalProperties: false
         patternProperties:
-          ^[a-zA-Z_][a-zA-Z0-9_]*$:
+          ^[a-zA-Z_:][a-zA-Z0-9_:]*$:
             type: string
 
   metric:

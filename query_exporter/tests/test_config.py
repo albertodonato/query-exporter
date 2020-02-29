@@ -451,7 +451,7 @@ class TestLoadConfig:
             (
                 CONFIG_INVALID_METRIC_NAME,
                 "Invalid config at metrics: 'is wrong' does not match any "
-                "of the regexes: '^[a-zA-Z_][a-zA-Z0-9_]*$'",
+                "of the regexes: '^[a-zA-Z_:][a-zA-Z0-9_:]*$'",
             ),
             (
                 CONFIG_INVALID_LABEL_NAME,
