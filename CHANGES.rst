@@ -1,3 +1,11 @@
+v2.1.0 - 2019-02-29
+===================
+
+- When validating config, warn about database and metrics that are not used in
+  any query.
+- Support extra per-database labels for metrics. All databases must define the
+  same set of labels. (#27)
+
 v2.0.2 - 2019-02-15
 ===================
 
