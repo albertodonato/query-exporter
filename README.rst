@@ -362,7 +362,7 @@ The image has support for connecting the following databases:
    :target: https://pypi.python.org/pypi/query-exporter
 .. |Build Status| image:: https://img.shields.io/travis/albertodonato/query-exporter.svg
    :alt: Build Status
-   :target: https://travis-ci.org/albertodonato/query-exporter
+   :target: https://travis-ci.com/albertodonato/query-exporter
 .. |Coverage Status| image:: https://img.shields.io/codecov/c/github/albertodonato/query-exporter/master.svg
    :alt: Coverage Status
    :target: https://codecov.io/gh/albertodonato/query-exporter
