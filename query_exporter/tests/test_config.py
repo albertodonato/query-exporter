@@ -7,6 +7,7 @@ import pytest
 from ..config import (
     ConfigError,
     DB_ERRORS_METRIC_NAME,
+    GLOBAL_METRICS,
     load_config,
     QUERIES_METRIC_NAME,
 )
@@ -310,6 +311,17 @@ class TestLoadConfig:
         assert (
             str(err.value)
             == 'Labels for metric "m" overlap with reserved/database ones: l1'
+        )
+
+    @pytest.mark.parametrize("global_name", list(GLOBAL_METRICS))
+    def test_load_metrics_reserved_name(self, config_full, write_config, global_name):
+        config_full["metrics"][global_name] = {"type": "counter"}
+        config_file = write_config(config_full)
+        with pytest.raises(ConfigError) as err, config_file.open() as fd:
+            load_config(fd, logger)
+        assert (
+            str(err.value)
+            == f'Label name "{global_name} is reserved for builtin metric'
         )
 
     def test_load_metrics_unsupported_type(self, logger, write_config):

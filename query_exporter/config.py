@@ -135,6 +135,8 @@ def _validate_metric_config(
     name: str, config: Dict[str, Any], extra_labels: FrozenSet[str]
 ):
     """Validate a metric configuration stanza."""
+    if name in GLOBAL_METRICS:
+        raise ConfigError(f'Label name "{name} is reserved for builtin metric')
     labels = set(config.get("labels", ()))
     overlap_labels = labels & extra_labels
     if overlap_labels:
