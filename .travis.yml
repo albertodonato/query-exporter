@@ -3,14 +3,13 @@ python:
   - "3.6"
   - "3.7"
   - "3.8"
-matrix:
-  fast_finish: true
 stages:
   - lint
   - check
   - test
 install: pip install tox codecov
 jobs:
+  fast_finish: true
   include:
     - stage: lint
       script: tox -e lint
