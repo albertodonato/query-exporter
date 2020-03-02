@@ -236,6 +236,13 @@ class TestDataBase:
         assert isinstance(db._conn, AsyncConnection)
         assert caplog.messages == ['connected to database "db"']
 
+
+    @pytest.mark.asyncio
+    async def test_connect_lock(self, caplog, db):
+        with caplog.at_level(logging.DEBUG):
+            await asyncio.gather(db.connect(), db.connect())
+        assert caplog.messages == ['connected to database "db"']
+
     @pytest.mark.asyncio
     async def test_connect_error(self):
         """A DataBaseError is raised if database connection fails."""

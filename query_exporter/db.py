@@ -1,5 +1,6 @@
 """Database wrapper."""
 
+import asyncio
 from itertools import chain
 import logging
 from typing import (
@@ -175,6 +176,7 @@ class DataBase:
         self.dsn = dsn
         self.keep_connected = keep_connected
         self.labels = labels or {}
+        self._connect_lock = asyncio.Lock()
         try:
             self._engine = sqlalchemy.create_engine(
                 dsn, strategy=ASYNCIO_STRATEGY, execution_options={"autocommit": True},
@@ -185,7 +187,8 @@ class DataBase:
             raise self._db_error(f'Invalid database DSN: "{self.dsn}"', fatal=True)
 
     async def __aenter__(self):
-        return await self.connect()
+        await self.connect()
+        return self
 
     async def __aexit__(self, exc_type, exc_value, traceback):
         await self.close()
@@ -201,27 +204,30 @@ class DataBase:
 
     async def connect(self):
         """Connect to the database."""
-        try:
-            self._conn = await self._engine.connect()
-        except Exception as error:
-            raise self._db_error(error)
-        self._logger.debug(f'connected to database "{self.name}"')
-        return self
+        async with self._connect_lock:
+            if self.connected:
+                return
+
+            try:
+                self._conn = await self._engine.connect()
+            except Exception as error:
+                raise self._db_error(error)
+            self._logger.debug(f'connected to database "{self.name}"')
 
     async def close(self):
         """Close the database connection."""
-        if not self.connected:
-            return
-        await self._conn.close()
-        self._conn = None
-        self._pending_queries = 0
-        self._logger.debug(f'disconnected from database "{self.name}"')
+        async with self._connect_lock:
+            if not self.connected:
+                return
+
+            await self._conn.close()
+            self._conn = None
+            self._pending_queries = 0
+            self._logger.debug(f'disconnected from database "{self.name}"')
 
     async def execute(self, query: Query) -> List[MetricResult]:
         """Execute a query."""
-        if not self.connected:
-            await self.connect()
-
+        await self.connect()
         self._logger.debug(f'running query "{query.name}" on database "{self.name}"')
         self._pending_queries += 1
         self._conn: Connection
