@@ -238,6 +238,7 @@ class TestDataBase:
 
     @pytest.mark.asyncio
     async def test_connect_lock(self, caplog, db):
+        """The connect method has a lock to prevent concurrent calls."""
         with caplog.at_level(logging.DEBUG):
             await asyncio.gather(db.connect(), db.connect())
         assert caplog.messages == ['connected to database "db"']
