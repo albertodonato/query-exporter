@@ -213,9 +213,8 @@ class TestDataBase:
     @pytest.mark.parametrize("dsn", ["foo-bar", "unknown:///db"])
     def test_instantiate_invalid_dsn(self, caplog, dsn):
         """An error is raised if a the provided DSN is invalid."""
-        with caplog.at_level(logging.ERROR):
-            with pytest.raises(DataBaseError) as error:
-                DataBase("db", dsn)
+        with caplog.at_level(logging.ERROR), pytest.raises(DataBaseError) as error:
+            DataBase("db", dsn)
         assert str(error.value) == f'Invalid database DSN: "{dsn}"'
         assert f'Invalid database DSN: "{dsn}"' in caplog.text
 
@@ -246,10 +245,35 @@ class TestDataBase:
     @pytest.mark.asyncio
     async def test_connect_error(self):
         """A DataBaseError is raised if database connection fails."""
-        db = DataBase("db", f"sqlite:////invalid")
+        db = DataBase("db", "sqlite:////invalid")
         with pytest.raises(DataBaseError) as error:
             await db.connect()
         assert "unable to open database file" in str(error.value)
+
+    @pytest.mark.asyncio
+    async def test_connect_sql(self):
+        """If connect_sql is specified, it's run at connection."""
+        db = DataBase("db", "sqlite://", connect_sql=["SELECT 1", "SELECT 2"])
+
+        queries = []
+
+        async def execute_sql(sql):
+            queries.append(sql)
+
+        db.execute_sql = execute_sql
+        await db.connect()
+        assert queries == ["SELECT 1", "SELECT 2"]
+        await db.close()
+
+    @pytest.mark.asyncio
+    async def test_connect_sql_fail(self, caplog):
+        """If the SQL at connection fails, an error is raised."""
+        db = DataBase("db", "sqlite://", connect_sql=["WRONG"])
+        with caplog.at_level(logging.DEBUG), pytest.raises(DataBaseError) as error:
+            await db.connect()
+        assert not db.connected
+        assert 'failed executing query "WRONG"' in str(error.value)
+        assert 'disconnected from database "db"' in caplog.messages
 
     @pytest.mark.asyncio
     async def test_close(self, caplog, db):

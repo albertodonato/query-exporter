@@ -169,11 +169,13 @@ class DataBase:
         self,
         name: str,
         dsn: str,
+        connect_sql: Optional[List[str]] = None,
         keep_connected: Optional[bool] = True,
         labels: Optional[Dict[str, str]] = None,
     ):
         self.name = name
         self.dsn = dsn
+        self.connect_sql = connect_sql or []
         self.keep_connected = keep_connected
         self.labels = labels or {}
         self._connect_lock = asyncio.Lock()
@@ -212,18 +214,21 @@ class DataBase:
                 self._conn = await self._engine.connect()
             except Exception as error:
                 raise self._db_error(error)
+
             self._logger.debug(f'connected to database "{self.name}"')
+            for sql in self.connect_sql:
+                try:
+                    await self.execute_sql(sql)
+                except Exception as error:
+                    await self._close()
+                    raise self._db_error(f'failed executing query "{sql}": {error}')
 
     async def close(self):
         """Close the database connection."""
         async with self._connect_lock:
             if not self.connected:
                 return
-
-            await self._conn.close()
-            self._conn = None
-            self._pending_queries = 0
-            self._logger.debug(f'disconnected from database "{self.name}"')
+            await self._close()
 
     async def execute(self, query: Query) -> List[MetricResult]:
         """Execute a query."""
@@ -256,6 +261,12 @@ class DataBase:
     async def _execute_query(self, query: Query) -> ResultProxy:
         """Execute a query."""
         return await self.execute_sql(query.sql, parameters=query.parameters)
+
+    async def _close(self):
+        await self._conn.close()
+        self._conn = None
+        self._pending_queries = 0
+        self._logger.debug(f'disconnected from database "{self.name}"')
 
     def _query_db_error(
         self, query_name: str, error: Union[str, Exception], fatal: bool = False,

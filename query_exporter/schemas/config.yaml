@@ -56,6 +56,14 @@ definitions:
           When set to false, it will disconnect from the database after each run.
         type: boolean
         default: true
+      connect-sql:
+        title: Queries to run at database connection
+        description: >
+          An optional list of SQL queries to run on database connection.
+        type: array
+        items:
+          type: string
+        minItems: 1
       labels:
         title: Additional static labels
         description: >

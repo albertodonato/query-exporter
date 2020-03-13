@@ -235,6 +235,20 @@ class TestLoadConfig:
             load_config(fd, logger, env={})
         assert str(err.value) == "Not all databases define the same labels"
 
+    def test_load_databases_connect_sql(self, logger, write_config):
+        """Databases can have queries defined to run on connection."""
+        config = {
+            "databases": {
+                "db": {"dsn": "sqlite://", "connect-sql": ["SELECT 1", "SELECT 2"]},
+            },
+            "metrics": {},
+            "queries": {},
+        }
+        config_file = write_config(config)
+        with config_file.open() as fd:
+            result = load_config(fd, logger, env={})
+        assert result.databases["db"].connect_sql == ["SELECT 1", "SELECT 2"]
+
     def test_load_metrics_section(self, logger, write_config):
         """The 'metrics' section is loaded from the config file."""
         config = {

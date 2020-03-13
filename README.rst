@@ -31,6 +31,9 @@ A sample configuration file for the application looks like this:
     databases:
       db1:
         dsn: sqlite://
+        connect-sql:
+          - PRAGMA application_id = 123
+          - PRAGMA auto_vacuum = 1
         labels:
           region: us1
           app: app1
@@ -105,6 +108,10 @@ Each database defintions can have the following keys:
   (e.g. ``$CONNECTION_STRING``) by setting ``dsn`` to::
 
     env:CONNECTION_STRING
+
+``connect-sql``:
+  An optional list of queries to run right after database connection. This can
+  be used to set up connection-wise parameters and configurations.
 
 ``keep-connected``:
   whether to keep the connection open for the database between queries, or

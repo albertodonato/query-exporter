@@ -91,6 +91,7 @@ def _get_databases(
             databases[name] = DataBase(
                 name,
                 _resolve_dsn(config["dsn"], env),
+                connect_sql=config.get("connect-sql"),
                 keep_connected=bool(config.get("keep-connected", True)),
                 labels=labels,
             )
