@@ -1,3 +1,12 @@
+v2.2.0 - 2019-03-16
+===================
+
+- Validate that metric names don't collide with builtin ones
+- Perform database connect/disconnect under lock (#28)
+- Add support for queries to run at connection (fixes #31)
+- Support IBM DB2 (fixes #14)
+
+
 v2.1.0 - 2019-02-29
 ===================
 
@@ -5,6 +14,7 @@ v2.1.0 - 2019-02-29
   any query.
 - Support extra per-database labels for metrics. All databases must define the
   same set of labels. (#27)
+
 
 v2.0.2 - 2019-02-15
 ===================
