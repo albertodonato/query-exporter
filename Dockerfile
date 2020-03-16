@@ -12,6 +12,7 @@ RUN python3 -m venv /virtualenv
 ENV PATH="/virtualenv/bin:$PATH"
 RUN pip install \
     /srcdir \
+    ibm-db-sa \
     mysqlclient \
     pyodbc \
     psycopg2
