@@ -1,10 +1,10 @@
 v2.2.0 - 2019-03-16
 ===================
 
-- Validate that metric names don't collide with builtin ones
-- Perform database connect/disconnect under lock (#28)
-- Add support for queries to run at connection (fixes #31)
-- Support IBM DB2 (fixes #14)
+- Validate that metric names don't collide with builtin ones.
+- Perform database connect/disconnect under lock (#28).
+- Add support for queries to run at connection (#31).
+- [snap,docker] Support IBM DB2 (#14).
 
 
 v2.1.0 - 2019-02-29
@@ -13,21 +13,21 @@ v2.1.0 - 2019-02-29
 - When validating config, warn about database and metrics that are not used in
   any query.
 - Support extra per-database labels for metrics. All databases must define the
-  same set of labels. (#27)
+  same set of labels (#27).
 
 
 v2.0.2 - 2019-02-15
 ===================
 
 - Don't disable queries failing because of ``OperationalError`` as it might not
-  be a fatal error (#25)
+  be a fatal error (#25).
 
 
 v2.0.1 - 2019-02-07
 ===================
 
-- Fix validation for entries in the ``queries`` section for config file
-- Add MSSQL support for Snap and Docker
+- Fix validation for entries in the ``queries`` section for config file.
+- [snap,docker] Add MSSQL support.
 
 
 v2.0.0 - 2019-02-02
@@ -36,12 +36,12 @@ v2.0.0 - 2019-02-02
 - Support only named parameters (e.g.: ``:param``) in queries (#21, #24).
 - Add JSON-schema validation for config file (#23).
 - Validate at startup if database engines from DSNs are supported and
-  corresponding modules are available
+  corresponding modules are available.
 - Check that names for queries ``parameters`` match the ones in queries SQL.
 - Add ``--check-only`` command line option to just validate configuration.
 - Drop support for matching query columns positionally, only support name
   match. This is to avoid confusing behavior with positional match, and make
-  queries more explicit
+  queries more explicit.
 
 **NOTE**:
  some of the changes above for query definitions are backwards incompatible,
@@ -62,21 +62,21 @@ v2.0.0 - 2019-02-02
 v1.9.3 - 2019-12-29
 ===================
 
-- Convert ``Decimal`` query results to float (#19)
+- Convert ``Decimal`` query results to float (#19).
 
 
 v1.9.2 - 2019-12-24
 ===================
 
-- Fix failure when multiple query columns have the same name (#18)
-- Add Dockerfile (#17)
+- Fix failure when multiple query columns have the same name (#18).
+- [docker] Add Dockerfile (#17).
 
 
 v1.9.1 - 2019-11-26
 ===================
 
-- Track doomed queries on a per-database basis (#16)
-- Add ``--version`` option
+- Track doomed queries on a per-database basis (#16).
+- Add ``--version`` option.
 
 
 v1.9.0 - 2019-11-03
@@ -88,32 +88,32 @@ v1.9.0 - 2019-11-03
 v1.8.1 - 2019-07-14
 ===================
 
-- Enable autocommit on connection (#10)
+- Enable autocommit on connection (#10).
 
 
 v1.8.0 - 2019-05-25
 ===================
 
-- Support custom labels in metrics, setting values from queries result (#7)
-- Suport matching metrics by query result column name instead of order
-- Disable queries that will certainly always fail (e.g. because of invalid
-  returned column names/number) (#6)
-- Support disconnecting from after each query (#8)
-- Rework tests to use actualy SQLite in-memory databases instead of fakes
+- Support custom labels in metrics, setting values from queries result (#7).
+- Suport matching metrics by query result column name instead of order.
+- Disable queries that will certainly always fail (e.g. because of invalid.
+  returned column names/number) (#6).
+- Support disconnecting from after each query (#8).
+- Rework tests to use actualy SQLite in-memory databases instead of fakes.
 
 
 v1.7.0 - 2019-04-07
 ===================
 
-- Add a ``queries`` and ``database_errors`` metrics lebeled by database (Fixes #1)
+- Add a ``queries`` and ``database_errors`` metrics lebeled by database (#1).
 - Support database DSNs defined as ``env:<VARNAME>`` to supply the dns from the
-  environment (Fixes: #5)
+  environment (#5).
 
 
 v1.6.0 - 2019-03-26
 ===================
 
-- Change default port to 9560 (to make it unique)
+- Change default port to 9560 (to make it unique).
 
 
 v1.5.0 - 2018-12-28
@@ -121,7 +121,7 @@ v1.5.0 - 2018-12-28
 
 - Drop support for Python 3.5.
 - Add support for ``enum`` metrics.
-- Add initial snap support.
+- [snap] Add initial snap support.
 - Rework project setup and use pytest.
 
 
