@@ -22,7 +22,6 @@ description: |
     - MySQL (`mysql://`)
     - SQLite (`sqlite://`)
     - Microsoft SQL Server (`mssql+pyodbc://`)
-    - IBM DB2 (`db2+ibm_db://`)
 
 license: GPL-3.0+
 icon: logo.svg
@@ -50,7 +49,6 @@ parts:
     source: .
     source-type: git
     python-packages:
-      - ibm-db-sa
       - mysql
       - psycopg2
       - pyodbc
