@@ -7,6 +7,7 @@ from typing import (
 )
 
 from aiohttp.web import Application
+from argcomplete import autocomplete
 from prometheus_aioexporter import (
     MetricConfig,
     PrometheusExporterScript,
@@ -42,6 +43,7 @@ class QueryExporterScript(PrometheusExporterScript):
             action="store_true",
             help="only check configuration, don't run the exporter",
         )
+        autocomplete(parser)
 
     def configure(self, args: argparse.Namespace):
         config = self._load_config(args.config)
