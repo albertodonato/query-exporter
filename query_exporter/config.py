@@ -94,6 +94,7 @@ def _get_databases(
                 connect_sql=config.get("connect-sql"),
                 keep_connected=bool(config.get("keep-connected", True)),
                 labels=labels,
+                autocommit=bool(config.get("autocommit", True)),
             )
     except Exception as e:
         raise ConfigError(str(e))

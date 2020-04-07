@@ -172,16 +172,18 @@ class DataBase:
         connect_sql: Optional[List[str]] = None,
         keep_connected: Optional[bool] = True,
         labels: Optional[Dict[str, str]] = None,
+        autocommit: Optional[bool] = True
     ):
         self.name = name
         self.dsn = dsn
         self.connect_sql = connect_sql or []
         self.keep_connected = keep_connected
         self.labels = labels or {}
+        self.autocommit = autocommit
         self._connect_lock = asyncio.Lock()
         try:
             self._engine = sqlalchemy.create_engine(
-                dsn, strategy=ASYNCIO_STRATEGY, execution_options={"autocommit": True},
+                dsn, strategy=ASYNCIO_STRATEGY, execution_options={"autocommit": self.autocommit},
             )
         except ImportError as error:
             raise self._db_error(f'module "{error.name}" not found', fatal=True)

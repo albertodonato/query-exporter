@@ -75,6 +75,13 @@ definitions:
         patternProperties:
           ^[a-zA-Z_:][a-zA-Z0-9_:]*$:
             type: string
+      autocommit:
+        title: SQLAlchemy autocommit setting
+        description: >
+          Set autocommit for SQLAlchemy connections. Defaults to true. DB2 queries may need 
+          autocommit set to false to work properly
+        type: boolean
+        default: true
 
   metric:
     title: A Prometheus metric to export
