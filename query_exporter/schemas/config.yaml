@@ -50,6 +50,12 @@ definitions:
           A string with database connection string, in the format
           dialect[+driver]://[username:password][@host:port]/database[?option=value&...]
         type: string
+      autocommit:
+        title: Whether to enable autocommit for queries
+        description: >
+          When set to false, don't autocommit after each query.
+        type: boolean
+        default: true
       keep-connected:
         title: Whether to keep the connection open for the database between queries
         description: >
@@ -75,13 +81,6 @@ definitions:
         patternProperties:
           ^[a-zA-Z_:][a-zA-Z0-9_:]*$:
             type: string
-      autocommit:
-        title: SQLAlchemy autocommit setting
-        description: >
-          Set autocommit for SQLAlchemy connections. Defaults to true. DB2 queries may need 
-          autocommit set to false to work properly
-        type: boolean
-        default: true
 
   metric:
     title: A Prometheus metric to export

@@ -211,7 +211,7 @@ class TestDataBase:
         assert 'module "psycopg2" not found' in caplog.text
 
     def test_instantiate_autocommit_false(self):
-        """autocommit can be set to false."""
+        """Query autocommit can be set to False."""
         db = DataBase("db", "sqlite:///foo", autocommit=False)
         assert not db.autocommit
 
