@@ -119,6 +119,11 @@ Each database defintions can have the following keys:
   this option to ``false`` might be useful if queries on a database are run
   with very long interval, to avoid holding idle connections.
 
+``autocommit``:
+  whether to set autocommit for the database connection. If not specified, defaults 
+  to ``true``.  Setting this option to ``false`` might be useful if you run into 
+  issues with DB2. 
+  
 ``labels``:
   an optional mapping of label names and values to tag metrics collected from each database.
   When labels are used, all databases must define the same set of labels.
