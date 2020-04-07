@@ -210,6 +210,11 @@ class TestDataBase:
         assert str(error.value) == 'module "psycopg2" not found'
         assert 'module "psycopg2" not found' in caplog.text
 
+    def test_instantiate_autocommit_false(self):
+        """Query autocommit can be set to False."""
+        db = DataBase("db", "sqlite:///foo", autocommit=False)
+        assert not db.autocommit
+
     @pytest.mark.parametrize("dsn", ["foo-bar", "unknown:///db"])
     def test_instantiate_invalid_dsn(self, caplog, dsn):
         """An error is raised if a the provided DSN is invalid."""

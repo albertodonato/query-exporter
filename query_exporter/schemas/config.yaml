@@ -50,6 +50,12 @@ definitions:
           A string with database connection string, in the format
           dialect[+driver]://[username:password][@host:port]/database[?option=value&...]
         type: string
+      autocommit:
+        title: Whether to enable autocommit for queries
+        description: >
+          When set to false, don't autocommit after each query.
+        type: boolean
+        default: true
       keep-connected:
         title: Whether to keep the connection open for the database between queries
         description: >

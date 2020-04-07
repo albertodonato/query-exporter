@@ -92,7 +92,8 @@ def _get_databases(
                 name,
                 _resolve_dsn(config["dsn"], env),
                 connect_sql=config.get("connect-sql"),
-                keep_connected=bool(config.get("keep-connected", True)),
+                keep_connected=config.get("keep-connected", True),
+                autocommit=config.get("autocommit", True),
                 labels=labels,
             )
     except Exception as e:
