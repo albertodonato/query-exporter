@@ -1,4 +1,4 @@
-v2.2.0 - 2019-03-16
+v2.2.0 - 2020-03-16
 ===================
 
 - Validate that metric names don't collide with builtin ones.
@@ -7,7 +7,7 @@ v2.2.0 - 2019-03-16
 - [snap,docker] Support IBM DB2 (#14).
 
 
-v2.1.0 - 2019-02-29
+v2.1.0 - 2020-02-29
 ===================
 
 - When validating config, warn about database and metrics that are not used in
@@ -16,21 +16,21 @@ v2.1.0 - 2019-02-29
   same set of labels (#27).
 
 
-v2.0.2 - 2019-02-15
+v2.0.2 - 2020-02-15
 ===================
 
 - Don't disable queries failing because of ``OperationalError`` as it might not
   be a fatal error (#25).
 
 
-v2.0.1 - 2019-02-07
+v2.0.1 - 2020-02-07
 ===================
 
 - Fix validation for entries in the ``queries`` section for config file.
 - [snap,docker] Add MSSQL support.
 
 
-v2.0.0 - 2019-02-02
+v2.0.0 - 2020-02-02
 ===================
 
 - Support only named parameters (e.g.: ``:param``) in queries (#21, #24).
