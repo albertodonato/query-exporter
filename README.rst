@@ -246,8 +246,11 @@ Each query definition can have the following keys:la-
 Metrics endpoint
 ----------------
 
-The exporter uses port ``9560`` by default for exposting metrics, under the
-standard ``/metrics`` endpoint.
+The exporter listens on port ``9560`` providing the standard ``/metrics``
+endpoint.
+
+By default, the port is bound on ``localhost``. Note that if the name resolves
+both IPv4 and IPv6 addressses, the exporter will bind on both.
 
 For the configuration above, the endpoint would return something like this::
 
