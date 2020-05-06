@@ -5,6 +5,7 @@ RUN apt install -y --no-install-recommends \
     build-essential \
     default-libmysqlclient-dev \
     libpq-dev \
+    libxml2 \
     unixodbc-dev
 
 ADD . /srcdir
