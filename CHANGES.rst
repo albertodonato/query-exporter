@@ -1,3 +1,12 @@
+v2.2.1 - 2020-05-08
+===================
+
+- [snap] Enable IBM DB2 support only on supported architectures (x86_64,
+  ppc64le and s390x)
+- [docker] Fix python library paths
+- Add support for disabling query autocommit in database configuration.
+
+
 v2.2.0 - 2020-03-16
 ===================
 
