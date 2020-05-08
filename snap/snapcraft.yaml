@@ -22,7 +22,8 @@ description: |
     - MySQL (`mysql://`)
     - SQLite (`sqlite://`)
     - Microsoft SQL Server (`mssql+pyodbc://`)
-    - IBM DB2 (`db2+ibm_db://`)
+    - IBM DB2 (`db2+ibm_db://`) on supported architectures (x86_64, ppc64le and
+      s390x)
 
 license: GPL-3.0+
 icon: logo.svg
