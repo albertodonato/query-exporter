@@ -342,6 +342,7 @@ The snap has support for connecting the following databases:
 - MySQL (``mysql://``)
 - SQLite (``sqlite://``)
 - Microsoft SQL Server (``mssql+pyodbc://``)
+- IBM DB2 (``db2+ibm_db://``)
 
 
 Run in Docker
