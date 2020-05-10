@@ -14,6 +14,7 @@ from typing import (
     Union,
 )
 
+from croniter import croniter
 import sqlalchemy
 from sqlalchemy.engine import (
     Connection,
@@ -66,6 +67,13 @@ class InvalidQueryParameters(Exception):
         )
 
 
+class InvalidQuerySchedule(Exception):
+    """Query schedule is wrong or both schedule and interval specified."""
+
+    def __init__(self, query_name: str, message: str):
+        super().__init__(f'Invalid schedule for query "{query_name}": {message}')
+
+
 # database errors that mean the query won't ever succeed.  Not all possible
 # fatal errors are tracked here, because some DBAPI errors can happen in
 # circumstances which can be fatal or not.  Since there doesn't seem to be a
@@ -107,19 +115,27 @@ class Query:
     def __init__(
         self,
         name: str,
-        interval: int,
         databases: List[str],
         metrics: List[QueryMetric],
         sql: str,
         parameters: Optional[Dict[str, Any]] = None,
+        interval: Optional[int] = None,
+        schedule: Optional[str] = None,
     ):
         self.name = name
-        self.interval = interval
         self.databases = databases
         self.metrics = metrics
         self.sql = sql
         self.parameters = parameters or {}
-        self._check_parameters()
+        self.interval = interval
+        self.schedule = schedule
+        self._check_schedule()
+        self._check_query_parameters()
+
+    @property
+    def timed(self) -> bool:
+        """Whether the query is run periodically via interval or schedule."""
+        return bool(self.interval or self.schedule)
 
     def labels(self) -> FrozenSet[str]:
         """Resturn all labels for metrics in the query."""
@@ -150,7 +166,15 @@ class Query:
                 results.append(metric_result)
         return results
 
-    def _check_parameters(self):
+    def _check_schedule(self):
+        if self.interval and self.schedule:
+            raise InvalidQuerySchedule(
+                self.name, "both interval and schedule specified"
+            )
+        if self.schedule and not croniter.is_valid(self.schedule):
+            raise InvalidQuerySchedule(self.name, "invalid schedule format")
+
+    def _check_query_parameters(self):
         expr = sqlalchemy.text(self.sql)
         query_params = set(expr.compile().params)
         if set(self.parameters) != query_params:
@@ -276,7 +300,7 @@ class DataBase:
         self, query_name: str, error: Union[str, Exception], fatal: bool = False,
     ):
         """Create and log a DataBaseError for a failed query."""
-        message = str(error).strip()
+        message = self._error_message(error)
         self._logger.error(
             f'query "{query_name}" on database "{self.name}" failed: ' + message
         )
@@ -284,6 +308,13 @@ class DataBase:
 
     def _db_error(self, error: Union[str, Exception], fatal: bool = False):
         """Create and log a DataBaseError."""
-        message = str(error).strip()
+        message = self._error_message(error)
         self._logger.error(f'error from database "{self.name}": {message}')
         return DataBaseError(message, fatal=fatal)
+
+    def _error_message(self, error: Union[str, Exception]) -> str:
+        """Return a message from an error."""
+        message = str(error).strip()
+        if not message and isinstance(error, Exception):
+            message = error.__class__.__name__
+        return message

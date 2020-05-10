@@ -77,7 +77,7 @@ A sample configuration file for the application looks like this:
                  "value1" AS l1,
                  "value2" AS l2
       query3:
-        interval: 10
+        schedule: "*/5 * * * *"
         databases: [db2]
         metrics: [metric4]
         sql: |
@@ -188,6 +188,8 @@ Each query definition can have the following keys:la-
   The value is interpreted as seconds if no suffix is specified; valid suffixes
   are ``s``, ``m``, ``h``, ``d``. Only integer values are accepted.
 
+  If a value is specified for ``interval``, a ``schedule`` can't be specified.
+
   If no value is specified (or specified as ``null``), the query is only
   executed upon HTTP requests.
 
@@ -220,6 +222,17 @@ Each query definition can have the following keys:la-
             param2: 20
           - param1: 30
             param2: 40
+
+``schedule``:
+  a schedule for executing queries at specific times.
+
+  This is expressed as a Cron-like format string (e.g. ``*/5 * * * *`` to run
+  every five minutes).
+
+  If a value is specified for ``schedule``, an ``interval`` can't be specified.
+
+  If no value is specified (or specified as ``null``), the query is only
+  executed upon HTTP requests.
 
 ``sql``:
   the SQL text of the query.

@@ -469,6 +469,52 @@ class TestLoadConfig:
             == 'Parameters for query "q[params0]" don\'t match those from SQL'
         )
 
+    def test_load_queries_section_with_schedule_and_interval(
+        self, logger, write_config
+    ):
+        """An error is raised if query schedule and interval are both present."""
+        config = {
+            "databases": {"db": {"dsn": "sqlite://"}},
+            "metrics": {"m": {"type": "summary"}},
+            "queries": {
+                "q": {
+                    "databases": ["db"],
+                    "metrics": ["m"],
+                    "sql": "SELECT 1",
+                    "interval": 10,
+                    "schedule": "0 * * * *",
+                },
+            },
+        }
+        config_file = write_config(config)
+        with pytest.raises(ConfigError) as err, config_file.open() as fd:
+            load_config(fd, logger)
+        assert (
+            str(err.value)
+            == 'Invalid schedule for query "q": both interval and schedule specified'
+        )
+
+    def test_load_queries_section_invalid_schedule(self, logger, write_config):
+        """An error is raised if query schedule has wrong format."""
+        config = {
+            "databases": {"db": {"dsn": "sqlite://"}},
+            "metrics": {"m": {"type": "summary"}},
+            "queries": {
+                "q": {
+                    "databases": ["db"],
+                    "metrics": ["m"],
+                    "sql": "SELECT 1",
+                    "schedule": "wrong",
+                },
+            },
+        }
+        config_file = write_config(config)
+        with pytest.raises(ConfigError) as err, config_file.open() as fd:
+            load_config(fd, logger)
+        assert (
+            str(err.value) == 'Invalid schedule for query "q": invalid schedule format'
+        )
+
     @pytest.mark.parametrize(
         "config,error_message",
         [

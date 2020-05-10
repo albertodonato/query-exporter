@@ -143,12 +143,15 @@ definitions:
       interval:
         title: The time interval at which queries are run
         description: >
-          If specified as a pure number, it's interpreted as seconds.
+          If specified just as a number, it's interpreted as seconds.
 
           Valid suffixes as "s", "m", "h", "d".
 
           If not specified or specified as null, the query will be run on HTTP
           requests.
+
+          Alternatively, the "schedule" property can be specified to run the
+          query at specific times.
         anyOf:
           - type: integer
             minimum: 1
@@ -174,6 +177,14 @@ definitions:
           type: object
         minItems: 1
         uniqueItems: true
+      schedule:
+        title: Time schedule for executing the query
+        description: >
+          A cron-like expression for describing the schedule to run the query.
+
+          Alternatively, the "interval" property can be specified to run the
+          query at constant time intervals.
+        type: string
       sql:
         title: The SQL code for the query
         type: string

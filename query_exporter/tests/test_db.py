@@ -11,6 +11,7 @@ from ..db import (
     DataBase,
     DataBaseError,
     InvalidQueryParameters,
+    InvalidQuerySchedule,
     InvalidResultColumnNames,
     InvalidResultCount,
     MetricResult,
@@ -32,7 +33,6 @@ class TestQuery:
         """A query can be instantiated with the specified arguments."""
         query = Query(
             "query",
-            20,
             ["db1", "db2"],
             [
                 QueryMetric("metric1", ["label1", "label2"]),
@@ -41,7 +41,6 @@ class TestQuery:
             "SELECT 1",
         )
         assert query.name == "query"
-        assert query.interval == 20
         assert query.databases == ["db1", "db2"]
         assert query.metrics == [
             QueryMetric("metric1", ["label1", "label2"]),
@@ -49,12 +48,12 @@ class TestQuery:
         ]
         assert query.sql == "SELECT 1"
         assert query.parameters == {}
+        assert query.interval is None
 
     def test_instantiate_with_parameters(self):
         """A query can be instantiated with parameters."""
         query = Query(
             "query",
-            20,
             ["db1", "db2"],
             [
                 QueryMetric("metric1", ["label1", "label2"]),
@@ -71,7 +70,6 @@ class TestQuery:
         with pytest.raises(InvalidQueryParameters):
             Query(
                 "query",
-                20,
                 ["db1", "db2"],
                 [
                     QueryMetric("metric1", ["label1", "label2"]),
@@ -82,11 +80,87 @@ class TestQuery:
                 parameters={"param1": 1, "param2": 2},
             )
 
+    def test_instantiate_with_interval(self):
+        """A query can be instantiated with an interval."""
+        query = Query(
+            "query",
+            ["db1", "db2"],
+            [
+                QueryMetric("metric1", ["label1", "label2"]),
+                QueryMetric("metric2", ["label2"]),
+            ],
+            "SELECT 1",
+            interval=20,
+        )
+        assert query.interval == 20
+
+    def test_instantiate_with_schedule(self):
+        """A query can be instantiated with a schedule."""
+        query = Query(
+            "query",
+            ["db1", "db2"],
+            [
+                QueryMetric("metric1", ["label1", "label2"]),
+                QueryMetric("metric2", ["label2"]),
+            ],
+            "SELECT 1",
+            schedule="0 * * * *",
+        )
+        assert query.schedule == "0 * * * *"
+
+    def test_instantiate_with_interval_and_schedule(self):
+        """Interval and schedule can't be specified together."""
+        with pytest.raises(InvalidQuerySchedule) as error:
+            Query(
+                "query",
+                ["db1"],
+                [QueryMetric("metric1", [])],
+                "SELECT 1",
+                interval=20,
+                schedule="0 * * * *",
+            )
+        assert (
+            str(error.value)
+            == 'Invalid schedule for query "query": both interval and schedule specified'
+        )
+
+    def test_instantiate_with_invalid_schedule(self):
+        """Invalid query schedule raises an error."""
+        with pytest.raises(InvalidQuerySchedule) as error:
+            Query(
+                "query",
+                ["db1"],
+                [QueryMetric("metric1", [])],
+                "SELECT 1",
+                schedule="wrong",
+            )
+        assert (
+            str(error.value)
+            == 'Invalid schedule for query "query": invalid schedule format'
+        )
+
+    @pytest.mark.parametrize(
+        "kwargs,is_timed",
+        [({}, False), ({"interval": 20}, True), ({"schedule": "1 * * * *"}, True)],
+    )
+    def test_timed(self, kwargs, is_timed):
+        """Query.timed reports whether the query is run with a time schedule"""
+        query = Query(
+            "query",
+            ["db1", "db2"],
+            [
+                QueryMetric("metric1", ["label1", "label2"]),
+                QueryMetric("metric2", ["label2"]),
+            ],
+            "SELECT 1",
+            **kwargs,
+        )
+        assert query.timed == is_timed
+
     def test_labels(self):
         """All labels for the query can be returned."""
         query = Query(
             "query",
-            20,
             ["db1", "db2"],
             [
                 QueryMetric("metric1", ["label1", "label2"]),
@@ -98,7 +172,7 @@ class TestQuery:
 
     def test_results_empty(self):
         """No error is raised if the result set is empty"""
-        query = Query("query", 20, ["db"], [QueryMetric("metric", [])], "")
+        query = Query("query", ["db"], [QueryMetric("metric", [])], "")
         query_results = QueryResults(["one"], [])
         assert query.results(query_results) == []
 
@@ -106,7 +180,6 @@ class TestQuery:
         """The results method returns results by matching metrics name."""
         query = Query(
             "query",
-            20,
             ["db"],
             [QueryMetric("metric1", []), QueryMetric("metric2", [])],
             "",
@@ -123,7 +196,6 @@ class TestQuery:
         """The results method returns results by matching metrics name."""
         query = Query(
             "query",
-            20,
             ["db"],
             [
                 QueryMetric("metric1", ["label1", "label2"]),
@@ -144,21 +216,21 @@ class TestQuery:
 
     def test_results_wrong_result_count(self):
         """An error is raised if the result column count is wrong."""
-        query = Query("query", 20, ["db"], [QueryMetric("metric1", [])], "")
+        query = Query("query", ["db"], [QueryMetric("metric1", [])], "")
         query_results = QueryResults(["one", "two"], [(1, 2)])
         with pytest.raises(InvalidResultCount):
             query.results(query_results)
 
     def test_results_wrong_result_count_with_label(self):
         """An error is raised if the result column count is wrong."""
-        query = Query("query", 20, ["db"], [QueryMetric("metric1", ["label1"])], "")
+        query = Query("query", ["db"], [QueryMetric("metric1", ["label1"])], "")
         query_results = QueryResults(["one"], [(1,)])
         with pytest.raises(InvalidResultCount):
             query.results(query_results)
 
     def test_results_wrong_names_with_labels(self):
         """An error is raised if metric and labels names don't match."""
-        query = Query("query", 20, ["db"], [QueryMetric("metric1", ["label1"])], "")
+        query = Query("query", ["db"], [QueryMetric("metric1", ["label1"])], "")
         query_results = QueryResults(["one", "two"], [(1, 2)])
         with pytest.raises(InvalidResultColumnNames):
             query.results(query_results)
@@ -296,7 +368,7 @@ class TestDataBase:
         """A message is logged about the query being executed."""
         db = DataBase("db", "sqlite://")
         query = Query(
-            "query", 20, ["db"], [QueryMetric("metric", [])], "SELECT 1.0 AS metric"
+            "query", ["db"], [QueryMetric("metric", [])], "SELECT 1.0 AS metric"
         )
         await db.connect()
         with caplog.at_level(logging.DEBUG):
@@ -310,7 +382,7 @@ class TestDataBase:
         """If keep_connected is set to true, the db is not closed."""
         db = DataBase("db", "sqlite://", keep_connected=connected)
         query = Query(
-            "query", 20, ["db"], [QueryMetric("metric", [])], "SELECT 1.0 AS metric"
+            "query", ["db"], [QueryMetric("metric", [])], "SELECT 1.0 AS metric"
         )
         await db.connect()
         await db.execute(query)
@@ -322,10 +394,10 @@ class TestDataBase:
         """The db is disconnected only after pending queries are run."""
         db = DataBase("db", "sqlite://", keep_connected=False)
         query1 = Query(
-            "query1", 5, ["db"], [QueryMetric("metric1", [])], "SELECT 1.0 AS metric1"
+            "query1", ["db"], [QueryMetric("metric1", [])], "SELECT 1.0 AS metric1"
         )
         query2 = Query(
-            "query1", 5, ["db"], [QueryMetric("metric2", [])], "SELECT 1.0 AS metric2"
+            "query1", ["db"], [QueryMetric("metric2", [])], "SELECT 1.0 AS metric2"
         )
         await db.connect()
         await asyncio.gather(db.execute(query1), db.execute(query2))
@@ -335,7 +407,7 @@ class TestDataBase:
     async def test_execute_not_connected(self, db):
         """The execute recconnects to the database if not connected."""
         query = Query(
-            "query", 20, ["db"], [QueryMetric("metric", [])], "SELECT 1 AS metric"
+            "query", ["db"], [QueryMetric("metric", [])], "SELECT 1 AS metric"
         )
         result = await db.execute(query)
         assert result == [MetricResult("metric", 1, {})]
@@ -351,7 +423,6 @@ class TestDataBase:
         )
         query = Query(
             "query",
-            20,
             ["db"],
             [QueryMetric("metric1", []), QueryMetric("metric2", [])],
             sql,
@@ -379,7 +450,6 @@ class TestDataBase:
             """
         query = Query(
             "query",
-            20,
             ["db"],
             [
                 QueryMetric("metric1", ["label1", "label2"]),
@@ -400,11 +470,7 @@ class TestDataBase:
     async def test_execute_query_invalid_count(self, caplog, db):
         """If the number of fields don't match, an error is raised."""
         query = Query(
-            "query",
-            20,
-            ["db"],
-            [QueryMetric("metric", [])],
-            "SELECT 1 AS metric, 2 AS other",
+            "query", 20, [QueryMetric("metric", [])], "SELECT 1 AS metric, 2 AS other",
         )
         await db.connect()
         with caplog.at_level(logging.ERROR):
@@ -421,11 +487,7 @@ class TestDataBase:
     async def test_execute_query_invalid_count_with_labels(self, db):
         """If the number of fields don't match, an error is raised."""
         query = Query(
-            "query",
-            20,
-            ["db"],
-            [QueryMetric("metric", ["label"])],
-            "SELECT 1 as metric",
+            "query", ["db"], [QueryMetric("metric", ["label"])], "SELECT 1 as metric",
         )
         await db.connect()
         with pytest.raises(DataBaseError) as error:
@@ -438,7 +500,6 @@ class TestDataBase:
         """If the names of fields don't match, an error is raised."""
         query = Query(
             "query",
-            20,
             ["db"],
             [QueryMetric("metric", ["label"])],
             'SELECT 1 AS foo, "bar" AS label',

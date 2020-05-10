@@ -8,9 +8,9 @@ import yaml
 
 import pytest
 
+from .. import loop
 from ..config import load_config
 from ..db import DataBase
-from ..loop import QueryLoop
 
 
 @pytest.fixture
@@ -44,7 +44,7 @@ async def make_query_loop(tmpdir, config_data, registry):
         with config_file.open() as fh:
             config = load_config(fh, logging.getLogger())
         registry.create_metrics(config.metrics.values())
-        query_loop = QueryLoop(config, registry, logging)
+        query_loop = loop.QueryLoop(config, registry, logging)
         query_loops.append(query_loop)
         return query_loop
 
@@ -81,17 +81,17 @@ def metric_values(metric, by_labels=()):
 @pytest.mark.asyncio
 class TestQueryLoop:
     async def test_start(self, query_loop):
-        """The start method starts periodic calls for queries."""
+        """The start method starts timed calls for queries."""
         await query_loop.start()
-        periodic_call = query_loop._periodic_calls["q"]
-        assert periodic_call.running
+        timed_call = query_loop._timed_calls["q"]
+        assert timed_call.running
 
     async def test_stop(self, query_loop):
-        """The stop method stops periodic calls for queries."""
+        """The stop method stops timed calls for queries."""
         await query_loop.start()
-        periodic_call = query_loop._periodic_calls["q"]
+        timed_call = query_loop._timed_calls["q"]
         await query_loop.stop()
-        assert not periodic_call.running
+        assert not timed_call.running
 
     async def test_run_query(self, query_tracker, query_loop, registry):
         """Queries are run and update metrics."""
@@ -105,6 +105,34 @@ class TestQueryLoop:
         assert metric_values(queries_metric, by_labels=("status",)) == {
             ("success",): 1.0
         }
+
+    async def test_run_scheduled_query(
+        self,
+        mocker,
+        event_loop,
+        advance_time,
+        query_tracker,
+        registry,
+        config_data,
+        make_query_loop,
+    ):
+        """Queries are run and update metrics."""
+
+        def croniter(*args):
+            while True:
+                # sync croniter time with the loop one
+                yield event_loop.time() + 60
+
+        mock_croniter = mocker.patch.object(loop, "croniter")
+        mock_croniter.side_effect = croniter
+        # ensure that both clocks advance in sync
+        mocker.patch.object(loop.time, "time", lambda: event_loop.time())
+
+        del config_data["queries"]["q"]["interval"]
+        config_data["queries"]["q"]["schedule"] = "*/2 * * * *"
+        query_loop = make_query_loop()
+        await query_loop.start()
+        mock_croniter.assert_called_once()
 
     async def test_run_query_with_parameters(
         self, query_tracker, registry, config_data, make_query_loop
@@ -229,10 +257,10 @@ class TestQueryLoop:
         await advance_time(5)
         assert len(query_tracker.queries) == 2
 
-    async def test_run_periodic_queries_invalid_result_count(
+    async def test_run_timed_queries_invalid_result_count(
         self, query_tracker, config_data, make_query_loop, advance_time
     ):
-        """Periodic queries returning invalid elements count are removed."""
+        """Timed queries returning invalid elements count are removed."""
         config_data["queries"]["q"]["sql"] = "SELECT 100.0 AS a, 200.0 AS b"
         query_loop = make_query_loop()
         await query_loop.start()
@@ -245,25 +273,25 @@ class TestQueryLoop:
         await advance_time(5)
         assert len(query_tracker.results) == 0
 
-    async def test_run_periodic_queries_invalid_result_count_stop_task(
+    async def test_run_timed_queries_invalid_result_count_stop_task(
         self, query_tracker, config_data, make_query_loop
     ):
-        """Periodic queries returning invalid result counts are stopped."""
+        """Timed queries returning invalid result counts are stopped."""
         config_data["queries"]["q"]["sql"] = "SELECT 100.0 AS a, 200.0 AS b"
         config_data["queries"]["q"]["interval"] = 1.0
         query_loop = make_query_loop()
         await query_loop.start()
-        periodic_call = query_loop._periodic_calls["q"]
+        timed_call = query_loop._timed_calls["q"]
         await asyncio.sleep(1.1)
         await query_tracker.wait_failures()
         # the query has been stopped and removed
-        assert not periodic_call.running
-        assert query_loop._periodic_calls == {}
+        assert not timed_call.running
+        assert query_loop._timed_calls == {}
 
-    async def test_run_periodic_queries_not_removed_if_not_failing_on_all_dbs(
+    async def test_run_timed_queries_not_removed_if_not_failing_on_all_dbs(
         self, tmpdir, query_tracker, config_data, make_query_loop
     ):
-        """Periodic queries are removed when they fail on all databases."""
+        """Timed queries are removed when they fail on all databases."""
         db1 = tmpdir / "db1.sqlite"
         db2 = tmpdir / "db2.sqlite"
         config_data["databases"] = {

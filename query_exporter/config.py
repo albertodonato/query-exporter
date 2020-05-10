@@ -26,6 +26,7 @@ from .db import (
     DataBase,
     DATABASE_LABEL,
     InvalidQueryParameters,
+    InvalidQuerySchedule,
     Query,
     QueryMetric,
 )
@@ -169,11 +170,12 @@ def _get_queries(
                         f"{name}[params{index}]",
                         Query(
                             f"{name}[params{index}]",
-                            config["interval"],
                             config["databases"],
                             query_metrics,
                             config["sql"].strip(),
                             parameters=params,
+                            interval=config["interval"],
+                            schedule=config.get("schedule"),
                         ),
                     )
                     for index, params in enumerate(parameters)
@@ -181,12 +183,13 @@ def _get_queries(
             else:
                 queries[name] = Query(
                     name,
-                    config["interval"],
                     config["databases"],
                     query_metrics,
                     config["sql"].strip(),
+                    interval=config["interval"],
+                    schedule=config.get("schedule"),
                 )
-        except InvalidQueryParameters as e:
+        except (InvalidQueryParameters, InvalidQuerySchedule) as e:
             raise ConfigError(str(e))
     return queries
 

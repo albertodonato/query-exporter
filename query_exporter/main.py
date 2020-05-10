@@ -58,7 +58,7 @@ class QueryExporterScript(PrometheusExporterScript):
         await self.query_loop.stop()
 
     async def _update_handler(self, metrics: List[MetricConfig]):
-        """Run queries with no specified interval on each request."""
+        """Run queries with no specified schedule on each request."""
         await self.query_loop.run_aperiodic_queries()
 
     def _load_config(self, config_file: IO) -> Config:

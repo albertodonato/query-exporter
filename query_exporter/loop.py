@@ -1,9 +1,11 @@
-"""Loop to periodically execute queries."""
+"""Loop to execute database queries and collect metrics."""
 
 import asyncio
 from collections import defaultdict
+from datetime import datetime
 from decimal import Decimal
 from logging import Logger
+import time
 from typing import (
     Any,
     Dict,
@@ -14,8 +16,13 @@ from typing import (
     Set,
 )
 
+from croniter import croniter
+from dateutil.tz import gettz
 from prometheus_aioexporter import MetricsRegistry
-from toolrack.aio import PeriodicCall
+from toolrack.aio import (
+    PeriodicCall,
+    TimedCall,
+)
 
 from .config import (
     Config,
@@ -31,7 +38,7 @@ from .db import (
 
 
 class QueryLoop:
-    """Periodically performs queries."""
+    """Run database queries and collect metrics."""
 
     _METRIC_METHODS = {
         "counter": "inc",
@@ -44,41 +51,53 @@ class QueryLoop:
     def __init__(
         self, config: Config, registry: MetricsRegistry, logger: Logger,
     ):
-        self.loop = asyncio.get_event_loop()
         self._config = config
         self._registry = registry
         self._logger = logger
-        self._periodic_queries: List[Query] = []
+        self._timed_queries: List[Query] = []
         self._aperiodic_queries: List[Query] = []
-        # map query names to their PeriodicCall
-        self._periodic_calls: Dict[str, PeriodicCall] = {}
+        # map query names to their TimedCalls
+        self._timed_calls: Dict[str, TimedCall] = {}
         # map query names to list of database names
         self._doomed_queries: Dict[str, Set[str]] = defaultdict(set)
+        self._loop = asyncio.get_event_loop()
         self._setup()
 
     async def start(self):
-        """Start periodic queries execution."""
+        """Start timed queries execution."""
         for db in self._databases:
             try:
                 await db.connect()
             except DataBaseError:
                 self._increment_db_error_count(db)
 
-        for query in self._periodic_queries:
-            call = PeriodicCall(self.loop, self._run_query, query)
-            self._periodic_calls[query.name] = call
-            call.start(query.interval)
+        for query in self._timed_queries:
+            if query.interval:
+                call = PeriodicCall(self._run_query, query)
+                call.start(query.interval)
+            else:
+                call = TimedCall(self._run_query, query)
+                now = datetime.now().replace(tzinfo=gettz())
+                cron_iter = croniter(query.schedule, now)
+
+                def times_iter():
+                    while True:
+                        delta = next(cron_iter) - time.time()
+                        yield self._loop.time() + delta
+
+                call.start(times_iter())
+            self._timed_calls[query.name] = call
 
     async def stop(self):
-        """Stop periodic query execution."""
-        coros = (call.stop() for call in self._periodic_calls.values())
+        """Stop timed query execution."""
+        coros = (call.stop() for call in self._timed_calls.values())
         await asyncio.gather(*coros, return_exceptions=True)
-        self._periodic_calls.clear()
+        self._timed_calls.clear()
         coros = (db.close() for db in self._databases)
         await asyncio.gather(*coros, return_exceptions=True)
 
     async def run_aperiodic_queries(self):
-        """Run queries that don't have a period set."""
+        """Run queries on request."""
         coros = (
             self._execute_query(query, dbname)
             for query in self._aperiodic_queries
@@ -97,15 +116,15 @@ class QueryLoop:
             database.set_logger(self._logger)
 
         for query in self._config.queries.values():
-            if query.interval is None:
-                self._aperiodic_queries.append(query)
+            if query.timed:
+                self._timed_queries.append(query)
             else:
-                self._periodic_queries.append(query)
+                self._aperiodic_queries.append(query)
 
     def _run_query(self, query: Query):
         """Periodic task to run a query."""
         for dbname in query.databases:
-            self.loop.create_task(self._execute_query(query, dbname))
+            self._loop.create_task(self._execute_query(query, dbname))
 
     async def _execute_query(self, query: Query, dbname: str):
         """'Execute a Query on a DataBase."""
@@ -139,13 +158,13 @@ class QueryLoop:
 
         if set(query.databases) == self._doomed_queries[query.name]:
             # the query has failed on all databases
-            if query.interval is None:
-                self._aperiodic_queries.remove(query)
-            else:
-                self._periodic_queries.remove(query)
-                call = self._periodic_calls.pop(query.name, None)
+            if query.timed:
+                self._timed_queries.remove(query)
+                call = self._timed_calls.pop(query.name, None)
                 if call is not None:
                     await call.stop()
+            else:
+                self._aperiodic_queries.remove(query)
         return True
 
     def _update_metric(
