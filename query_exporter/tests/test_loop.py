@@ -157,7 +157,7 @@ class TestQueryLoop:
 
     async def test_update_metric_decimal_value(self, registry, make_query_loop):
         """A Decimal value in query results is converted to float."""
-        db = DataBase("db", f"sqlite://")
+        db = DataBase("db", "sqlite://")
         query_loop = make_query_loop()
         query_loop._update_metric(db, "m", Decimal("100.123"))
         metric = registry.get_metric("m")
