@@ -17,7 +17,7 @@ A clear and concise description of what the bug is and when it happens.
 - query-exporter installation type:
   - pip: [output from `pip list`]
   - docker image: [`<image tag>`]
-  - snap: [output from `snap list | grep query-exporter`]
+  - snap: [output from `snap info query-exporter`]
 
 **To Reproduce**
 
