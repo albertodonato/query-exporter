@@ -172,7 +172,7 @@ Each metric definition can have the following keys:
 This section contains definitions for queries to perform. Key names are
 arbitrary and only used to identify queries in logs.
 
-Each query definition can have the following keys:la-
+Each query definition can have the following keys:
 
 ``databases``:
   the list of databases to run the query on.
