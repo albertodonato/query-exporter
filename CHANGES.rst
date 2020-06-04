@@ -1,9 +1,16 @@
+v2.3.0 - 2020-06-04
+===================
+
+- Add support for query schedule (#29).
+- [docker] Pass the config file in the command line.
+
+
 v2.2.1 - 2020-05-08
 ===================
 
 - [snap] Enable IBM DB2 support only on supported architectures (x86_64,
-  ppc64le and s390x)
-- [docker] Fix python library paths
+  ppc64le and s390x).
+- [docker] Fix python library paths.
 - Add support for disabling query autocommit in database configuration.
 
 
