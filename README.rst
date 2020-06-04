@@ -364,8 +364,11 @@ Run in Docker
 
 ``query-exporter`` can be run inside Docker_ containers, and is availble from the `Docker Hub`_::
 
-  docker run -p 9560:9560/tcp -v "$PWD/config.yaml:/config.yaml" --rm -it \
-      adonato/query-exporter:latest -- /config.yaml
+  docker run -p 9560:9560/tcp -v "$CONFIG_FILE:/config.yaml" --rm -it adonato/query-exporter:latest
+
+where ``$CONFIG_FILE`` is the absolute path of the configuration file to
+use. Note that the image expects the file to be available as ``/config.yaml``
+in the container.
 
 The image has support for connecting the following databases:
 
