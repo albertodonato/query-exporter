@@ -321,25 +321,14 @@ Builtin metrics
 
 The exporter provides a few builtin metrics which can be useful to track query execution:
 
-``database_errors``:
-  a counter used to report number of database errors.
+``database_errors{database="db"}``:
+  a counter used to report number of errors, per database.
 
-  Labels:
-  - ``database``: database name
-
-``queries``:
+``queries{database="db",status="[success|error]"}``:
   a counter with number of executed queries, per database and status.
 
-  Labels:
-  - ``database``: database name
-  - ``status``: the query status (either ``"success"`` or ``"error"``)
-
-``query_latency``:
+``query_latency{database="db",query="q"}``:
   a histogram with query latencies, per database and query.
-
-  Labels:
-  - ``database``: database name
-  - ``query``: query name
 
 
 In addition, metrics for resources usage for the exporter procecss can be
