@@ -373,8 +373,8 @@ The snap has support for connecting the following databases:
 - PostgreSQL (``postgresql://``)
 - MySQL (``mysql://``)
 - SQLite (``sqlite://``)
-- Microsoft SQL Server (``mssql+pyodbc://``)
-- IBM DB2 (``db2+ibm_db://``) on supported architectures (x86_64, ppc64le and
+- Microsoft SQL Server (``mssql://``)
+- IBM DB2 (``db2://``) on supported architectures (x86_64, ppc64le and
   s390x)
 
 
@@ -394,8 +394,8 @@ The image has support for connecting the following databases:
 - PostgreSQL (``postgresql://``)
 - MySQL (``mysql://``)
 - SQLite (``sqlite://``)
-- Microsoft SQL Server (``mssql+pyodbc://``)
-- IBM DB2 (``db2+ibm_db://``)
+- Microsoft SQL Server (``mssql://``)
+- IBM DB2 (``db2://``)
 
 
 .. _Prometheus: https://prometheus.io/
