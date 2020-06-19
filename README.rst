@@ -316,6 +316,36 @@ For the configuration above, the endpoint would return something like this::
   metric4{database="db2",metric4="baz"} 1.0
 
 
+Builtin metrics
+---------------
+
+The exporter provides a few builtin metrics which can be useful to track query execution:
+
+``database_errors``:
+  a counter used to report number of database errors.
+
+  Labels:
+  - ``database``: database name
+
+``queries``:
+  a counter with number of executed queries, per database and status.
+
+  Labels:
+  - ``database``: database name
+  - ``status``: the query status (either ``"success"`` or ``"error"``)
+
+``query_latency``:
+  a histogram with query latencies, per database and query.
+
+  Labels:
+  - ``database``: database name
+  - ``query``: query name
+
+
+In addition, metrics for resources usage for the exporter procecss can be
+included by passing ``--process-stats`` in the command line.
+
+
 Database engines
 ----------------
 

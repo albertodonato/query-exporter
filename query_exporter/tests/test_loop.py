@@ -2,6 +2,7 @@ import asyncio
 from collections import defaultdict
 from decimal import Decimal
 import logging
+import re
 
 from prometheus_aioexporter import MetricsRegistry
 import yaml
@@ -11,6 +12,19 @@ import pytest
 from .. import loop
 from ..config import load_config
 from ..db import DataBase
+
+
+class re_match:
+    """Assert that comparison matches the specified regexp."""
+
+    def __init__(self, pattern, flags=0):
+        self._re = re.compile(pattern, flags)
+
+    def __eq__(self, string):
+        return bool(self._re.match(string))
+
+    def __repr__(self):
+        return self._re.pattern  # pragma: nocover
 
 
 @pytest.fixture
@@ -202,6 +216,9 @@ class TestQueryLoop:
             'connected to database "db"',
             'running query "q" on database "db"',
             'updating metric "m" set 100.0 {database="db"}',
+            re_match(
+                r'updating metric "query_latency" observe .* \{database="db",query="q\"}'
+            ),
             'updating metric "queries" inc 1 {database="db",status="success"}',
         ]
 
@@ -219,6 +236,9 @@ class TestQueryLoop:
             'connected to database "db"',
             'running query "q" on database "db"',
             'updating metric "m" set 100.0 {database="db",l="foo"}',
+            re_match(
+                r'updating metric "query_latency" observe .* \{database="db",query="q\"}'
+            ),
             'updating metric "queries" inc 1 {database="db",status="success"}',
         ]
 

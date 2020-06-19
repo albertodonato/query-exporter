@@ -3,6 +3,7 @@
 import asyncio
 from itertools import chain
 import logging
+from time import perf_counter
 from typing import (
     Any,
     Dict,
@@ -15,16 +16,20 @@ from typing import (
 )
 
 from croniter import croniter
-import sqlalchemy
-from sqlalchemy.engine import (
-    Connection,
-    ResultProxy,
+from sqlalchemy import (
+    create_engine,
+    event,
+    text,
 )
 from sqlalchemy.exc import (
     ArgumentError,
     NoSuchModuleError,
 )
 from sqlalchemy_aio import ASYNCIO_STRATEGY
+from sqlalchemy_aio.base import (
+    AsyncConnection,
+    AsyncResultProxy,
+)
 from sqlalchemy_aio.engine import AsyncioEngine
 
 # label used to tag metrics by database
@@ -94,11 +99,14 @@ class QueryResults(NamedTuple):
 
     keys: List[str]
     rows: List[Tuple]
+    latency: Optional[float] = None
 
     @classmethod
-    async def from_results(cls, results: ResultProxy):
+    async def from_results(cls, results: AsyncResultProxy):
         """Return a QueryResults from results for a query."""
-        return cls(await results.keys(), await results.fetchall())
+        conn_info = results._result_proxy.connection.info
+        latency = conn_info.get("query_latency", None)
+        return cls(await results.keys(), await results.fetchall(), latency=latency)
 
 
 class MetricResult(NamedTuple):
@@ -107,6 +115,13 @@ class MetricResult(NamedTuple):
     metric: str
     value: Any
     labels: Dict[str, str]
+
+
+class MetricResults(NamedTuple):
+    """Collection of metric results for a query."""
+
+    results: List[MetricResult]
+    latency: Optional[float] = None
 
 
 class Query:
@@ -121,6 +136,7 @@ class Query:
         parameters: Optional[Dict[str, Any]] = None,
         interval: Optional[int] = None,
         schedule: Optional[str] = None,
+        config_name: Optional[str] = None,
     ):
         self.name = name
         self.databases = databases
@@ -129,6 +145,7 @@ class Query:
         self.parameters = parameters or {}
         self.interval = interval
         self.schedule = schedule
+        self.config_name = config_name or name
         self._check_schedule()
         self._check_query_parameters()
 
@@ -141,10 +158,10 @@ class Query:
         """Resturn all labels for metrics in the query."""
         return frozenset(chain(*(metric.labels for metric in self.metrics)))
 
-    def results(self, query_results: QueryResults) -> List[MetricResult]:
+    def results(self, query_results: QueryResults) -> MetricResults:
         """Return MetricResults from a query."""
         if not query_results.rows:
-            return []
+            return MetricResults([])
 
         result_keys = sorted(query_results.keys)
         labels = self.labels()
@@ -164,7 +181,8 @@ class Query:
                     {label: values[label] for label in metric.labels},
                 )
                 results.append(metric_result)
-        return results
+
+        return MetricResults(results, latency=query_results.latency)
 
     def _check_schedule(self):
         if self.interval and self.schedule:
@@ -175,7 +193,7 @@ class Query:
             raise InvalidQuerySchedule(self.name, "invalid schedule format")
 
     def _check_query_parameters(self):
-        expr = sqlalchemy.text(self.sql)
+        expr = text(self.sql)
         query_params = set(expr.compile().params)
         if set(self.parameters) != query_params:
             raise InvalidQueryParameters(self.name)
@@ -185,7 +203,7 @@ class DataBase:
     """A database to perform Queries."""
 
     _engine: AsyncioEngine
-    _conn: Optional[Connection] = None
+    _conn: Optional[AsyncConnection] = None
     _logger: logging.Logger = logging.getLogger()
     _pending_queries: int = 0
 
@@ -206,7 +224,7 @@ class DataBase:
         self.labels = labels or {}
         self._connect_lock = asyncio.Lock()
         try:
-            self._engine = sqlalchemy.create_engine(
+            self._engine = create_engine(
                 dsn,
                 strategy=ASYNCIO_STRATEGY,
                 execution_options={"autocommit": self.autocommit},
@@ -215,6 +233,8 @@ class DataBase:
             raise self._db_error(f'module "{error.name}" not found', fatal=True)
         except (ArgumentError, ValueError, NoSuchModuleError):
             raise self._db_error(f'Invalid database DSN: "{self.dsn}"', fatal=True)
+
+        self._setup_query_latency_tracking()
 
     async def __aenter__(self):
         await self.connect()
@@ -258,12 +278,12 @@ class DataBase:
                 return
             await self._close()
 
-    async def execute(self, query: Query) -> List[MetricResult]:
+    async def execute(self, query: Query) -> MetricResults:
         """Execute a query."""
         await self.connect()
         self._logger.debug(f'running query "{query.name}" on database "{self.name}"')
         self._pending_queries += 1
-        self._conn: Connection
+        self._conn: AsyncConnection
         try:
             result = await self._execute_query(query)
             return query.results(await QueryResults.from_results(result))
@@ -279,14 +299,14 @@ class DataBase:
 
     async def execute_sql(
         self, sql: str, parameters: Optional[Dict[str, Any]] = None
-    ) -> ResultProxy:
+    ) -> AsyncResultProxy:
         """Execute a raw SQL query."""
         if parameters is None:
             parameters = {}
-        self._conn: Connection
-        return await self._conn.execute(sqlalchemy.text(sql), parameters)
+        self._conn: AsyncConnection
+        return await self._conn.execute(text(sql), parameters)
 
-    async def _execute_query(self, query: Query) -> ResultProxy:
+    async def _execute_query(self, query: Query) -> AsyncResultProxy:
         """Execute a query."""
         return await self.execute_sql(query.sql, parameters=query.parameters)
 
@@ -295,6 +315,23 @@ class DataBase:
         self._conn = None
         self._pending_queries = 0
         self._logger.debug(f'disconnected from database "{self.name}"')
+
+    def _setup_query_latency_tracking(self):
+        engine = self._engine.sync_engine
+
+        @event.listens_for(engine, "before_cursor_execute")
+        def before_cursor_execute(
+            conn, cursor, statement, parameters, context, executemany
+        ):
+            conn.info["query_start_time"] = perf_counter()
+
+        @event.listens_for(engine, "after_cursor_execute")
+        def after_cursor_execute(
+            conn, cursor, statement, parameters, context, executemany
+        ):
+            conn.info["query_latency"] = perf_counter() - conn.info.pop(
+                "query_start_time"
+            )
 
     def _query_db_error(
         self, query_name: str, error: Union[str, Exception], fatal: bool = False,

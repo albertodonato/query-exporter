@@ -44,7 +44,17 @@ _QUERIES_METRIC_CONFIG = MetricConfig(
     "counter",
     {"labels": ["status"]},
 )
-GLOBAL_METRICS = frozenset([DB_ERRORS_METRIC_NAME, QUERIES_METRIC_NAME])
+# metric for counting queries execution latency
+QUERY_LATENCY_METRIC_NAME = "query_latency"
+_QUERY_LATENCY_METRIC_CONFIG = MetricConfig(
+    QUERY_LATENCY_METRIC_NAME,
+    "Query execution latency",
+    "histogram",
+    {"labels": ["query"]},
+)
+GLOBAL_METRICS = frozenset(
+    [DB_ERRORS_METRIC_NAME, QUERIES_METRIC_NAME, QUERY_LATENCY_METRIC_NAME]
+)
 
 # regexp for validating environment variables names
 _ENV_VAR_RE = re.compile(r"[a-zA-Z_][a-zA-Z0-9_]*$")
@@ -117,7 +127,11 @@ def _get_metrics(
     """Return a dict mapping metric names to their configuration."""
     configs = {}
     # global metrics
-    for metric_config in (_DB_ERRORS_METRIC_CONFIG, _QUERIES_METRIC_CONFIG):
+    for metric_config in (
+        _DB_ERRORS_METRIC_CONFIG,
+        _QUERIES_METRIC_CONFIG,
+        _QUERY_LATENCY_METRIC_CONFIG,
+    ):
         # make a copy since labels are not immutable
         metric_config = deepcopy(metric_config)
         metric_config.config["labels"].extend(extra_labels)
@@ -176,6 +190,7 @@ def _get_queries(
                             parameters=params,
                             interval=config["interval"],
                             schedule=config.get("schedule"),
+                            config_name=name,
                         ),
                     )
                     for index, params in enumerate(parameters)

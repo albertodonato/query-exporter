@@ -28,6 +28,7 @@ from .config import (
     Config,
     DB_ERRORS_METRIC_NAME,
     QUERIES_METRIC_NAME,
+    QUERY_LATENCY_METRIC_NAME,
 )
 from .db import (
     DataBase,
@@ -133,7 +134,7 @@ class QueryLoop:
 
         db = self._config.databases[dbname]
         try:
-            results = await db.execute(query)
+            metric_results = await db.execute(query)
         except DataBaseError as error:
             self._increment_queries_count(db, "error")
             if error.fatal:
@@ -143,8 +144,12 @@ class QueryLoop:
                 self._doomed_queries[query.name].add(dbname)
             return
 
-        for result in results:
+        for result in metric_results.results:
             self._update_metric(db, result.metric, result.value, labels=result.labels)
+        if metric_results.latency:
+            self._update_query_latency_metric(
+                db, query.config_name, metric_results.latency
+            )
         self._increment_queries_count(db, "success")
 
     async def _remove_if_dooomed(self, query: Query, dbname: str) -> bool:
@@ -201,3 +206,11 @@ class QueryLoop:
     def _increment_db_error_count(self, database: DataBase):
         """Increment number of errors for a database."""
         self._update_metric(database, DB_ERRORS_METRIC_NAME, 1)
+
+    def _update_query_latency_metric(
+        self, database: DataBase, query_name: str, latency: float
+    ):
+        """Update latency metric for a query on a database."""
+        self._update_metric(
+            database, QUERY_LATENCY_METRIC_NAME, latency, labels={"query": query_name}
+        )

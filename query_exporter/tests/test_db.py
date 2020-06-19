@@ -41,6 +41,7 @@ class TestQuery:
             "SELECT 1",
         )
         assert query.name == "query"
+        assert query.config_name == "query"
         assert query.databases == ["db1", "db2"]
         assert query.metrics == [
             QueryMetric("metric1", ["label1", "label2"]),
@@ -49,6 +50,17 @@ class TestQuery:
         assert query.sql == "SELECT 1"
         assert query.parameters == {}
         assert query.interval is None
+
+    def test_instantiate_with_config_name(self):
+        """A query can be instantiated with a config_name different from name."""
+        query = Query(
+            "query",
+            ["db"],
+            [QueryMetric("metric", [])],
+            "SELECT metric1 FROM table",
+            config_name="query_config",
+        )
+        assert query.config_name == "query_config"
 
     def test_instantiate_with_parameters(self):
         """A query can be instantiated with parameters."""
@@ -174,7 +186,8 @@ class TestQuery:
         """No error is raised if the result set is empty"""
         query = Query("query", ["db"], [QueryMetric("metric", [])], "")
         query_results = QueryResults(["one"], [])
-        assert query.results(query_results) == []
+        metrics_results = query.results(query_results)
+        assert metrics_results.results == []
 
     def test_results_metrics(self):
         """The results method returns results by matching metrics name."""
@@ -185,7 +198,8 @@ class TestQuery:
             "",
         )
         query_results = QueryResults(["metric2", "metric1"], [(11, 22), (33, 44)])
-        assert query.results(query_results) == [
+        metrics_results = query.results(query_results)
+        assert metrics_results.results == [
             MetricResult("metric1", 22, {}),
             MetricResult("metric2", 11, {}),
             MetricResult("metric1", 44, {}),
@@ -207,7 +221,8 @@ class TestQuery:
             ["metric2", "metric1", "label2", "label1"],
             [(11, 22, "foo", "bar"), (33, 44, "baz", "bza")],
         )
-        assert query.results(query_results) == [
+        metrics_results = query.results(query_results)
+        assert metrics_results.results == [
             MetricResult("metric1", 22, {"label1": "bar", "label2": "foo"}),
             MetricResult("metric2", 11, {"label2": "foo"}),
             MetricResult("metric1", 44, {"label1": "bza", "label2": "baz"}),
@@ -246,6 +261,20 @@ class TestQueryResults:
             query_results = await QueryResults.from_results(result)
         assert query_results.keys == ["a", "b"]
         assert query_results.rows == [(1, 2)]
+        assert query_results.latency is None
+
+    @pytest.mark.asyncio
+    async def test_from_results_with_latency(self):
+        """The from_results method creates a QueryResult."""
+        engine = create_engine("sqlite://", strategy=ASYNCIO_STRATEGY)
+        async with engine.connect() as conn:
+            result = await conn.execute("SELECT 1 AS a, 2 AS b")
+            # simulate latency tracking
+            conn.sync_connection.info["query_latency"] = 1.2
+            query_results = await QueryResults.from_results(result)
+        assert query_results.keys == ["a", "b"]
+        assert query_results.rows == [(1, 2)]
+        assert query_results.latency == 1.2
 
 
 @pytest.fixture
@@ -409,8 +438,8 @@ class TestDataBase:
         query = Query(
             "query", ["db"], [QueryMetric("metric", [])], "SELECT 1 AS metric"
         )
-        result = await db.execute(query)
-        assert result == [MetricResult("metric", 1, {})]
+        metric_results = await db.execute(query)
+        assert metric_results.results == [MetricResult("metric", 1, {})]
         # the connection is kept for reuse
         assert not db._conn.closed
 
@@ -428,13 +457,14 @@ class TestDataBase:
             sql,
         )
         await db.connect()
-        result = await db.execute(query)
-        assert result == [
+        metric_results = await db.execute(query)
+        assert metric_results.results == [
             MetricResult("metric1", 10, {}),
             MetricResult("metric2", 20, {}),
             MetricResult("metric1", 30, {}),
             MetricResult("metric2", 40, {}),
         ]
+        assert isinstance(metric_results.latency, float)
 
     @pytest.mark.asyncio
     async def test_execute_with_labels(self, db):
@@ -458,8 +488,8 @@ class TestDataBase:
             sql,
         )
         await db.connect()
-        result = await db.execute(query)
-        assert result == [
+        metric_results = await db.execute(query)
+        assert metric_results.results == [
             MetricResult("metric1", 22, {"label1": "bar", "label2": "foo"}),
             MetricResult("metric2", 11, {"label2": "foo"}),
             MetricResult("metric1", 44, {"label1": "bza", "label2": "baz"}),
