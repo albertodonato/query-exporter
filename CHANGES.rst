@@ -1,3 +1,10 @@
+v2.4.0 - 2020-06-20
+===================
+
+- Add a ``query_latency`` metric to track query execution times. This is
+  lebeled by database and query name (#46).
+
+
 v2.3.0 - 2020-06-04
 ===================
 
