@@ -15,8 +15,8 @@ RUN pip install \
     /srcdir \
     ibm-db-sa \
     mysqlclient \
-    pyodbc \
-    psycopg2
+    psycopg2 \
+    pyodbc
 
 
 FROM python:3.8-slim

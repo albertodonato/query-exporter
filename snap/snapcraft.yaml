@@ -29,7 +29,7 @@ license: GPL-3.0+
 icon: logo.svg
 confinement: strict
 grade: stable
-base: core18
+base: core20
 
 apps:
   daemon:
@@ -55,7 +55,7 @@ parts:
       - ibm-db-sa; platform_machine == 'x86_64'
       - ibm-db-sa; platform_machine == 'ppc64le'
       - ibm-db-sa; platform_machine == 's390x'
-      - mysql
+      - mysqlclient
       - psycopg2
       - pyodbc
     build-packages:
@@ -64,23 +64,22 @@ parts:
       - libssl-dev
       - unixodbc-dev
     stage-packages:
-      - libmysqlclient20
+      - libmysqlclient21
       - libodbc1
       - libpq5
       - libxml2
     filesets:
       bins:
+        - bin/python3
         - bin/query-exporter
-        - usr/bin/python3
-        - usr/bin/python3.6
       libs:
-        - lib
-        - usr/lib
-        - -usr/lib/python3.7
+      - lib
+      - usr/lib
     prime:
       - $bins
-      - etc/python3.6
       - $libs
+      - etc
+      - pyvenv.cfg
 
   wrappers:
     plugin: dump
