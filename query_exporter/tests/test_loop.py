@@ -5,9 +5,8 @@ import logging
 import re
 
 from prometheus_aioexporter import MetricsRegistry
-import yaml
-
 import pytest
+import yaml
 
 from .. import loop
 from ..config import load_config

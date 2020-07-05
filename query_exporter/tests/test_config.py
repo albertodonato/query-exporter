@@ -1,8 +1,7 @@
 import logging
 
-import yaml
-
 import pytest
+import yaml
 
 from ..config import (
     ConfigError,

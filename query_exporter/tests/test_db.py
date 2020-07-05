@@ -1,11 +1,10 @@
 import asyncio
 import logging
 
+import pytest
 from sqlalchemy import create_engine
 from sqlalchemy_aio import ASYNCIO_STRATEGY
 from sqlalchemy_aio.base import AsyncConnection
-
-import pytest
 
 from ..db import (
     DataBase,

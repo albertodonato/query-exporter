@@ -1,8 +1,7 @@
 import asyncio
 
-from toolrack.conftest import advance_time
-
 import pytest
+from toolrack.conftest import advance_time
 
 from .db import DataBase
 
