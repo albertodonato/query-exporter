@@ -397,6 +397,11 @@ The image has support for connecting the following databases:
 - Microsoft SQL Server (``mssql://``)
 - IBM DB2 (``db2://``)
 
+Debugging / Logs
+----------------
+
+You can enable extended logging using the ``-L`` commandline switch. Possible log levels are ``CRITICAL``, ``ERROR``, ``WARNING``, ``INFO``, ``DEBUG``.
+
 
 .. _Prometheus: https://prometheus.io/
 .. _SQLAlchemy: https://www.sqlalchemy.org/
