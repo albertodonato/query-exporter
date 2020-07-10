@@ -263,6 +263,25 @@ class TestQueryLoop:
         queries_metric = registry.get_metric("queries")
         assert metric_values(queries_metric, by_labels=("status",)) == {("error",): 1.0}
 
+    async def test_run_query_increase_timeout_count(
+        self, query_tracker, config_data, make_query_loop, registry
+    ):
+        """Count of errored queries is incremented on timeout."""
+        config_data["queries"]["q"]["timeout"] = 0.1
+        query_loop = make_query_loop()
+        await query_loop.start()
+
+        async def execute(sql, parameters):
+            await asyncio.sleep(1)  # longer than timeout
+
+        query_loop._config.databases["db"]._conn.execute = execute
+
+        await query_tracker.wait_failures()
+        queries_metric = registry.get_metric("queries")
+        assert metric_values(queries_metric, by_labels=("status",)) == {
+            ("timeout",): 1.0
+        }
+
     async def test_run_query_at_interval(self, advance_time, query_tracker, query_loop):
         """Queries are run at the specified time interval."""
         await query_loop.start()

@@ -188,3 +188,10 @@ definitions:
       sql:
         title: The SQL code for the query
         type: string
+      timeout:
+        title: Query timeout, in seconds
+        description: >
+          If specified, a timeout in seconds after which the query is canceled.
+        type: number
+        exclusiveMinimum: 0
+        multipleOf: 0.1

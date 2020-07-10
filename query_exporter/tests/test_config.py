@@ -514,6 +514,41 @@ class TestLoadConfig:
             str(err.value) == 'Invalid schedule for query "q": invalid schedule format'
         )
 
+    def test_load_queries_section_timeout(self, logger, config_full, write_config):
+        """Query configuration can include a timeout."""
+        config_full["queries"]["q"]["timeout"] = 2.0
+        config_file = write_config(config_full)
+        with config_file.open() as fd:
+            result = load_config(fd, logger)
+        query1 = result.queries["q"]
+        assert query1.timeout == 2.0
+
+    @pytest.mark.parametrize(
+        "timeout,error_message",
+        [
+            (
+                -1.0,
+                "Invalid config at queries/q/timeout: -1.0 is less than or equal to the minimum of 0",
+            ),
+            (
+                0,
+                "Invalid config at queries/q/timeout: 0 is less than or equal to the minimum of 0",
+            ),
+            (
+                0.02,
+                "Invalid config at queries/q/timeout: 0.02 is not a multiple of 0.1",
+            ),
+        ],
+    )
+    def test_load_queries_section_invalid_timeout(
+        self, logger, config_full, write_config, timeout, error_message
+    ):
+        config_full["queries"]["q"]["timeout"] = timeout
+        config_file = write_config(config_full)
+        with pytest.raises(ConfigError) as err, config_file.open() as fd:
+            load_config(fd, logger)
+        assert str(err.value) == error_message
+
     @pytest.mark.parametrize(
         "config,error_message",
         [

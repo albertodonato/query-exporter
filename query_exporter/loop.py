@@ -35,6 +35,7 @@ from .db import (
     DATABASE_LABEL,
     DataBaseError,
     Query,
+    QueryTimeoutExpired,
 )
 
 
@@ -135,6 +136,8 @@ class QueryLoop:
         db = self._config.databases[dbname]
         try:
             metric_results = await db.execute(query)
+        except QueryTimeoutExpired:
+            self._increment_queries_count(db, "timeout")
         except DataBaseError as error:
             self._increment_queries_count(db, "error")
             if error.fatal:
@@ -142,15 +145,16 @@ class QueryLoop:
                     f'removing doomed query "{query.name}" ' f'for database "{dbname}"'
                 )
                 self._doomed_queries[query.name].add(dbname)
-            return
-
-        for result in metric_results.results:
-            self._update_metric(db, result.metric, result.value, labels=result.labels)
-        if metric_results.latency:
-            self._update_query_latency_metric(
-                db, query.config_name, metric_results.latency
-            )
-        self._increment_queries_count(db, "success")
+        else:
+            for result in metric_results.results:
+                self._update_metric(
+                    db, result.metric, result.value, labels=result.labels
+                )
+            if metric_results.latency:
+                self._update_query_latency_metric(
+                    db, query.config_name, metric_results.latency
+                )
+            self._increment_queries_count(db, "success")
 
     async def _remove_if_dooomed(self, query: Query, dbname: str) -> bool:
         """Remove a query if it will never work.

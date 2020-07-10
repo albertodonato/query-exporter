@@ -69,6 +69,7 @@ A sample configuration file for the application looks like this:
         sql: SELECT random() / 1000000000000000 AS metric1
       query2:
         interval: 20
+        timeout: 0.5
         databases: [db1, db2]
         metrics: [metric2, metric3]
         sql: |
@@ -255,6 +256,11 @@ Each query definition can have the following keys:
    backslash (e.g. ``SELECT '\:bar' FROM table``).  There's no need to escape
    when the colon occurs inside a word (e.g. ``SELECT 'foo:bar' FROM table``).
 
+``timeout``:
+  a value in seconds after which the query is timed out.
+
+  If specified, it must be a multiple of 0.1.
+
 
 Metrics endpoint
 ----------------
@@ -324,7 +330,7 @@ The exporter provides a few builtin metrics which can be useful to track query e
 ``database_errors{database="db"}``:
   a counter used to report number of errors, per database.
 
-``queries{database="db",status="[success|error]"}``:
+``queries{database="db",status="[success|error|timeout]"}``:
   a counter with number of executed queries, per database and status.
 
 ``query_latency{database="db",query="q"}``:
@@ -413,7 +419,7 @@ You can enable extended logging using the ``-L`` commandline switch. Possible lo
 .. _Docker: http://docker.com/
 .. _`Docker Hub`: https://hub.docker.com/r/adonato/query-exporter
 
-.. |query-exporter logo| image:: ./logo.svg
+.. |query-exporter logo| image:: https://raw.githubusercontent.com/albertodonato/query-exporter/master/logo.svg
    :alt: query-exporter logo
 .. |Latest Version| image:: https://img.shields.io/pypi/v/query-exporter.svg
    :alt: Latest Version

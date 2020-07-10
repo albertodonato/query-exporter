@@ -6,6 +6,7 @@ import logging
 from time import perf_counter
 from typing import (
     Any,
+    cast,
     Dict,
     FrozenSet,
     List,
@@ -32,7 +33,11 @@ from sqlalchemy_aio.base import (
 )
 from sqlalchemy_aio.engine import AsyncioEngine
 
-# label used to tag metrics by database
+#: Timeout for a query
+QueryTimeout = Union[int, float]
+
+
+#: Label used to tag metrics by database
 DATABASE_LABEL = "database"
 
 
@@ -45,6 +50,15 @@ class DataBaseError(Exception):
     def __init__(self, message: str, fatal: bool = False):
         super().__init__(message)
         self.fatal = fatal
+
+
+class QueryTimeoutExpired(Exception):
+    """Query execution timeout expired."""
+
+    def __init__(self, query_name: str, timeout: QueryTimeout):
+        super().__init__(
+            f'Execution for query "{query_name}" expired after {timeout} seconds'
+        )
 
 
 class InvalidResultCount(Exception):
@@ -134,6 +148,7 @@ class Query:
         metrics: List[QueryMetric],
         sql: str,
         parameters: Optional[Dict[str, Any]] = None,
+        timeout: Optional[QueryTimeout] = None,
         interval: Optional[int] = None,
         schedule: Optional[str] = None,
         config_name: Optional[str] = None,
@@ -143,6 +158,7 @@ class Query:
         self.metrics = metrics
         self.sql = sql
         self.parameters = parameters or {}
+        self.timeout = timeout
         self.interval = interval
         self.schedule = schedule
         self.config_name = config_name or name
@@ -287,6 +303,10 @@ class DataBase:
         try:
             result = await self._execute_query(query)
             return query.results(await QueryResults.from_results(result))
+        except asyncio.TimeoutError:
+            raise self._query_timeout_error(
+                query.name, cast(QueryTimeout, query.timeout)
+            )
         except Exception as error:
             raise self._query_db_error(
                 query.name, error, fatal=isinstance(error, FATAL_ERRORS)
@@ -298,17 +318,24 @@ class DataBase:
                 await self.close()
 
     async def execute_sql(
-        self, sql: str, parameters: Optional[Dict[str, Any]] = None
+        self,
+        sql: str,
+        parameters: Optional[Dict[str, Any]] = None,
+        timeout: Optional[QueryTimeout] = None,
     ) -> AsyncResultProxy:
         """Execute a raw SQL query."""
         if parameters is None:
             parameters = {}
         self._conn: AsyncConnection
-        return await self._conn.execute(text(sql), parameters)
+        return await asyncio.wait_for(
+            self._conn.execute(text(sql), parameters), timeout=timeout,
+        )
 
     async def _execute_query(self, query: Query) -> AsyncResultProxy:
         """Execute a query."""
-        return await self.execute_sql(query.sql, parameters=query.parameters)
+        return await self.execute_sql(
+            query.sql, parameters=query.parameters, timeout=query.timeout
+        )
 
     async def _close(self):
         await self._conn.close()
@@ -335,7 +362,7 @@ class DataBase:
 
     def _query_db_error(
         self, query_name: str, error: Union[str, Exception], fatal: bool = False,
-    ):
+    ) -> DataBaseError:
         """Create and log a DataBaseError for a failed query."""
         message = self._error_message(error)
         self._logger.error(
@@ -343,7 +370,16 @@ class DataBase:
         )
         return DataBaseError(message, fatal=fatal)
 
-    def _db_error(self, error: Union[str, Exception], fatal: bool = False):
+    def _query_timeout_error(
+        self, query_name: str, timeout: QueryTimeout
+    ) -> QueryTimeoutExpired:
+        error = QueryTimeoutExpired(query_name, timeout)
+        self._logger.warning(str(error))
+        raise error
+
+    def _db_error(
+        self, error: Union[str, Exception], fatal: bool = False
+    ) -> DataBaseError:
         """Create and log a DataBaseError."""
         message = self._error_message(error)
         self._logger.error(f'error from database "{self.name}": {message}')

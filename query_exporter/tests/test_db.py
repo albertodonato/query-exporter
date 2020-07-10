@@ -17,6 +17,7 @@ from ..db import (
     Query,
     QueryMetric,
     QueryResults,
+    QueryTimeoutExpired,
 )
 
 
@@ -49,6 +50,7 @@ class TestQuery:
         assert query.sql == "SELECT 1"
         assert query.parameters == {}
         assert query.interval is None
+        assert query.timeout is None
 
     def test_instantiate_with_config_name(self):
         """A query can be instantiated with a config_name different from name."""
@@ -149,6 +151,13 @@ class TestQuery:
             str(error.value)
             == 'Invalid schedule for query "query": invalid schedule format'
         )
+
+    def test_instantiate_with_timeout(self):
+        """A query can be instantiated with a timeout."""
+        query = Query(
+            "query", ["db"], [QueryMetric("metric", [])], "SELECT 1", timeout=2.0
+        )
+        assert query.timeout == 2.0
 
     @pytest.mark.parametrize(
         "kwargs,is_timed",
@@ -502,9 +511,8 @@ class TestDataBase:
             "query", 20, [QueryMetric("metric", [])], "SELECT 1 AS metric, 2 AS other",
         )
         await db.connect()
-        with caplog.at_level(logging.ERROR):
-            with pytest.raises(DataBaseError) as error:
-                await db.execute(query)
+        with caplog.at_level(logging.ERROR), pytest.raises(DataBaseError) as error:
+            await db.execute(query)
         assert str(error.value) == "Wrong result count from query: expected 1, got 2"
         assert error.value.fatal
         assert caplog.messages == [
@@ -538,6 +546,34 @@ class TestDataBase:
             await db.execute(query)
         assert str(error.value) == "Wrong column names from query"
         assert error.value.fatal
+
+    @pytest.mark.asyncio
+    async def test_execute_timeout(self, caplog, db):
+        """If the query times out, an error is raised and logged."""
+        query = Query(
+            "query",
+            ["db"],
+            [QueryMetric("metric", [])],
+            "SELECT 1 AS metric",
+            timeout=0.1,
+        )
+        await db.connect()
+
+        async def execute(sql, parameters):
+            await asyncio.sleep(1)  # longer than timeout
+
+        db._conn.execute = execute
+
+        with caplog.at_level(logging.WARNING), pytest.raises(
+            QueryTimeoutExpired
+        ) as error:
+            await db.execute(query)
+        assert (
+            str(error.value) == 'Execution for query "query" expired after 0.1 seconds'
+        )
+        assert caplog.messages == [
+            'Execution for query "query" expired after 0.1 seconds'
+        ]
 
     @pytest.mark.asyncio
     async def test_execute_sql(self, db):

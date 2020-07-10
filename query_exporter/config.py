@@ -188,6 +188,7 @@ def _get_queries(
                             query_metrics,
                             config["sql"].strip(),
                             parameters=params,
+                            timeout=config.get("timeout"),
                             interval=config["interval"],
                             schedule=config.get("schedule"),
                             config_name=name,
@@ -201,6 +202,7 @@ def _get_queries(
                     config["databases"],
                     query_metrics,
                     config["sql"].strip(),
+                    timeout=config.get("timeout"),
                     interval=config["interval"],
                     schedule=config.get("schedule"),
                 )
