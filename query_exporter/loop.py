@@ -137,9 +137,9 @@ class QueryLoop:
         try:
             metric_results = await db.execute(query)
         except QueryTimeoutExpired:
-            self._increment_queries_count(db, "timeout")
+            self._increment_queries_count(db, query, "timeout")
         except DataBaseError as error:
-            self._increment_queries_count(db, "error")
+            self._increment_queries_count(db, query, "error")
             if error.fatal:
                 self._logger.debug(
                     f'removing doomed query "{query.name}" ' f'for database "{dbname}"'
@@ -151,10 +151,8 @@ class QueryLoop:
                     db, result.metric, result.value, labels=result.labels
                 )
             if metric_results.latency:
-                self._update_query_latency_metric(
-                    db, query.config_name, metric_results.latency
-                )
-            self._increment_queries_count(db, "success")
+                self._update_query_latency_metric(db, query, metric_results.latency)
+            self._increment_queries_count(db, query, "success")
 
     async def _remove_if_dooomed(self, query: Query, dbname: str) -> bool:
         """Remove a query if it will never work.
@@ -203,18 +201,26 @@ class QueryLoop:
         metric = self._registry.get_metric(name, labels=all_labels)
         getattr(metric, method)(value)
 
-    def _increment_queries_count(self, database: DataBase, status: str):
+    def _increment_queries_count(self, database: DataBase, query: Query, status: str):
         """Increment count of queries in a status for a database."""
-        self._update_metric(database, QUERIES_METRIC_NAME, 1, labels={"status": status})
+        self._update_metric(
+            database,
+            QUERIES_METRIC_NAME,
+            1,
+            labels={"query": query.config_name, "status": status},
+        )
 
     def _increment_db_error_count(self, database: DataBase):
         """Increment number of errors for a database."""
         self._update_metric(database, DB_ERRORS_METRIC_NAME, 1)
 
     def _update_query_latency_metric(
-        self, database: DataBase, query_name: str, latency: float
+        self, database: DataBase, query: Query, latency: float
     ):
         """Update latency metric for a query on a database."""
         self._update_metric(
-            database, QUERY_LATENCY_METRIC_NAME, latency, labels={"query": query_name}
+            database,
+            QUERY_LATENCY_METRIC_NAME,
+            latency,
+            labels={"query": query.config_name},
         )

@@ -216,9 +216,9 @@ class TestQueryLoop:
             'running query "q" on database "db"',
             'updating metric "m" set 100.0 {database="db"}',
             re_match(
-                r'updating metric "query_latency" observe .* \{database="db",query="q\"}'
+                r'updating metric "query_latency" observe .* \{database="db",query="q"\}'
             ),
-            'updating metric "queries" inc 1 {database="db",status="success"}',
+            'updating metric "queries" inc 1 {database="db",query="q",status="success"}',
         ]
 
     async def test_run_query_log_labels(
@@ -236,9 +236,9 @@ class TestQueryLoop:
             'running query "q" on database "db"',
             'updating metric "m" set 100.0 {database="db",l="foo"}',
             re_match(
-                r'updating metric "query_latency" observe .* \{database="db",query="q\"}'
+                r'updating metric "query_latency" observe .* \{database="db",query="q"\}'
             ),
-            'updating metric "queries" inc 1 {database="db",status="success"}',
+            'updating metric "queries" inc 1 {database="db",query="q",status="success"}',
         ]
 
     async def test_run_query_increase_db_error_count(

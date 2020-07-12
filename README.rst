@@ -277,49 +277,114 @@ For the configuration above, the endpoint would return something like this::
   # TYPE database_errors_total counter
   # HELP queries_total Number of database queries
   # TYPE queries_total counter
-  queries_total{database="db2",status="success"} 2.0
-  queries_total{database="db1",status="success"} 3.0
+  queries_total{app="app1",database="db1",query="query1",region="us1",status="success"} 50.0
+  queries_total{app="app1",database="db2",query="query2",region="us2",status="success"} 13.0
+  queries_total{app="app1",database="db1",query="query2",region="us1",status="success"} 13.0
+  queries_total{app="app1",database="db2",query="query3",region="us2",status="error"} 1.0
+  # HELP queries_created Number of database queries
   # TYPE queries_created gauge
-  queries_created{database="db2",status="success"} 1.558334663380845e+09
-  queries_created{database="db1",status="success"} 1.558334663381175e+09
+  queries_created{app="app1",database="db1",query="query1",region="us1",status="success"} 1.5945442444463024e+09
+  queries_created{app="app1",database="db2",query="query2",region="us2",status="success"} 1.5945442444471517e+09
+  queries_created{app="app1",database="db1",query="query2",region="us1",status="success"} 1.5945442444477117e+09
+  queries_created{app="app1",database="db2",query="query3",region="us2",status="error"} 1.5945444000140696e+09
+  # HELP query_latency Query execution latency
+  # TYPE query_latency histogram
+  query_latency_bucket{app="app1",database="db1",le="0.005",query="query1",region="us1"} 50.0
+  query_latency_bucket{app="app1",database="db1",le="0.01",query="query1",region="us1"} 50.0
+  query_latency_bucket{app="app1",database="db1",le="0.025",query="query1",region="us1"} 50.0
+  query_latency_bucket{app="app1",database="db1",le="0.05",query="query1",region="us1"} 50.0
+  query_latency_bucket{app="app1",database="db1",le="0.075",query="query1",region="us1"} 50.0
+  query_latency_bucket{app="app1",database="db1",le="0.1",query="query1",region="us1"} 50.0
+  query_latency_bucket{app="app1",database="db1",le="0.25",query="query1",region="us1"} 50.0
+  query_latency_bucket{app="app1",database="db1",le="0.5",query="query1",region="us1"} 50.0
+  query_latency_bucket{app="app1",database="db1",le="0.75",query="query1",region="us1"} 50.0
+  query_latency_bucket{app="app1",database="db1",le="1.0",query="query1",region="us1"} 50.0
+  query_latency_bucket{app="app1",database="db1",le="2.5",query="query1",region="us1"} 50.0
+  query_latency_bucket{app="app1",database="db1",le="5.0",query="query1",region="us1"} 50.0
+  query_latency_bucket{app="app1",database="db1",le="7.5",query="query1",region="us1"} 50.0
+  query_latency_bucket{app="app1",database="db1",le="10.0",query="query1",region="us1"} 50.0
+  query_latency_bucket{app="app1",database="db1",le="+Inf",query="query1",region="us1"} 50.0
+  query_latency_count{app="app1",database="db1",query="query1",region="us1"} 50.0
+  query_latency_sum{app="app1",database="db1",query="query1",region="us1"} 0.004666365042794496
+  query_latency_bucket{app="app1",database="db2",le="0.005",query="query2",region="us2"} 13.0
+  query_latency_bucket{app="app1",database="db2",le="0.01",query="query2",region="us2"} 13.0
+  query_latency_bucket{app="app1",database="db2",le="0.025",query="query2",region="us2"} 13.0
+  query_latency_bucket{app="app1",database="db2",le="0.05",query="query2",region="us2"} 13.0
+  query_latency_bucket{app="app1",database="db2",le="0.075",query="query2",region="us2"} 13.0
+  query_latency_bucket{app="app1",database="db2",le="0.1",query="query2",region="us2"} 13.0
+  query_latency_bucket{app="app1",database="db2",le="0.25",query="query2",region="us2"} 13.0
+  query_latency_bucket{app="app1",database="db2",le="0.5",query="query2",region="us2"} 13.0
+  query_latency_bucket{app="app1",database="db2",le="0.75",query="query2",region="us2"} 13.0
+  query_latency_bucket{app="app1",database="db2",le="1.0",query="query2",region="us2"} 13.0
+  query_latency_bucket{app="app1",database="db2",le="2.5",query="query2",region="us2"} 13.0
+  query_latency_bucket{app="app1",database="db2",le="5.0",query="query2",region="us2"} 13.0
+  query_latency_bucket{app="app1",database="db2",le="7.5",query="query2",region="us2"} 13.0
+  query_latency_bucket{app="app1",database="db2",le="10.0",query="query2",region="us2"} 13.0
+  query_latency_bucket{app="app1",database="db2",le="+Inf",query="query2",region="us2"} 13.0
+  query_latency_count{app="app1",database="db2",query="query2",region="us2"} 13.0
+  query_latency_sum{app="app1",database="db2",query="query2",region="us2"} 0.012369773990940303
+  query_latency_bucket{app="app1",database="db1",le="0.005",query="query2",region="us1"} 13.0
+  query_latency_bucket{app="app1",database="db1",le="0.01",query="query2",region="us1"} 13.0
+  query_latency_bucket{app="app1",database="db1",le="0.025",query="query2",region="us1"} 13.0
+  query_latency_bucket{app="app1",database="db1",le="0.05",query="query2",region="us1"} 13.0
+  query_latency_bucket{app="app1",database="db1",le="0.075",query="query2",region="us1"} 13.0
+  query_latency_bucket{app="app1",database="db1",le="0.1",query="query2",region="us1"} 13.0
+  query_latency_bucket{app="app1",database="db1",le="0.25",query="query2",region="us1"} 13.0
+  query_latency_bucket{app="app1",database="db1",le="0.5",query="query2",region="us1"} 13.0
+  query_latency_bucket{app="app1",database="db1",le="0.75",query="query2",region="us1"} 13.0
+  query_latency_bucket{app="app1",database="db1",le="1.0",query="query2",region="us1"} 13.0
+  query_latency_bucket{app="app1",database="db1",le="2.5",query="query2",region="us1"} 13.0
+  query_latency_bucket{app="app1",database="db1",le="5.0",query="query2",region="us1"} 13.0
+  query_latency_bucket{app="app1",database="db1",le="7.5",query="query2",region="us1"} 13.0
+  query_latency_bucket{app="app1",database="db1",le="10.0",query="query2",region="us1"} 13.0
+  query_latency_bucket{app="app1",database="db1",le="+Inf",query="query2",region="us1"} 13.0
+  query_latency_count{app="app1",database="db1",query="query2",region="us1"} 13.0
+  query_latency_sum{app="app1",database="db1",query="query2",region="us1"} 0.004745393933262676
+  # HELP query_latency_created Query execution latency
+  # TYPE query_latency_created gauge
+  query_latency_created{app="app1",database="db1",query="query1",region="us1"} 1.594544244446163e+09
+  query_latency_created{app="app1",database="db2",query="query2",region="us2"} 1.5945442444470239e+09
+  query_latency_created{app="app1",database="db1",query="query2",region="us1"} 1.594544244447551e+09
   # HELP metric1 A sample gauge
   # TYPE metric1 gauge
-  metric1{database="db1"} 2580.0
+  metric1{app="app1",database="db1",region="us1"} -3561.0
   # HELP metric2 A sample summary
   # TYPE metric2 summary
-  metric2_count{database="db2",l1="value1",l2="value2"} 1.0
-  metric2_sum{database="db2",l1="value1",l2="value2"} 6476.0
-  metric2_count{database="db1",l1="value1",l2="value2"} 1.0
-  metric2_sum{database="db1",l1="value1",l2="value2"} 2340.0
+  metric2_count{app="app1",database="db2",l1="value1",l2="value2",region="us2"} 13.0
+  metric2_sum{app="app1",database="db2",l1="value1",l2="value2",region="us2"} 58504.0
+  metric2_count{app="app1",database="db1",l1="value1",l2="value2",region="us1"} 13.0
+  metric2_sum{app="app1",database="db1",l1="value1",l2="value2",region="us1"} 75262.0
+  # HELP metric2_created A sample summary
   # TYPE metric2_created gauge
-  metric2_created{database="db2",l1="value1",l2="value2"} 1.5583346633805697e+09
-  metric2_created{database="db1",l1="value1",l2="value2"} 1.5583346633816812e+09
+  metric2_created{app="app1",database="db2",l1="value1",l2="value2",region="us2"} 1.594544244446819e+09
+  metric2_created{app="app1",database="db1",l1="value1",l2="value2",region="us1"} 1.594544244447339e+09
   # HELP metric3 A sample histogram
   # TYPE metric3 histogram
-  metric3_bucket{database="db2",le="10.0"} 0.0
-  metric3_bucket{database="db2",le="20.0"} 0.0
-  metric3_bucket{database="db2",le="50.0"} 0.0
-  metric3_bucket{database="db2",le="100.0"} 0.0
-  metric3_bucket{database="db2",le="1000.0"} 1.0
-  metric3_bucket{database="db2",le="+Inf"} 1.0
-  metric3_count{database="db2"} 1.0
-  metric3_sum{database="db2"} 135.0
-  metric3_bucket{database="db1",le="10.0"} 0.0
-  metric3_bucket{database="db1",le="20.0"} 0.0
-  metric3_bucket{database="db1",le="50.0"} 0.0
-  metric3_bucket{database="db1",le="100.0"} 0.0
-  metric3_bucket{database="db1",le="1000.0"} 1.0
-  metric3_bucket{database="db1",le="+Inf"} 1.0
-  metric3_count{database="db1"} 1.0
-  metric3_sum{database="db1"} 164.0
+  metric3_bucket{app="app1",database="db2",le="10.0",region="us2"} 1.0
+  metric3_bucket{app="app1",database="db2",le="20.0",region="us2"} 1.0
+  metric3_bucket{app="app1",database="db2",le="50.0",region="us2"} 2.0
+  metric3_bucket{app="app1",database="db2",le="100.0",region="us2"} 3.0
+  metric3_bucket{app="app1",database="db2",le="1000.0",region="us2"} 13.0
+  metric3_bucket{app="app1",database="db2",le="+Inf",region="us2"} 13.0
+  metric3_count{app="app1",database="db2",region="us2"} 13.0
+  metric3_sum{app="app1",database="db2",region="us2"} 5016.0
+  metric3_bucket{app="app1",database="db1",le="10.0",region="us1"} 0.0
+  metric3_bucket{app="app1",database="db1",le="20.0",region="us1"} 0.0
+  metric3_bucket{app="app1",database="db1",le="50.0",region="us1"} 0.0
+  metric3_bucket{app="app1",database="db1",le="100.0",region="us1"} 0.0
+  metric3_bucket{app="app1",database="db1",le="1000.0",region="us1"} 13.0
+  metric3_bucket{app="app1",database="db1",le="+Inf",region="us1"} 13.0
+  metric3_count{app="app1",database="db1",region="us1"} 13.0
+  metric3_sum{app="app1",database="db1",region="us1"} 5358.0
+  # HELP metric3_created A sample histogram
   # TYPE metric3_created gauge
-  metric3_created{database="db2"} 1.5583346633807e+09
-  metric3_created{database="db1"} 1.558334663381795e+09
+  metric3_created{app="app1",database="db2",region="us2"} 1.5945442444469101e+09
+  metric3_created{app="app1",database="db1",region="us1"} 1.5945442444474254e+09
   # HELP metric4 A sample enum
   # TYPE metric4 gauge
-  metric4{database="db2",metric4="foo"} 0.0
-  metric4{database="db2",metric4="bar"} 0.0
-  metric4{database="db2",metric4="baz"} 1.0
+  metric4{app="app1",database="db2",metric4="foo",region="us2"} 0.0
+  metric4{app="app1",database="db2",metric4="bar",region="us2"} 0.0
+  metric4{app="app1",database="db2",metric4="baz",region="us2"} 1.0
 
 
 Builtin metrics
@@ -330,8 +395,8 @@ The exporter provides a few builtin metrics which can be useful to track query e
 ``database_errors{database="db"}``:
   a counter used to report number of errors, per database.
 
-``queries{database="db",status="[success|error|timeout]"}``:
-  a counter with number of executed queries, per database and status.
+``queries{database="db",query="q",status="[success|error|timeout]"}``:
+  a counter with number of executed queries, per database, query and status.
 
 ``query_latency{database="db",query="q"}``:
   a histogram with query latencies, per database and query.
@@ -339,6 +404,13 @@ The exporter provides a few builtin metrics which can be useful to track query e
 
 In addition, metrics for resources usage for the exporter procecss can be
 included by passing ``--process-stats`` in the command line.
+
+
+Debugging / Logs
+----------------
+
+You can enable extended logging using the ``-L`` commandline switch. Possible
+log levels are ``CRITICAL``, ``ERROR``, ``WARNING``, ``INFO``, ``DEBUG``.
 
 
 Database engines
@@ -387,7 +459,8 @@ The snap has support for connecting the following databases:
 Run in Docker
 -------------
 
-``query-exporter`` can be run inside Docker_ containers, and is availble from the `Docker Hub`_::
+``query-exporter`` can be run inside Docker_ containers, and is availble from
+the `Docker Hub`_::
 
   docker run -p 9560:9560/tcp -v "$CONFIG_FILE:/config.yaml" --rm -it adonato/query-exporter:latest
 
@@ -402,11 +475,6 @@ The image has support for connecting the following databases:
 - SQLite (``sqlite://``)
 - Microsoft SQL Server (``mssql://``)
 - IBM DB2 (``db2://``)
-
-Debugging / Logs
-----------------
-
-You can enable extended logging using the ``-L`` commandline switch. Possible log levels are ``CRITICAL``, ``ERROR``, ``WARNING``, ``INFO``, ``DEBUG``.
 
 
 .. _Prometheus: https://prometheus.io/

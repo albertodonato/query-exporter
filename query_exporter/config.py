@@ -42,7 +42,7 @@ _QUERIES_METRIC_CONFIG = MetricConfig(
     QUERIES_METRIC_NAME,
     "Number of database queries",
     "counter",
-    {"labels": ["status"]},
+    {"labels": ["query", "status"]},
 )
 # metric for counting queries execution latency
 QUERY_LATENCY_METRIC_NAME = "query_latency"
