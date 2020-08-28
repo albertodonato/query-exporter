@@ -34,7 +34,10 @@ from .db import (
 # metric for counting database errors
 DB_ERRORS_METRIC_NAME = "database_errors"
 _DB_ERRORS_METRIC_CONFIG = MetricConfig(
-    DB_ERRORS_METRIC_NAME, "Number of database errors", "counter", {"labels": []},
+    DB_ERRORS_METRIC_NAME,
+    "Number of database errors",
+    "counter",
+    {"labels": []},
 )
 # metric for counting performed queries
 QUERIES_METRIC_NAME = "queries"

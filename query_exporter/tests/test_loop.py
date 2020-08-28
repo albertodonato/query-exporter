@@ -63,7 +63,8 @@ async def make_query_loop(tmpdir, config_data, registry):
 
     yield make_loop
     await asyncio.gather(
-        *(query_loop.stop() for query_loop in query_loops), return_exceptions=True,
+        *(query_loop.stop() for query_loop in query_loops),
+        return_exceptions=True,
     )
 
 

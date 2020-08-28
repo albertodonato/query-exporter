@@ -51,7 +51,10 @@ class QueryLoop:
     }
 
     def __init__(
-        self, config: Config, registry: MetricsRegistry, logger: Logger,
+        self,
+        config: Config,
+        registry: MetricsRegistry,
+        logger: Logger,
     ):
         self._config = config
         self._registry = registry

@@ -328,7 +328,8 @@ class DataBase:
             parameters = {}
         self._conn: AsyncConnection
         return await asyncio.wait_for(
-            self._conn.execute(text(sql), parameters), timeout=timeout,
+            self._conn.execute(text(sql), parameters),
+            timeout=timeout,
         )
 
     async def _execute_query(self, query: Query) -> AsyncResultProxy:
@@ -361,7 +362,10 @@ class DataBase:
             )
 
     def _query_db_error(
-        self, query_name: str, error: Union[str, Exception], fatal: bool = False,
+        self,
+        query_name: str,
+        error: Union[str, Exception],
+        fatal: bool = False,
     ) -> DataBaseError:
         """Create and log a DataBaseError for a failed query."""
         message = self._error_message(error)

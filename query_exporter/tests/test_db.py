@@ -508,7 +508,10 @@ class TestDataBase:
     async def test_execute_query_invalid_count(self, caplog, db):
         """If the number of fields don't match, an error is raised."""
         query = Query(
-            "query", 20, [QueryMetric("metric", [])], "SELECT 1 AS metric, 2 AS other",
+            "query",
+            20,
+            [QueryMetric("metric", [])],
+            "SELECT 1 AS metric, 2 AS other",
         )
         await db.connect()
         with caplog.at_level(logging.ERROR), pytest.raises(DataBaseError) as error:
@@ -524,7 +527,10 @@ class TestDataBase:
     async def test_execute_query_invalid_count_with_labels(self, db):
         """If the number of fields don't match, an error is raised."""
         query = Query(
-            "query", ["db"], [QueryMetric("metric", ["label"])], "SELECT 1 as metric",
+            "query",
+            ["db"],
+            [QueryMetric("metric", ["label"])],
+            "SELECT 1 as metric",
         )
         await db.connect()
         with pytest.raises(DataBaseError) as error:

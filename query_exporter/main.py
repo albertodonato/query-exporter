@@ -36,7 +36,10 @@ class QueryExporterScript(PrometheusExporterScript):
             "config", type=argparse.FileType("r"), help="configuration file"
         )
         parser.add_argument(
-            "-V", "--version", action="version", version=f"%(prog)s {__version__}",
+            "-V",
+            "--version",
+            action="version",
+            version=f"%(prog)s {__version__}",
         )
         parser.add_argument(
             "--check-only",
