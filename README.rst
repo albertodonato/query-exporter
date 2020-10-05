@@ -103,7 +103,8 @@ Each database defintions can have the following keys:
 
     dialect[+driver]://[username:password][@host:port]/database[?option=value&...]
 
-  See `SQLAlchemy documentation`_ for details on available engines.
+  See `SQLAlchemy documentation`_ for details on available engines and the
+  `database-specific options`_ page for some extra details.
 
   It's also possible to get the connection string from an environment variable
   (e.g. ``$CONNECTION_STRING``) by setting ``dsn`` to::
@@ -486,6 +487,7 @@ The image has support for connecting the following databases:
 .. _`Snap Store`: https://snapcraft.io
 .. _Docker: http://docker.com/
 .. _`Docker Hub`: https://hub.docker.com/r/adonato/query-exporter
+.. _`database-specific options`: databases.rst
 
 .. |query-exporter logo| image:: https://raw.githubusercontent.com/albertodonato/query-exporter/master/logo.svg
    :alt: query-exporter logo
