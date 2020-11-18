@@ -476,6 +476,7 @@ The image has support for connecting the following databases:
 - SQLite (``sqlite://``)
 - Microsoft SQL Server (``mssql://``)
 - IBM DB2 (``db2://``)
+- Oracle (``oracle://``)
 
 
 .. _Prometheus: https://prometheus.io/
