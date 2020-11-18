@@ -23,10 +23,10 @@ RUN pip install \
 
 RUN curl \
     https://download.oracle.com/otn_software/linux/instantclient/instantclient-basiclite-linuxx64.zip \
-    -o instaclient.zip
-RUN unzip instaclient.zip
-RUN mkdir -p /opt/oracle
-RUN mv instaclient* /opt/oracle/instaclient
+    -o instantclient.zip
+RUN unzip instantclient.zip
+RUN mkdir -p /opt/oracle/instantclient
+RUN mv instantclient*/* /opt/oracle/instantclient
 
 
 FROM python:3.8-slim
