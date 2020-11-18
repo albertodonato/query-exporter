@@ -1,3 +1,13 @@
+v2.5.0 - 2020-11-19
+===================
+
+- Add ``query`` name label for builtin metrics.
+- Add optional ``timeout`` option for queries.
+- [snap] Add bash completion.
+- [snap] Switch to core20 base.
+- [docker] Include support for Oracle database.
+
+
 v2.4.0 - 2020-06-20
 ===================
 
