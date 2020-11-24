@@ -3,7 +3,9 @@
 import asyncio
 from itertools import chain
 import logging
+import sys
 from time import perf_counter
+from traceback import format_tb
 from typing import (
     Any,
     cast,
@@ -372,6 +374,8 @@ class DataBase:
         self._logger.error(
             f'query "{query_name}" on database "{self.name}" failed: ' + message
         )
+        _, _, traceback = sys.exc_info()
+        self._logger.debug("".join(format_tb(traceback)))
         return DataBaseError(message, fatal=fatal)
 
     def _query_timeout_error(

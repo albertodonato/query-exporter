@@ -554,6 +554,24 @@ class TestDataBase:
         assert error.value.fatal
 
     @pytest.mark.asyncio
+    async def test_execute_query_traceback_debug(self, caplog, mocker, db):
+        query = Query(
+            "query",
+            20,
+            [QueryMetric("metric", [])],
+            "SELECT 1 AS metric",
+        )
+        mocker.patch.object(db, "_execute_query").side_effect = Exception("boom!")
+        await db.connect()
+        with caplog.at_level(logging.DEBUG), pytest.raises(DataBaseError) as error:
+            await db.execute(query)
+        assert str(error.value) == "boom!"
+        assert not error.value.fatal
+        assert 'query "query" on database "db" failed: boom!' in caplog.messages
+        # traceback is included in messages
+        assert "await self._execute_query(query)" in caplog.messages[-1]
+
+    @pytest.mark.asyncio
     async def test_execute_timeout(self, caplog, db):
         """If the query times out, an error is raised and logged."""
         query = Query(
