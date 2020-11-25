@@ -1,3 +1,9 @@
+v2.5.1 - 2020-11-26
+===================
+
+- Add tracebacks for database errors in debug log.
+
+
 v2.5.0 - 2020-11-19
 ===================
 
