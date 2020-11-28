@@ -555,6 +555,7 @@ class TestDataBase:
 
     @pytest.mark.asyncio
     async def test_execute_query_traceback_debug(self, caplog, mocker, db):
+        """Traceback are logged as debug messages."""
         query = Query(
             "query",
             20,

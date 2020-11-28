@@ -366,6 +366,7 @@ class TestLoadConfig:
 
     @pytest.mark.parametrize("global_name", list(GLOBAL_METRICS))
     def test_load_metrics_reserved_name(self, config_full, write_config, global_name):
+        """An error is raised if a reserved label name is used."""
         config_full["metrics"][global_name] = {"type": "counter"}
         config_file = write_config(config_full)
         with pytest.raises(ConfigError) as err, config_file.open() as fd:
@@ -573,6 +574,7 @@ class TestLoadConfig:
     def test_load_queries_section_invalid_timeout(
         self, logger, config_full, write_config, timeout, error_message
     ):
+        """An error is raised if query timeout is invalid."""
         config_full["queries"]["q"]["timeout"] = timeout
         config_file = write_config(config_full)
         with pytest.raises(ConfigError) as err, config_file.open() as fd:
@@ -619,6 +621,7 @@ class TestLoadConfig:
     def test_configuration_warning_unused(
         self, caplog, logger, config_full, write_config
     ):
+        """A warning is logged if unused entries are present in config."""
         config_full["databases"]["db2"] = {"dsn": "sqlite://"}
         config_full["databases"]["db3"] = {"dsn": "sqlite://"}
         config_full["metrics"]["m2"] = {"type": "gauge"}
@@ -706,6 +709,7 @@ class TestLoadConfig:
         )
 
     def test_load_queries_no_metrics(self, logger, config_full, write_config):
+        """An error is raised if no metrics are configured."""
         config_full["queries"]["q"]["metrics"] = []
         config_file = write_config(config_full)
         with pytest.raises(ConfigError) as err, config_file.open() as fd:
@@ -713,6 +717,7 @@ class TestLoadConfig:
         assert str(err.value) == "Invalid config at queries/q/metrics: [] is too short"
 
     def test_load_queries_no_databases(self, logger, config_full, write_config):
+        """An error is raised if no databases are configured."""
         config_full["queries"]["q"]["databases"] = []
         config_file = write_config(config_full)
         with pytest.raises(ConfigError) as err, config_file.open() as fd:
