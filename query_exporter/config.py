@@ -276,21 +276,31 @@ def _convert_query_interval(name: str, config: Dict[str, Any]):
 
 
 def _resolve_dsn(dsn: str, env: Environ) -> str:
-    if dsn.startswith("env:"):
-        _, varname = dsn.split(":", 1)
+    """Resolve the database DSN from the right source."""
+
+    def from_env(varname: str) -> str:
         if not _ENV_VAR_RE.match(varname):
             raise ValueError(f'Invalid variable name: "{varname}"')
         if varname not in env:
             raise ValueError(f'Undefined variable: "{varname}"')
-        dsn = env[varname]
+        return env[varname]
 
-    if dsn.startswith("file:"):
-        _, filename = dsn.split(":", 1)
-
+    def from_file(filename: str) -> str:
         try:
-            dsn = Path(filename).read_text()
+            return Path(filename).read_text().strip()
         except OSError as err:
             raise ValueError(f'Unable to read dsn file : "{filename}": {err.strerror}')
+
+    origins = {
+        "env": from_env,
+        "file": from_file,
+    }
+
+    if ":" in dsn:
+        source, value = dsn.split(":", 1)
+        handler = origins.get(source)
+        if handler is not None:
+            return handler(value)
 
     return dsn
 
