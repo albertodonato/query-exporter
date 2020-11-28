@@ -4,6 +4,7 @@ from collections import defaultdict
 from copy import deepcopy
 from logging import Logger
 import os
+from pathlib import Path
 import re
 from typing import (
     Any,
@@ -282,6 +283,14 @@ def _resolve_dsn(dsn: str, env: Environ) -> str:
         if varname not in env:
             raise ValueError(f'Undefined variable: "{varname}"')
         dsn = env[varname]
+
+    if dsn.startswith("file:"):
+        _, filename = dsn.split(":", 1)
+
+        try:
+            dsn = Path(filename).read_text()
+        except OSError as err:
+            raise ValueError(f'Unable to read dsn file : "{filename}": {err.strerror}')
 
     return dsn
 
