@@ -203,6 +203,36 @@ class TestLoadConfig:
             load_config(fd, logger, env={})
         assert str(err.value) == 'Undefined variable: "FOO"'
 
+    def test_load_databases_dsn_from_file(self, tmp_path, logger, write_config):
+        """The database DSN can be loaded from a file."""
+        dsn = "sqlite:///foo"
+        dsn_path = tmp_path / "dsn"
+        dsn_path.write_text(dsn)
+        config = {
+            "databases": {"db1": {"dsn": f"file:{dsn_path}"}},
+            "metrics": {},
+            "queries": {},
+        }
+        config_file = write_config(config)
+        with config_file.open() as fd:
+            config = load_config(fd, logger)
+        assert config.databases["db1"].dsn == dsn
+
+    def test_load_databases_dsn_from_file_not_found(self, logger, write_config):
+        """An error is raised if the DSN file can't be read."""
+        config = {
+            "databases": {"db1": {"dsn": "file:/not/found"}},
+            "metrics": {},
+            "queries": {},
+        }
+        config_file = write_config(config)
+        with pytest.raises(ConfigError) as err, config_file.open() as fd:
+            load_config(fd, logger)
+        assert (
+            str(err.value)
+            == 'Unable to read dsn file : "/not/found": No such file or directory'
+        )
+
     def test_load_databases_labels(self, logger, write_config):
         """Labels can be defined for databases."""
         config = {

@@ -106,10 +106,15 @@ Each database defintions can have the following keys:
   See `SQLAlchemy documentation`_ for details on available engines and the
   `database-specific options`_ page for some extra details.
 
-  It's also possible to get the connection string from an environment variable
-  (e.g. ``$CONNECTION_STRING``) by setting ``dsn`` to::
+  It's also possible to get the connection string indirectly from other sources:
 
-    env:CONNECTION_STRING
+    - from an environment variable (e.g. ``$CONNECTION_STRING``) by setting ``dsn`` to::
+
+        env:CONNECTION_STRING
+
+    - from a file, containing only the DSN value, by setting ``dsn`` to::
+
+        file:/path/to/file
 
 ``connect-sql``:
   An optional list of queries to run right after database connection. This can

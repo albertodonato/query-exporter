@@ -4,6 +4,7 @@ from collections import defaultdict
 from copy import deepcopy
 from logging import Logger
 import os
+from pathlib import Path
 import re
 from typing import (
     Any,
@@ -287,11 +288,9 @@ def _resolve_dsn(dsn: str, env: Environ) -> str:
         _, filename = dsn.split(":", 1)
 
         try:
-            with open(filename) as fd:
-                dsn = fd.read().replace('\n', '')
-
-        except OSError as e:
-            raise ValueError(f'Unable to read dsn file : "{filename}": {e.strerror}')
+            dsn = Path(filename).read_text()
+        except OSError as err:
+            raise ValueError(f'Unable to read dsn file : "{filename}": {err.strerror}')
 
     return dsn
 
