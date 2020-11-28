@@ -108,13 +108,13 @@ Each database defintions can have the following keys:
 
   It's also possible to get the connection string indirectly from other sources:
 
-    - from an environment variable (e.g. ``$CONNECTION_STRING``) by setting ``dsn`` to::
+  - from an environment variable (e.g. ``$CONNECTION_STRING``) by setting ``dsn`` to::
 
-        env:CONNECTION_STRING
+      env:CONNECTION_STRING
 
-    - from a file, containing only the DSN value, by setting ``dsn`` to::
+  - from a file, containing only the DSN value, by setting ``dsn`` to::
 
-        file:/path/to/file
+      file:/path/to/file
 
 ``connect-sql``:
   An optional list of queries to run right after database connection. This can
