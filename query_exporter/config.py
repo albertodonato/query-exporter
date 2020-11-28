@@ -16,6 +16,11 @@ from typing import (
     NamedTuple,
     Set,
     Tuple,
+    Union,
+)
+from urllib.parse import (
+    quote_plus,
+    urlencode,
 )
 
 import jsonschema
@@ -275,8 +280,8 @@ def _convert_query_interval(name: str, config: Dict[str, Any]):
     config["interval"] = int(interval) * multiplier
 
 
-def _resolve_dsn(dsn: str, env: Environ) -> str:
-    """Resolve the database DSN from the right source."""
+def _resolve_dsn(dsn: Union[str, Dict[str, Any]], env: Environ) -> str:
+    """Build and resolve the database DSN string from the right source."""
 
     def from_env(varname: str) -> str:
         if not _ENV_VAR_RE.match(varname):
@@ -296,13 +301,43 @@ def _resolve_dsn(dsn: str, env: Environ) -> str:
         "file": from_file,
     }
 
-    if ":" in dsn:
+    if isinstance(dsn, dict):
+        dsn = _build_dsn(dsn)
+    elif ":" in dsn:
         source, value = dsn.split(":", 1)
         handler = origins.get(source)
         if handler is not None:
             return handler(value)
 
     return dsn
+
+
+def _build_dsn(details: Dict[str, Any]) -> str:
+    """Build a DSN string from details."""
+    url = f"{details['dialect']}://"
+    user = details.get("user")
+    if user:
+        url += quote_plus(user)
+    password = details.get("password")
+    if password:
+        url += f":{quote_plus(password)}"
+    if user or password:
+        url += "@"
+    host = details.get("host")
+    if host:
+        url += host
+    port = details.get("port")
+    if port:
+        url += f":{port}"
+    database = details.get("database")
+    if database:
+        if not database.startswith("/"):
+            database = f"/{database}"
+        url += database
+    query = details.get("options")
+    if query:
+        url += f"?{urlencode(query, doseq=True)}"
+    return url
 
 
 def _validate_config(config: Dict[str, Any]):

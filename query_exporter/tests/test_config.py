@@ -4,6 +4,7 @@ import pytest
 import yaml
 
 from ..config import (
+    _resolve_dsn,
     ConfigError,
     DB_ERRORS_METRIC_NAME,
     GLOBAL_METRICS,
@@ -178,6 +179,43 @@ class TestLoadConfig:
         with pytest.raises(ConfigError) as err, config_file.open() as fd:
             load_config(fd, logger)
         assert str(err.value) == 'Invalid database DSN: "invalid"'
+
+    def test_load_databases_dsn_details(self, logger, write_config):
+        """The DSN can be specified as a dictionary."""
+        config = {
+            "databases": {
+                "db1": {
+                    "dsn": {
+                        "dialect": "sqlite",
+                        "database": "/path/to/file",
+                    }
+                }
+            },
+            "metrics": {},
+            "queries": {},
+        }
+        config_file = write_config(config)
+        with config_file.open() as fd:
+            config = load_config(fd, logger)
+        assert config.databases["db1"].dsn == "sqlite:///path/to/file"
+
+    def test_load_databases_dsn_details_only_dialect(self, logger, write_config):
+        """Only the "dialect" key is required in DSN."""
+        config = {
+            "databases": {
+                "db1": {
+                    "dsn": {
+                        "dialect": "sqlite",
+                    }
+                }
+            },
+            "metrics": {},
+            "queries": {},
+        }
+        config_file = write_config(config)
+        with config_file.open() as fd:
+            config = load_config(fd, logger)
+        assert config.databases["db1"].dsn == "sqlite://"
 
     def test_load_databases_dsn_invalid_env(self, logger, write_config):
         """An error is raised if the DSN from environment is invalid."""
@@ -724,4 +762,56 @@ class TestLoadConfig:
             load_config(fd, logger)
         assert (
             str(err.value) == "Invalid config at queries/q/databases: [] is too short"
+        )
+
+
+class TestResolveDSN:
+    def test_all_details(self):
+        """The DSN can be specified as a dictionary."""
+        details = {
+            "dialect": "postgresql",
+            "user": "user",
+            "password": "secret",
+            "host": "dbsever",
+            "port": 1234,
+            "database": "mydb",
+            "options": {"foo": "bar", "baz": "bza"},
+        }
+        assert (
+            _resolve_dsn(details, {})
+            == "postgresql://user:secret@dbsever:1234/mydb?foo=bar&baz=bza"
+        )
+
+    def test_db_as_path(self):
+        """If the db name is a path, it's treated accordingly."""
+        details = {
+            "dialect": "sqlite",
+            "database": "/path/to/file",
+        }
+        assert _resolve_dsn(details, {}) == "sqlite:///path/to/file"
+
+    def test_encode_user_password(self):
+        """The user and password are encoded."""
+        details = {
+            "dialect": "postgresql",
+            "user": "us%r",
+            "password": "my pass",
+            "host": "dbsever",
+            "database": "/mydb",
+        }
+        assert _resolve_dsn(details, {}) == "postgresql://us%25r:my+pass@dbsever/mydb"
+
+    def test_encode_options(self):
+        """Option parmaeters are encoded."""
+        details = {
+            "dialect": "postgresql",
+            "database": "/mydb",
+            "options": {
+                "foo": "a value",
+                "bar": "another/value",
+            },
+        }
+        assert (
+            _resolve_dsn(details, {})
+            == "postgresql:///mydb?foo=a+value&bar=another%2Fvalue"
         )

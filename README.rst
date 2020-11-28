@@ -99,12 +99,32 @@ arbitrary and only used to reference databases in the ``queries`` section.
 Each database defintions can have the following keys:
 
 ``dsn``:
-  the connection string for the database, in the following format::
+  database connection details.
+
+  It can be provided as a string in the following format::
 
     dialect[+driver]://[username:password][@host:port]/database[?option=value&...]
 
-  See `SQLAlchemy documentation`_ for details on available engines and the
-  `database-specific options`_ page for some extra details.
+  (see `SQLAlchemy documentation`_ for details on available engines and
+  options), or as key/value pairs::
+
+    dialect: <dialect>[+driver]
+    user: <username>
+    password: <password>
+    host: <host>
+    port: <port>
+    database: <database>
+    options:
+      <key1>: <value1>
+      <key2>: <value2>
+
+  All entries are optional, except ``dialect``.
+
+  Note that in the string form, username, password and options need to be
+  URL-encoded, whereas this is done automatically for the key/value form.
+
+  See `database-specific options`_ page for some extra details on database
+  configuration options.
 
   It's also possible to get the connection string indirectly from other sources:
 
@@ -115,6 +135,8 @@ Each database defintions can have the following keys:
   - from a file, containing only the DSN value, by setting ``dsn`` to::
 
       file:/path/to/file
+
+  These forms only support specifying the actual DNS in the string form.
 
 ``connect-sql``:
   An optional list of queries to run right after database connection. This can
