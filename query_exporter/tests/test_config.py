@@ -37,8 +37,8 @@ def config_full():
 
 
 @pytest.fixture
-def write_config(tmpdir):
-    path = tmpdir / "config"
+def write_config(tmp_path):
+    path = tmp_path / "config"
 
     def write(data):
         path.write_text(yaml.dump(data), "utf-8")

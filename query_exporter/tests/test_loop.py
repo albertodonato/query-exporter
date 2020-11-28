@@ -48,11 +48,11 @@ def registry():
 
 
 @pytest.fixture
-async def make_query_loop(tmpdir, config_data, registry):
+async def make_query_loop(tmp_path, config_data, registry):
     query_loops = []
 
     def make_loop():
-        config_file = tmpdir / "config.yaml"
+        config_file = tmp_path / "config.yaml"
         config_file.write_text(yaml.dump(config_data), "utf-8")
         with config_file.open() as fh:
             config = load_config(fh, logging.getLogger())
@@ -328,11 +328,11 @@ class TestQueryLoop:
         assert query_loop._timed_calls == {}
 
     async def test_run_timed_queries_not_removed_if_not_failing_on_all_dbs(
-        self, tmpdir, query_tracker, config_data, make_query_loop
+        self, tmp_path, query_tracker, config_data, make_query_loop
     ):
         """Timed queries are removed when they fail on all databases."""
-        db1 = tmpdir / "db1.sqlite"
-        db2 = tmpdir / "db2.sqlite"
+        db1 = tmp_path / "db1.sqlite"
+        db2 = tmp_path / "db2.sqlite"
         config_data["databases"] = {
             "db1": {"dsn": f"sqlite:///{db1}"},
             "db2": {"dsn": f"sqlite:///{db2}"},
@@ -385,11 +385,11 @@ class TestQueryLoop:
         assert len(query_tracker.queries) == 1
 
     async def test_run_aperiodic_queries_not_removed_if_not_failing_on_all_dbs(
-        self, tmpdir, query_tracker, config_data, make_query_loop
+        self, tmp_path, query_tracker, config_data, make_query_loop
     ):
         """Periodic queries are removed when they fail on all databases."""
-        db1 = tmpdir / "db1.sqlite"
-        db2 = tmpdir / "db2.sqlite"
+        db1 = tmp_path / "db1.sqlite"
+        db2 = tmp_path / "db2.sqlite"
         config_data["databases"] = {
             "db1": {"dsn": f"sqlite:///{db1}"},
             "db2": {"dsn": f"sqlite:///{db2}"},
