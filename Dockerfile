@@ -31,13 +31,20 @@ RUN mv instantclient*/* /opt/oracle/instantclient
 
 FROM python:3.8-slim
 
-RUN apt update
-RUN apt install -y --no-install-recommends \
+RUN apt update && \
+    apt install -y --no-install-recommends \
     libaio1 \
     libmariadb-dev-compat \
     libodbc1 \
     libpq5 \
-    libxml2
+    libxml2 \
+    curl \
+    gnupg2 && \
+    curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add - && \
+    curl https://packages.microsoft.com/config/debian/10/prod.list > /etc/apt/sources.list.d/mssql-release.list && \
+    apt-get update && \
+    ACCEPT_EULA=Y apt-get -y install msodbcsql17
+
 COPY --from=build-image /virtualenv /virtualenv
 COPY --from=build-image /opt /opt
 
