@@ -1,3 +1,11 @@
+v2.6.0 - 2020-12-06
+===================
+
+- Add support reading database DSN from file.
+- Add support for specifying database connection details as separate elements.
+- [docker] Fix MSSQL support in.
+
+
 v2.5.1 - 2020-11-26
 ===================
 
