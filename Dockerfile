@@ -1,7 +1,7 @@
 FROM python:3.8-slim AS build-image
 
 RUN apt update
-RUN apt full-upgrade
+RUN apt full-upgrade -y
 RUN apt install -y --no-install-recommends \
     build-essential \
     curl \
@@ -33,7 +33,7 @@ RUN mv instantclient*/* /opt/oracle/instantclient
 FROM python:3.8-slim
 
 RUN apt update && \
-    apt full-upgrade && \
+    apt full-upgrade -y && \
     apt install -y --no-install-recommends \
     curl \
     gnupg2 \
