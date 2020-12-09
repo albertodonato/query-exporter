@@ -3,7 +3,7 @@
 Export Prometheus metrics from SQL queries
 ==========================================
 
-|Latest Version| |Build Status| |Coverage Status| |Snap Status| |Docker Pulls|
+|Latest Version| |Build Status| |Coverage Status| |Snap Package| |Docker Pulls|
 
 ``query-exporter`` is a Prometheus_ exporter which allows collecting metrics
 from database queries, at specified time intervals.
@@ -528,9 +528,9 @@ The image has support for connecting the following databases:
 .. |Coverage Status| image:: https://img.shields.io/codecov/c/github/albertodonato/query-exporter/master.svg
    :alt: Coverage Status
    :target: https://codecov.io/gh/albertodonato/query-exporter
-.. |Snap Status| image:: https://build.snapcraft.io/badge/albertodonato/query-exporter.svg
-   :alt: Snap Status
-   :target: https://build.snapcraft.io/user/albertodonato/query-exporter
+.. |Snap Package| image:: https://snapcraft.io/query-exporter/badge.svg
+   :alt: Snap Package
+   :target: https://snapcraft.io/query-exporter
 .. |Get it from the Snap Store| image:: https://snapcraft.io/static/images/badges/en/snap-store-black.svg
    :alt: Get it from the Snap Store
    :target: https://snapcraft.io/query-exporter
