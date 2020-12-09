@@ -522,9 +522,9 @@ The image has support for connecting the following databases:
 .. |Latest Version| image:: https://img.shields.io/pypi/v/query-exporter.svg
    :alt: Latest Version
    :target: https://pypi.python.org/pypi/query-exporter
-.. |Build Status| image:: https://img.shields.io/travis/albertodonato/query-exporter.svg
+.. |Build Status| image:: https://github.com/albertodonato/query-exporter/workflows/CI/badge.svg
    :alt: Build Status
-   :target: https://travis-ci.com/albertodonato/query-exporter
+   :target: https://github.com/albertodonato/query-exporter/actions?query=workflow%3ACI
 .. |Coverage Status| image:: https://img.shields.io/codecov/c/github/albertodonato/query-exporter/master.svg
    :alt: Coverage Status
    :target: https://codecov.io/gh/albertodonato/query-exporter
