@@ -1,3 +1,9 @@
+v2.6.1 - 2020-12-20
+===================
+
+- Fix schedule times iterator for scheduled queries (#76).
+- [docker] - Fix build.
+
 v2.6.0 - 2020-12-06
 ===================
 
