@@ -106,17 +106,19 @@ Each database defintions can have the following keys:
     dialect[+driver]://[username:password][@host:port]/database[?option=value&...]
 
   (see `SQLAlchemy documentation`_ for details on available engines and
-  options), or as key/value pairs::
+  options), or as key/value pairs:
 
-    dialect: <dialect>[+driver]
-    user: <username>
-    password: <password>
-    host: <host>
-    port: <port>
-    database: <database>
-    options:
-      <key1>: <value1>
-      <key2>: <value2>
+  .. code:: yaml
+
+      dialect: <dialect>[+driver]
+      user: <username>
+      password: <password>
+      host: <host>
+      port: <port>
+      database: <database>
+      options:
+        <key1>: <value1>
+        <key2>: <value2>
 
   All entries are optional, except ``dialect``.
 
