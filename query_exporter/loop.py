@@ -82,15 +82,7 @@ class QueryLoop:
                 call.start(query.interval)
             else:
                 call = TimedCall(self._run_query, query)
-                now = datetime.now().replace(tzinfo=gettz())
-                cron_iter = croniter(query.schedule, now)
-
-                def times_iter():
-                    while True:
-                        delta = next(cron_iter) - time.time()
-                        yield self._loop.time() + delta
-
-                call.start(times_iter())
+                call.start(self._loop_times_iter(query.schedule))
             self._timed_calls[query.name] = call
 
     async def stop(self):
@@ -109,6 +101,16 @@ class QueryLoop:
             for dbname in query.databases
         )
         await asyncio.gather(*coros, return_exceptions=True)
+
+    def _loop_times_iter(self, schedule: str):
+        """Wrap a croniter iterator to sync time with the loop clock."""
+        now = datetime.now().replace(tzinfo=gettz())
+        cron_iter = croniter(schedule, now)
+        while True:
+            cc = next(cron_iter)
+            t = time.time()
+            delta = cc - t
+            yield self._loop.time() + delta
 
     @property
     def _databases(self) -> Iterable[DataBase]:
