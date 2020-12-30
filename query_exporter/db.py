@@ -29,11 +29,11 @@ from sqlalchemy.exc import (
     NoSuchModuleError,
 )
 from sqlalchemy_aio import ASYNCIO_STRATEGY
+from sqlalchemy_aio.asyncio import AsyncioEngine
 from sqlalchemy_aio.base import (
     AsyncConnection,
     AsyncResultProxy,
 )
-from sqlalchemy_aio.engine import AsyncioEngine
 
 #: Timeout for a query
 QueryTimeout = Union[int, float]
