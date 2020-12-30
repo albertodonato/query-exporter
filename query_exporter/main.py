@@ -56,6 +56,7 @@ class QueryExporterScript(PrometheusExporterScript):
         self.query_loop = QueryLoop(config, self.registry, self.logger)
 
     async def on_application_startup(self, application: Application):
+        self.logger.info(f"version {__version__} starting up")
         application["exporter"].set_metric_update_handler(self._update_handler)
         await self.query_loop.start()
 
