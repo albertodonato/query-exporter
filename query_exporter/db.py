@@ -252,6 +252,9 @@ class DataBase:
         except (ArgumentError, ValueError, NoSuchModuleError):
             raise self._db_error(f'Invalid database DSN: "{self.dsn}"', fatal=True)
 
+        # XXX workaround https://github.com/RazerM/sqlalchemy_aio/pull/37
+        self._engine.hide_parameters = self._engine.sync_engine.hide_parameters
+
         self._setup_query_latency_tracking()
 
     async def __aenter__(self):
