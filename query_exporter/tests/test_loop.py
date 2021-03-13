@@ -253,7 +253,20 @@ class TestQueryLoop:
         queries_metric = registry.get_metric("database_errors")
         assert metric_values(queries_metric) == [1.0]
 
-    async def test_run_query_increase_error_count(
+    async def test_run_query_increase_database_error_count(
+        self, mocker, query_tracker, config_data, make_query_loop, registry
+    ):
+        """Count of database errors is incremented on failed connection."""
+        query_loop = make_query_loop()
+        db = query_loop._config.databases["db"]
+        mock_connect = mocker.patch.object(db._engine, "connect")
+        mock_connect.side_effect = Exception("connection failed")
+        await query_loop.start()
+        await query_tracker.wait_failures()
+        queries_metric = registry.get_metric("database_errors")
+        assert metric_values(queries_metric) == [1.0]
+
+    async def test_run_query_increase_query_error_count(
         self, query_tracker, config_data, make_query_loop, registry
     ):
         """Count of errored queries is incremented on error."""
@@ -271,11 +284,13 @@ class TestQueryLoop:
         config_data["queries"]["q"]["timeout"] = 0.1
         query_loop = make_query_loop()
         await query_loop.start()
+        db = query_loop._config.databases["db"]
+        await db.connect()
 
         async def execute(sql, parameters):
             await asyncio.sleep(1)  # longer than timeout
 
-        query_loop._config.databases["db"]._conn.execute = execute
+        db._conn.execute = execute
 
         await query_tracker.wait_failures()
         queries_metric = registry.get_metric("queries")

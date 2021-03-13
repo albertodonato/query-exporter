@@ -33,6 +33,7 @@ from .config import (
 from .db import (
     DataBase,
     DATABASE_LABEL,
+    DataBaseConnectError,
     DataBaseError,
     Query,
     QueryTimeoutExpired,
@@ -70,12 +71,6 @@ class QueryLoop:
 
     async def start(self):
         """Start timed queries execution."""
-        for db in self._databases:
-            try:
-                await db.connect()
-            except DataBaseError:
-                self._increment_db_error_count(db)
-
         for query in self._timed_queries:
             if query.interval:
                 call = PeriodicCall(self._run_query, query)
@@ -141,6 +136,8 @@ class QueryLoop:
         db = self._config.databases[dbname]
         try:
             metric_results = await db.execute(query)
+        except DataBaseConnectError:
+            self._increment_db_error_count(db)
         except QueryTimeoutExpired:
             self._increment_queries_count(db, query, "timeout")
         except DataBaseError as error:
