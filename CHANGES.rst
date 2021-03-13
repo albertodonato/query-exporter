@@ -1,8 +1,8 @@
 v2.6.2 - 2021-03-13
 ===================
 
-- Workaround missing attributes from AsyncioEngine  (#62 and #76).
-- Log app version at startup
+- Workaround missing attributes from AsyncioEngine (#62 and #76).
+- Log app version at startup.
 
 
 v2.6.1 - 2020-12-20
