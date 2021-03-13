@@ -8,7 +8,9 @@ from sqlalchemy_aio.base import AsyncConnection
 
 from ..db import (
     DataBase,
+    DataBaseConnectError,
     DataBaseError,
+    DataBaseQueryError,
     InvalidQueryParameters,
     InvalidQuerySchedule,
     InvalidResultColumnNames,
@@ -358,9 +360,9 @@ class TestDataBase:
 
     @pytest.mark.asyncio
     async def test_connect_error(self):
-        """A DataBaseError is raised if database connection fails."""
+        """A DataBaseConnectError is raised if database connection fails."""
         db = DataBase("db", "sqlite:////invalid")
-        with pytest.raises(DataBaseError) as error:
+        with pytest.raises(DataBaseConnectError) as error:
             await db.connect()
         assert "unable to open database file" in str(error.value)
 
@@ -383,7 +385,7 @@ class TestDataBase:
     async def test_connect_sql_fail(self, caplog):
         """If the SQL at connection fails, an error is raised."""
         db = DataBase("db", "sqlite://", connect_sql=["WRONG"])
-        with caplog.at_level(logging.DEBUG), pytest.raises(DataBaseError) as error:
+        with caplog.at_level(logging.DEBUG), pytest.raises(DataBaseQueryError) as error:
             await db.connect()
         assert not db.connected
         assert 'failed executing query "WRONG"' in str(error.value)
@@ -514,7 +516,7 @@ class TestDataBase:
             "SELECT 1 AS metric, 2 AS other",
         )
         await db.connect()
-        with caplog.at_level(logging.ERROR), pytest.raises(DataBaseError) as error:
+        with caplog.at_level(logging.ERROR), pytest.raises(DataBaseQueryError) as error:
             await db.execute(query)
         assert str(error.value) == "Wrong result count from query: expected 1, got 2"
         assert error.value.fatal
@@ -533,7 +535,7 @@ class TestDataBase:
             "SELECT 1 as metric",
         )
         await db.connect()
-        with pytest.raises(DataBaseError) as error:
+        with pytest.raises(DataBaseQueryError) as error:
             await db.execute(query)
         assert str(error.value) == "Wrong result count from query: expected 2, got 1"
         assert error.value.fatal
@@ -548,7 +550,7 @@ class TestDataBase:
             'SELECT 1 AS foo, "bar" AS label',
         )
         await db.connect()
-        with pytest.raises(DataBaseError) as error:
+        with pytest.raises(DataBaseQueryError) as error:
             await db.execute(query)
         assert str(error.value) == "Wrong column names from query"
         assert error.value.fatal
@@ -564,7 +566,7 @@ class TestDataBase:
         )
         mocker.patch.object(db, "_execute_query").side_effect = Exception("boom!")
         await db.connect()
-        with caplog.at_level(logging.DEBUG), pytest.raises(DataBaseError) as error:
+        with caplog.at_level(logging.DEBUG), pytest.raises(DataBaseQueryError) as error:
             await db.execute(query)
         assert str(error.value) == "boom!"
         assert not error.value.fatal

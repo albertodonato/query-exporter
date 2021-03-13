@@ -15,6 +15,7 @@ from typing import (
     NamedTuple,
     Optional,
     Tuple,
+    Type,
     Union,
 )
 
@@ -52,6 +53,14 @@ class DataBaseError(Exception):
     def __init__(self, message: str, fatal: bool = False):
         super().__init__(message)
         self.fatal = fatal
+
+
+class DataBaseConnectError(DataBaseError):
+    """Database connection error."""
+
+
+class DataBaseQueryError(DataBaseError):
+    """Database query error."""
 
 
 class QueryTimeoutExpired(Exception):
@@ -283,7 +292,7 @@ class DataBase:
             try:
                 self._conn = await self._engine.connect()
             except Exception as error:
-                raise self._db_error(error)
+                raise self._db_error(error, exc_class=DataBaseConnectError)
 
             self._logger.debug(f'connected to database "{self.name}"')
             for sql in self.connect_sql:
@@ -291,7 +300,10 @@ class DataBase:
                     await self.execute_sql(sql)
                 except Exception as error:
                     await self._close()
-                    raise self._db_error(f'failed executing query "{sql}": {error}')
+                    raise self._db_error(
+                        f'failed executing query "{sql}": {error}',
+                        exc_class=DataBaseQueryError,
+                    )
 
     async def close(self):
         """Close the database connection."""
@@ -380,7 +392,7 @@ class DataBase:
         )
         _, _, traceback = sys.exc_info()
         self._logger.debug("".join(format_tb(traceback)))
-        return DataBaseError(message, fatal=fatal)
+        return DataBaseQueryError(message, fatal=fatal)
 
     def _query_timeout_error(
         self, query_name: str, timeout: QueryTimeout
@@ -390,12 +402,15 @@ class DataBase:
         raise error
 
     def _db_error(
-        self, error: Union[str, Exception], fatal: bool = False
+        self,
+        error: Union[str, Exception],
+        exc_class: Type[DataBaseError] = DataBaseError,
+        fatal: bool = False,
     ) -> DataBaseError:
         """Create and log a DataBaseError."""
         message = self._error_message(error)
         self._logger.error(f'error from database "{self.name}": {message}')
-        return DataBaseError(message, fatal=fatal)
+        return exc_class(message, fatal=fatal)
 
     def _error_message(self, error: Union[str, Exception]) -> str:
         """Return a message from an error."""
