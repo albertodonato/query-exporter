@@ -254,6 +254,7 @@ class DataBase:
 
         # XXX workaround https://github.com/RazerM/sqlalchemy_aio/pull/37
         self._engine.hide_parameters = self._engine.sync_engine.hide_parameters
+        self._engine.url = self._engine.sync_engine.url
 
         self._setup_query_latency_tracking()
 
