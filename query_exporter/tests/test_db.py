@@ -417,15 +417,18 @@ class TestDataBase:
 
     @pytest.mark.parametrize("connected", [True, False])
     @pytest.mark.asyncio
-    async def test_execute_keep_connected(self, connected):
+    async def test_execute_keep_connected(self, mocker, connected):
         """If keep_connected is set to true, the db is not closed."""
         db = DataBase("db", "sqlite://", keep_connected=connected)
         query = Query(
             "query", ["db"], [QueryMetric("metric", [])], "SELECT 1.0 AS metric"
         )
         await db.connect()
+        mock_conn_detach = mocker.patch.object(db._conn.sync_connection, "detach")
         await db.execute(query)
         assert db.connected == connected
+        if not connected:
+            mock_conn_detach.assert_called_once()
         await db.close()
 
     @pytest.mark.asyncio

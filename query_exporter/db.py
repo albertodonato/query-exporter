@@ -357,6 +357,8 @@ class DataBase:
         )
 
     async def _close(self):
+        # ensure the connection with the DB is actually closed
+        self._conn.sync_connection.detach()
         await self._conn.close()
         self._conn = None
         self._pending_queries = 0
