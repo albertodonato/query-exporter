@@ -1,3 +1,13 @@
+v2.7.0 - 2021-03-28
+===================
+
+- Support optional ``expiration`` parameter for metrics to clear stale series
+  (#26).
+- Correctly close the database connection when ``keep-connected: false`` is
+  used (#81).
+- Don't connect to all databases at startup, only when the first query is run.
+
+
 v2.6.2 - 2021-03-13
 ===================
 
