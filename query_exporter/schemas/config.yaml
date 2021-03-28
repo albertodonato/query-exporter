@@ -36,6 +36,19 @@ definitions:
     title: String for metrics and label names
     type: string
     pattern: ^[a-zA-Z_][a-zA-Z0-9_]*$
+  time-interval:
+    title: An integer time interval
+    description: >
+      The interval can be specified as a number, in which case it's interpreted
+      as seconds, or as a string.
+
+      Valid suffixes for string format are "s", "m", "h", "d".
+    anyOf:
+      - type: integer
+        minimum: 1
+      - type: string
+        pattern: ^[0-9]+[smhd]?$
+      - type: "null"
 
   database:
     title: A database to run queries on
@@ -172,21 +185,13 @@ definitions:
       expiration:
         title: Interval from last update after which a metric series is cleared
         description: >
-          If no updates on a series (set of label values) for the metric
-          happens in the specified amount of time, the series is cleared.
+          If specified and different than null, when no updates on a series
+          (set of label values) for the metric happen in the specified amount
+          of time, the series is cleared.
 
           The expiration is tracked independently for each labels value
           combination.
-
-          If specified just as a number, it's interpreted as seconds.
-
-          Valid suffixes as "s", "m", "h", "d".
-        anyOf:
-          - type: integer
-            minimum: 1
-          - type: string
-            pattern: ^[0-9]+[smhd]?$
-          - type: "null"
+        $ref: "#/definitions/time-interval"
 
   query:
     title: Definition for a SQL query to run
@@ -209,21 +214,12 @@ definitions:
       interval:
         title: The time interval at which queries are run
         description: >
-          If specified just as a number, it's interpreted as seconds.
-
-          Valid suffixes as "s", "m", "h", "d".
-
           If not specified or specified as null, the query will be run on HTTP
           requests.
 
           Alternatively, the "schedule" property can be specified to run the
           query at specific times.
-        anyOf:
-          - type: integer
-            minimum: 1
-          - type: string
-            pattern: ^[0-9]+[smhd]?$
-          - type: "null"
+        $ref: "#/definitions/time-interval"
       metrics:
         title: List of metrics that the query updates
         type: array
