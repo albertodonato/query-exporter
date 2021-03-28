@@ -52,6 +52,7 @@ A sample configuration file for the application looks like this:
         type: summary
         description: A sample summary
         labels: [l1, l2]
+        expiration: 24h
       metric3:
         type: histogram
         description: A sample histogram
@@ -196,6 +197,19 @@ Each metric definition can have the following keys:
   for ``enum`` metrics, a list of string values for possible states.
 
   Queries for updating the enum must return valid states.
+
+``expiration``:
+  the amount of time after which a series for the metric is cleared if no new
+  value is collected.
+
+  Last report times are tracked independently for each set of label values for
+  the metric.
+
+  This can be useful for metric series that only last for a certain amount of
+  time, to avoid an ever-increasing collection of series.
+
+  The value is interpreted as seconds if no suffix is specified; valid suffixes
+  are ``s``, ``m``, ``h``, ``d``. Only integer values are accepted.
 
 ``queries`` section
 ~~~~~~~~~~~~~~~~~~~

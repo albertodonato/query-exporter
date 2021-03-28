@@ -333,6 +333,7 @@ class TestLoadConfig:
                     "type": "summary",
                     "description": "metric one",
                     "labels": ["label1", "label2"],
+                    "expiration": "2m",
                 },
                 "metric2": {
                     "type": "histogram",
@@ -343,6 +344,7 @@ class TestLoadConfig:
                     "type": "enum",
                     "description": "metric three",
                     "states": ["on", "off"],
+                    "expiration": 100,
                 },
             },
             "queries": {},
@@ -353,13 +355,17 @@ class TestLoadConfig:
         metric1 = result.metrics["metric1"]
         assert metric1.type == "summary"
         assert metric1.description == "metric one"
-        assert metric1.config == {"labels": ["database", "label1", "label2"]}
+        assert metric1.config == {
+            "labels": ["database", "label1", "label2"],
+            "expiration": 120,
+        }
         metric2 = result.metrics["metric2"]
         assert metric2.type == "histogram"
         assert metric2.description == "metric two"
         assert metric2.config == {
             "labels": ["database"],
             "buckets": [10, 100, 1000],
+            "expiration": None,
         }
         metric3 = result.metrics["metric3"]
         assert metric3.type == "enum"
@@ -367,6 +373,7 @@ class TestLoadConfig:
         assert metric3.config == {
             "labels": ["database"],
             "states": ["on", "off"],
+            "expiration": 100,
         }
         # global metrics
         assert result.metrics.get(DB_ERRORS_METRIC_NAME) is not None
@@ -763,6 +770,28 @@ class TestLoadConfig:
         assert (
             str(err.value) == "Invalid config at queries/q/databases: [] is too short"
         )
+
+    @pytest.mark.parametrize(
+        "expiration,value",
+        [
+            (10, 10),
+            ("10", 10),
+            ("10s", 10),
+            ("10m", 600),
+            ("1h", 3600),
+            ("1d", 3600 * 24),
+            (None, None),
+        ],
+    )
+    def test_load_metrics_expiration(
+        self, logger, config_full, write_config, expiration, value
+    ):
+        """The metric series expiration time can be specified with suffixes."""
+        config_full["metrics"]["m"]["expiration"] = expiration
+        config_file = write_config(config_full)
+        with config_file.open() as fd:
+            config = load_config(fd, logger)
+        assert config.metrics["m"].config["expiration"] == value
 
 
 class TestResolveDSN:

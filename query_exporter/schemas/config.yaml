@@ -169,6 +169,24 @@ definitions:
           type: string
         minItems: 1
         uniqueItems: true
+      expiration:
+        title: Interval from last update after which a metric series is cleared
+        description: >
+          If no updates on a series (set of label values) for the metric
+          happens in the specified amount of time, the series is cleared.
+
+          The expiration is tracked independently for each labels value
+          combination.
+
+          If specified just as a number, it's interpreted as seconds.
+
+          Valid suffixes as "s", "m", "h", "d".
+        anyOf:
+          - type: integer
+            minimum: 1
+          - type: string
+            pattern: ^[0-9]+[smhd]?$
+          - type: "null"
 
   query:
     title: Definition for a SQL query to run

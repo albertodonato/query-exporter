@@ -14,6 +14,7 @@ from typing import (
     List,
     Mapping,
     NamedTuple,
+    Optional,
     Set,
     Tuple,
     Union,
@@ -152,6 +153,7 @@ def _get_metrics(
         metric_type = config.pop("type")
         config.setdefault("labels", []).extend(extra_labels)
         config["labels"].sort()
+        config["expiration"] = _convert_interval(config.get("expiration"))
         description = config.pop("description", "")
         configs[name] = MetricConfig(name, description, metric_type, config)
     return configs
@@ -183,7 +185,7 @@ def _get_queries(
     queries: Dict[str, Query] = {}
     for name, config in configs.items():
         _validate_query_config(name, config, database_names, metric_names)
-        _convert_query_interval(name, config)
+        config["interval"] = _convert_interval(config.get("interval"))
         query_metrics = _get_query_metrics(config, metrics, extra_labels)
         parameters = config.get("parameters")
         try:
@@ -261,12 +263,14 @@ def _validate_query_config(
             )
 
 
-def _convert_query_interval(name: str, config: Dict[str, Any]):
-    """Convert query intervals to seconds."""
-    interval = config.setdefault("interval", None)
+def _convert_interval(interval: Union[int, str, None]) -> Optional[int]:
+    """Convert a time interval to seconds.
+
+    Return None if no interval is specified.
+
+    """
     if interval is None:
-        # the query should be run at every request
-        return
+        return None
 
     multiplier = 1
     if isinstance(interval, str):
@@ -277,7 +281,7 @@ def _convert_query_interval(name: str, config: Dict[str, Any]):
             interval = interval[:-1]
             multiplier = multipliers[suffix]
 
-    config["interval"] = int(interval) * multiplier
+    return int(interval) * multiplier
 
 
 def _resolve_dsn(dsn: Union[str, Dict[str, Any]], env: Environ) -> str:

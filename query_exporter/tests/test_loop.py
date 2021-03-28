@@ -2,6 +2,7 @@ import asyncio
 from collections import defaultdict
 from decimal import Decimal
 import logging
+from pathlib import Path
 import re
 
 from prometheus_aioexporter import MetricsRegistry
@@ -90,6 +91,12 @@ def metric_values(metric, by_labels=()):
                 values[sample_suffix].append(value)
 
     return values if by_labels else values[suffix]
+
+
+async def run_queries(db_file: Path, *queries: str):
+    async with DataBase("db", f"sqlite:///{db_file}") as db:
+        for query in queries:
+            await db.execute_sql(query)
 
 
 @pytest.mark.asyncio
@@ -355,13 +362,15 @@ class TestQueryLoop:
         config_data["queries"]["q"].update(
             {"databases": ["db1", "db2"], "sql": "SELECT * FROM test", "interval": 1.0}
         )
-        async with DataBase("db", f"sqlite:///{db1}") as db:
-            await db.execute_sql("CREATE TABLE test (m INTEGER)")
-            await db.execute_sql("INSERT INTO test VALUES (10)")
+        await run_queries(
+            db1, "CREATE TABLE test (m INTEGER)", "INSERT INTO test VALUES (10)"
+        )
         # the query on the second database returns more columns
-        async with DataBase("db", f"sqlite:///{db2}") as db:
-            await db.execute_sql("CREATE TABLE test (m INTEGER, other INTERGER)")
-            await db.execute_sql("INSERT INTO test VALUES (10, 20)")
+        await run_queries(
+            db2,
+            "CREATE TABLE test (m INTEGER, other INTERGER)",
+            "INSERT INTO test VALUES (10, 20)",
+        )
         query_loop = make_query_loop()
         await query_loop.start()
         await asyncio.sleep(0.1)
@@ -416,13 +425,15 @@ class TestQueryLoop:
                 "interval": None,
             }
         )
-        async with DataBase("db", f"sqlite:///{db1}") as db:
-            await db.execute_sql("CREATE TABLE test (m INTEGER)")
-            await db.execute_sql("INSERT INTO test VALUES (10)")
+        await run_queries(
+            db1, "CREATE TABLE test (m INTEGER)", "INSERT INTO test VALUES (10)"
+        )
         # the query on the second database returns more columns
-        async with DataBase("db", f"sqlite:///{db2}") as db:
-            await db.execute_sql("CREATE TABLE test (m INTEGER, other INTERGER)")
-            await db.execute_sql("INSERT INTO test VALUES (10, 20)")
+        await run_queries(
+            db2,
+            "CREATE TABLE test (m INTEGER, other INTERGER)",
+            "INSERT INTO test VALUES (10, 20)",
+        )
         query_loop = make_query_loop()
         await query_loop.run_aperiodic_queries()
         await query_tracker.wait_failures()
@@ -433,3 +444,48 @@ class TestQueryLoop:
         # succeeding query is run again, failing one is not
         assert len(query_tracker.results) == 2
         assert len(query_tracker.failures) == 1
+
+    async def test_clear_expired_series(
+        self, mocker, tmp_path, query_tracker, config_data, make_query_loop, registry
+    ):
+        """The query loop clears out series last seen earlier than the specified interval."""
+        db = tmp_path / "db.sqlite"
+        config_data["databases"]["db"]["dsn"] = f"sqlite:///{db}"
+        config_data["metrics"]["m"].update(
+            {
+                "labels": ["l"],
+                "expiration": 10,
+            }
+        )
+        # call metric collection directly
+        config_data["queries"]["q"]["sql"] = "SELECT * FROM test"
+        del config_data["queries"]["q"]["interval"]
+
+        await run_queries(
+            db,
+            "CREATE TABLE test (m INTEGER, l TEXT)",
+            'INSERT INTO test VALUES (10, "foo")',
+            'INSERT INTO test VALUES (20, "bar")',
+        )
+        query_loop = make_query_loop()
+        await query_loop.run_aperiodic_queries()
+        await query_tracker.wait_results()
+        queries_metric = registry.get_metric("m")
+        assert metric_values(queries_metric, by_labels=("l",)), {
+            ("foo",): 10.0,
+            ("bar",): 20.0,
+        }
+        # mock that more time has passed than expiration
+        mocker.patch.object(query_loop, "_timestamp").return_value = (
+            query_loop._timestamp() + 20
+        )
+        await run_queries(
+            db,
+            "DELETE FROM test WHERE m = 10",
+        )
+        await query_loop.run_aperiodic_queries()
+        await query_tracker.wait_results()
+        query_loop.clear_expired_series()
+        assert metric_values(queries_metric, by_labels=("l",)), {
+            ("bar",): 20.0,
+        }

@@ -14,6 +14,7 @@ from typing import (
     Mapping,
     Optional,
     Set,
+    Tuple,
 )
 
 from croniter import croniter
@@ -67,6 +68,9 @@ class QueryLoop:
         # map query names to list of database names
         self._doomed_queries: Dict[str, Set[str]] = defaultdict(set)
         self._loop = asyncio.get_event_loop()
+        # track last seen time for label values for metrics that have an
+        # expiration. The key is a tuple with metric name and label values
+        self._series_last_seen: Dict[Tuple, float] = {}
         self._setup()
 
     async def start(self):
@@ -88,6 +92,23 @@ class QueryLoop:
         coros = (db.close() for db in self._databases)
         await asyncio.gather(*coros, return_exceptions=True)
 
+    def clear_expired_series(self):
+        """Clear metric series that have expired."""
+        expired = []
+        now = self._timestamp()
+        for key, timestamp in self._series_last_seen.items():
+            name, *label_values = key
+            expiration = self._config.metrics[name].config["expiration"]
+            if timestamp + expiration > now:
+                continue
+
+            expired.append(key)
+            metric = self._registry.get_metric(name)
+            metric.remove(*label_values)
+
+        for key in expired:
+            del self._series_last_seen[key]
+
     async def run_aperiodic_queries(self):
         """Run queries on request."""
         coros = (
@@ -99,8 +120,7 @@ class QueryLoop:
 
     def _loop_times_iter(self, schedule: str):
         """Wrap a croniter iterator to sync time with the loop clock."""
-        now = datetime.now().replace(tzinfo=gettz())
-        cron_iter = croniter(schedule, now)
+        cron_iter = croniter(schedule, self._now())
         while True:
             cc = next(cron_iter)
             t = time.time()
@@ -202,6 +222,15 @@ class QueryLoop:
         )
         metric = self._registry.get_metric(name, labels=all_labels)
         getattr(metric, method)(value)
+        self._update_metric_expiration(name, all_labels)
+
+    def _update_metric_expiration(self, name: str, labels: Dict[str, str]):
+        if not self._config.metrics[name].config.get("expiration"):
+            return
+
+        # key by metric name and label values, sorted by label name
+        key = (name, *(value for _, value in sorted(labels.items())))
+        self._series_last_seen[key] = self._timestamp()
 
     def _increment_queries_count(self, database: DataBase, query: Query, status: str):
         """Increment count of queries in a status for a database."""
@@ -226,3 +255,11 @@ class QueryLoop:
             latency,
             labels={"query": query.config_name},
         )
+
+    def _now(self) -> datetime:
+        """Return the current time with local timezone."""
+        return datetime.now().replace(tzinfo=gettz())
+
+    def _timestamp(self) -> float:
+        """Return the current timestamp."""
+        return self._now().timestamp()
