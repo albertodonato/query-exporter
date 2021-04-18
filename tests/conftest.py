@@ -1,4 +1,5 @@
 import asyncio
+import re
 
 import pytest
 from toolrack.testing.fixtures import advance_time
@@ -58,3 +59,22 @@ def query_tracker(request, mocker, event_loop):
 
     mocker.patch.object(DataBase, "execute", execute)
     yield tracker
+
+
+class AssertRegexpMatch:
+    """Assert that comparison matches the specified regexp."""
+
+    def __init__(self, pattern, flags=0):
+        self._re = re.compile(pattern, flags)
+
+    def __eq__(self, string):
+        return bool(self._re.match(string))
+
+    def __repr__(self):
+        return self._re.pattern  # pragma: nocover
+
+
+@pytest.fixture
+def re_match():
+    """Matcher for asserting that a string matches a regexp."""
+    yield AssertRegexpMatch

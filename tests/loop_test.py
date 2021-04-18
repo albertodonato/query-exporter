@@ -4,7 +4,6 @@ from datetime import datetime
 from decimal import Decimal
 import logging
 from pathlib import Path
-import re
 
 from prometheus_aioexporter import MetricsRegistry
 import pytest
@@ -16,19 +15,6 @@ from query_exporter.config import (
     load_config,
 )
 from query_exporter.db import DataBase
-
-
-class re_match:
-    """Assert that comparison matches the specified regexp."""
-
-    def __init__(self, pattern, flags=0):
-        self._re = re.compile(pattern, flags)
-
-    def __eq__(self, string):
-        return bool(self._re.match(string))
-
-    def __repr__(self):
-        return self._re.pattern  # pragma: nocover
 
 
 @pytest.fixture
@@ -150,11 +136,12 @@ class TestMetricsLastSeen:
 
 @pytest.mark.asyncio
 class TestQueryLoop:
-    async def test_start(self, query_loop):
+    async def test_start(self, query_tracker, query_loop):
         """The start method starts timed calls for queries."""
         await query_loop.start()
         timed_call = query_loop._timed_calls["q"]
         assert timed_call.running
+        await query_tracker.wait_results()
 
     async def test_stop(self, query_loop):
         """The stop method stops timed calls for queries."""
@@ -289,14 +276,20 @@ class TestQueryLoop:
         assert value == 100.123
         assert isinstance(value, float)
 
-    async def test_run_query_log(self, caplog, query_tracker, query_loop):
+    async def test_run_query_log(
+        self, caplog, re_match, query_tracker, query_loop
+    ):
         """Debug messages are logged on query execution."""
         caplog.set_level(logging.DEBUG)
         await query_loop.start()
         await query_tracker.wait_queries()
         assert caplog.messages == [
+            re_match(r'worker "DataBase-db": started'),
+            'worker "DataBase-db": received action "_connect"',
             'connected to database "db"',
             'running query "q" on database "db"',
+            'worker "DataBase-db": received action "_execute"',
+            'worker "DataBase-db": received action "from_result"',
             'updating metric "m" set 100.0 {database="db"}',
             re_match(
                 r'updating metric "query_latency" observe .* \{database="db",query="q"\}'
@@ -308,7 +301,7 @@ class TestQueryLoop:
         ]
 
     async def test_run_query_log_labels(
-        self, caplog, query_tracker, config_data, make_query_loop
+        self, caplog, re_match, query_tracker, config_data, make_query_loop
     ):
         """Debug messages include metric labels."""
         config_data["metrics"]["m"]["labels"] = ["l"]
@@ -318,8 +311,12 @@ class TestQueryLoop:
         await query_loop.start()
         await query_tracker.wait_queries()
         assert caplog.messages == [
+            re_match(r'worker "DataBase-db": started'),
+            'worker "DataBase-db": received action "_connect"',
             'connected to database "db"',
             'running query "q" on database "db"',
+            'worker "DataBase-db": received action "_execute"',
+            'worker "DataBase-db": received action "from_result"',
             'updating metric "m" set 100.0 {database="db",l="foo"}',
             re_match(
                 r'updating metric "query_latency" observe .* \{database="db",query="q"\}'
@@ -347,7 +344,7 @@ class TestQueryLoop:
         """Count of database errors is incremented on failed connection."""
         query_loop = make_query_loop()
         db = query_loop._databases["db"]
-        mock_connect = mocker.patch.object(db._engine, "connect")
+        mock_connect = mocker.patch.object(db._conn.engine, "connect")
         mock_connect.side_effect = Exception("connection failed")
         await query_loop.start()
         await query_tracker.wait_failures()
@@ -404,19 +401,23 @@ class TestQueryLoop:
         assert len(query_tracker.queries) == 2
 
     async def test_run_timed_queries_invalid_result_count(
-        self, query_tracker, config_data, make_query_loop, advance_time
+        self, query_tracker, config_data, make_query_loop
     ):
         """Timed queries returning invalid elements count are removed."""
         config_data["queries"]["q"]["sql"] = "SELECT 100.0 AS a, 200.0 AS b"
+        config_data["queries"]["q"]["interval"] = 1.0
         query_loop = make_query_loop()
         await query_loop.start()
-        await advance_time(0)  # kick the first run
-        assert len(query_tracker.queries) == 1
+        timed_call = query_loop._timed_calls["q"]
+        await asyncio.sleep(1.1)
+        await query_tracker.wait_failures()
+        assert len(query_tracker.failures) == 1
         assert len(query_tracker.results) == 0
-        # the query is not run again
-        await advance_time(5)
-        assert len(query_tracker.results) == 0
-        await advance_time(5)
+        # the query has been stopped and removed
+        assert not timed_call.running
+        await asyncio.sleep(1.1)
+        await query_tracker.wait_failures()
+        assert len(query_tracker.failures) == 1
         assert len(query_tracker.results) == 0
 
     async def test_run_timed_queries_invalid_result_count_stop_task(
