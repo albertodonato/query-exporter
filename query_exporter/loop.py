@@ -137,7 +137,7 @@ class QueryLoop:
         for query in self._timed_queries:
             if query.interval:
                 call = PeriodicCall(self._run_query, query)
-                call.start(query.interval)
+                call.start(query.interval, now=True)
             elif query.schedule is not None:
                 call = TimedCall(self._run_query, query)
                 call.start(self._loop_times_iter(query.schedule))
@@ -198,7 +198,7 @@ class QueryLoop:
             self._increment_queries_count(db, query, "error")
             if error.fatal:
                 self._logger.debug(
-                    f'removing doomed query "{query.name}" '
+                    f'removing failed query "{query.name}" '
                     f'for database "{dbname}"'
                 )
                 self._doomed_queries[query.name].add(dbname)
