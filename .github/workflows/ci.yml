@@ -18,7 +18,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v2
       with:
-        python-version: "3.6"
+        python-version: "3.8"
 
     - name: Install dependencies
       run: |
@@ -37,7 +37,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v2
       with:
-        python-version: "3.6"
+        python-version: "3.8"
 
     - name: Install dependencies
       run: |
@@ -52,9 +52,9 @@ jobs:
     strategy:
       matrix:
         python-version:
-          - "3.6"
-          - "3.7"
           - "3.8"
+          - "3.9"
+          - "3.10"
     steps:
     - name: Repository checkout
       uses: actions/checkout@v2
