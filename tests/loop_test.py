@@ -1,10 +1,10 @@
 import asyncio
 from collections import defaultdict
-from datetime import datetime
+from collections.abc import Callable, Iterator
 from decimal import Decimal
 import logging
 from pathlib import Path
-import re
+from typing import Any
 
 from prometheus_aioexporter import MetricsRegistry
 import pytest
@@ -18,21 +18,8 @@ from query_exporter.config import (
 from query_exporter.db import DataBase
 
 
-class re_match:
-    """Assert that comparison matches the specified regexp."""
-
-    def __init__(self, pattern, flags=0):
-        self._re = re.compile(pattern, flags)
-
-    def __eq__(self, string):
-        return bool(self._re.match(string))
-
-    def __repr__(self):
-        return self._re.pattern  # pragma: nocover
-
-
 @pytest.fixture
-def config_data():
+def config_data() -> Iterator[dict[str, Any]]:
     yield {
         "databases": {"db": {"dsn": "sqlite://"}},
         "metrics": {"m": {"type": "gauge"}},
@@ -48,15 +35,17 @@ def config_data():
 
 
 @pytest.fixture
-def registry():
+def registry() -> Iterator[MetricsRegistry]:
     yield MetricsRegistry()
 
 
 @pytest.fixture
-async def make_query_loop(tmp_path, config_data, registry):
+async def make_query_loop(
+    tmp_path: Path, config_data: dict[str, Any], registry: MetricsRegistry
+) -> Iterator[Callable[[], MetricsRegistry]]:
     query_loops = []
 
-    def make_loop():
+    def make_loop() -> loop.QueryLoop:
         config_file = tmp_path / "config.yaml"
         config_file.write_text(yaml.dump(config_data), "utf-8")
         logger = logging.getLogger()
@@ -75,17 +64,10 @@ async def make_query_loop(tmp_path, config_data, registry):
 
 
 @pytest.fixture
-async def query_loop(make_query_loop):
+async def query_loop(
+    make_query_loop: Callable[[], loop.QueryLoop],
+) -> Iterator[loop.QueryLoop]:
     yield make_query_loop()
-
-
-@pytest.fixture
-def metrics_expiration():
-    yield {
-        "m1": 50,
-        "m2": 100,
-        "m3": None,
-    }
 
 
 def metric_values(metric, by_labels=()):
@@ -107,7 +89,7 @@ def metric_values(metric, by_labels=()):
     return values if by_labels else values[suffix]
 
 
-async def run_queries(db_file: Path, *queries: str):
+async def run_queries(db_file: Path, *queries: str) -> None:
     config = DataBaseConfig(name="db", dsn=f"sqlite:///{db_file}")
     async with DataBase(config) as db:
         for query in queries:
@@ -115,9 +97,9 @@ async def run_queries(db_file: Path, *queries: str):
 
 
 class TestMetricsLastSeen:
-    def test_update(self, metrics_expiration):
+    def test_update(self) -> None:
         """Last seen times are tracked for each series of metrics with expiration."""
-        last_seen = loop.MetricsLastSeen(metrics_expiration)
+        last_seen = loop.MetricsLastSeen({"m1": 50, "m2": 100})
         last_seen.update("m1", {"l1": "v1", "l2": "v2"}, 100)
         last_seen.update("m1", {"l1": "v3", "l2": "v4"}, 200)
         last_seen.update("other", {"l3": "v100"}, 300)
@@ -128,41 +110,63 @@ class TestMetricsLastSeen:
             }
         }
 
-    def test_update_label_values_sorted_by_name(self, metrics_expiration):
+    def test_update_label_values_sorted_by_name(self) -> None:
         """Last values are sorted by label names."""
-        last_seen = loop.MetricsLastSeen(metrics_expiration)
+        last_seen = loop.MetricsLastSeen({"m1": 50})
         last_seen.update("m1", {"l2": "v2", "l1": "v1"}, 100)
         assert last_seen._last_seen == {"m1": {("v1", "v2"): 100}}
 
-    def test_expire_series(self, metrics_expiration):
+    def test_expire_series_not_expired(self) -> None:
+        """If no entry for a metric is expired, it's not returned."""
+        last_seen = loop.MetricsLastSeen({"m1": 50})
+        last_seen.update("m1", {"l1": "v1", "l2": "v2"}, 10)
+        last_seen.update("m1", {"l1": "v3", "l2": "v4"}, 20)
+        assert last_seen.expire_series(30) == {}
+        assert last_seen._last_seen == {
+            "m1": {
+                ("v1", "v2"): 10,
+                ("v3", "v4"): 20,
+            }
+        }
+
+    def test_expire_series(self) -> None:
         """Expired metric series are returned and removed."""
-        last_seen = loop.MetricsLastSeen(metrics_expiration)
+        last_seen = loop.MetricsLastSeen({"m1": 50, "m2": 100})
         last_seen.update("m1", {"l1": "v1", "l2": "v2"}, 10)
         last_seen.update("m1", {"l1": "v3", "l2": "v4"}, 100)
         last_seen.update("m2", {"l3": "v100"}, 100)
-        expired = last_seen.expire_series(120)
-        assert expired == {"m1": [("v1", "v2")], "m2": []}
+        assert last_seen.expire_series(120) == {"m1": [("v1", "v2")]}
         assert last_seen._last_seen == {
             "m1": {("v3", "v4"): 100},
             "m2": {("v100",): 100},
         }
 
+    def test_expire_no_labels(self) -> None:
+        last_seen = loop.MetricsLastSeen({"m1": 50})
+        last_seen.update("m1", {}, 10)
+        expired = last_seen.expire_series(120)
+        assert expired == {"m1": [()]}
+        assert last_seen._last_seen == {}
+
 
 class TestQueryLoop:
-    async def test_start(self, query_loop):
+    async def test_start(self, query_tracker, query_loop) -> None:
         """The start method starts timed calls for queries."""
         await query_loop.start()
         timed_call = query_loop._timed_calls["q"]
         assert timed_call.running
+        await query_tracker.wait_results()
 
-    async def test_stop(self, query_loop):
+    async def test_stop(self, query_loop) -> None:
         """The stop method stops timed calls for queries."""
         await query_loop.start()
         timed_call = query_loop._timed_calls["q"]
         await query_loop.stop()
         assert not timed_call.running
 
-    async def test_run_query(self, query_tracker, query_loop, registry):
+    async def test_run_query(
+        self, query_tracker, query_loop, registry
+    ) -> None:
         """Queries are run and update metrics."""
         await query_loop.start()
         await query_tracker.wait_results()
@@ -288,14 +292,20 @@ class TestQueryLoop:
         assert value == 100.123
         assert isinstance(value, float)
 
-    async def test_run_query_log(self, caplog, query_tracker, query_loop):
+    async def test_run_query_log(
+        self, caplog, re_match, query_tracker, query_loop
+    ):
         """Debug messages are logged on query execution."""
         caplog.set_level(logging.DEBUG)
         await query_loop.start()
         await query_tracker.wait_queries()
         assert caplog.messages == [
+            re_match(r'worker "DataBase-db": started'),
+            'worker "DataBase-db": received action "_connect"',
             'connected to database "db"',
             'running query "q" on database "db"',
+            'worker "DataBase-db": received action "_execute"',
+            'worker "DataBase-db": received action "from_result"',
             'updating metric "m" set 100.0 {database="db"}',
             re_match(
                 r'updating metric "query_latency" observe .* \{database="db",query="q"\}'
@@ -307,7 +317,7 @@ class TestQueryLoop:
         ]
 
     async def test_run_query_log_labels(
-        self, caplog, query_tracker, config_data, make_query_loop
+        self, caplog, re_match, query_tracker, config_data, make_query_loop
     ):
         """Debug messages include metric labels."""
         config_data["metrics"]["m"]["labels"] = ["l"]
@@ -317,8 +327,12 @@ class TestQueryLoop:
         await query_loop.start()
         await query_tracker.wait_queries()
         assert caplog.messages == [
+            re_match(r'worker "DataBase-db": started'),
+            'worker "DataBase-db": received action "_connect"',
             'connected to database "db"',
             'running query "q" on database "db"',
+            'worker "DataBase-db": received action "_execute"',
+            'worker "DataBase-db": received action "from_result"',
             'updating metric "m" set 100.0 {database="db",l="foo"}',
             re_match(
                 r'updating metric "query_latency" observe .* \{database="db",query="q"\}'
@@ -346,7 +360,7 @@ class TestQueryLoop:
         """Count of database errors is incremented on failed connection."""
         query_loop = make_query_loop()
         db = query_loop._databases["db"]
-        mock_connect = mocker.patch.object(db._engine, "connect")
+        mock_connect = mocker.patch.object(db._conn.engine, "connect")
         mock_connect.side_effect = Exception("connection failed")
         await query_loop.start()
         await query_tracker.wait_failures()
@@ -403,19 +417,23 @@ class TestQueryLoop:
         assert len(query_tracker.queries) == 2
 
     async def test_run_timed_queries_invalid_result_count(
-        self, query_tracker, config_data, make_query_loop, advance_time
+        self, query_tracker, config_data, make_query_loop
     ):
         """Timed queries returning invalid elements count are removed."""
         config_data["queries"]["q"]["sql"] = "SELECT 100.0 AS a, 200.0 AS b"
+        config_data["queries"]["q"]["interval"] = 1.0
         query_loop = make_query_loop()
         await query_loop.start()
-        await advance_time(0)  # kick the first run
-        assert len(query_tracker.queries) == 1
+        timed_call = query_loop._timed_calls["q"]
+        await asyncio.sleep(1.1)
+        await query_tracker.wait_failures()
+        assert len(query_tracker.failures) == 1
         assert len(query_tracker.results) == 0
-        # the query is not run again
-        await advance_time(5)
-        assert len(query_tracker.results) == 0
-        await advance_time(5)
+        # the query has been stopped and removed
+        assert not timed_call.running
+        await asyncio.sleep(1.1)
+        await query_tracker.wait_failures()
+        assert len(query_tracker.failures) == 1
         assert len(query_tracker.results) == 0
 
     async def test_run_timed_queries_invalid_result_count_stop_task(
@@ -539,8 +557,8 @@ class TestQueryLoop:
 
     async def test_clear_expired_series(
         self,
-        mocker,
         tmp_path,
+        advance_time,
         query_tracker,
         config_data,
         make_query_loop,
@@ -555,7 +573,6 @@ class TestQueryLoop:
                 "expiration": 10,
             }
         )
-        # call metric collection directly
         config_data["queries"]["q"]["sql"] = "SELECT * FROM test"
         del config_data["queries"]["q"]["interval"]
 
@@ -566,24 +583,19 @@ class TestQueryLoop:
             'INSERT INTO test VALUES (20, "bar")',
         )
         query_loop = make_query_loop()
-        mock_timestamp = mocker.patch.object(query_loop, "_timestamp")
-        mock_timestamp.return_value = datetime.now().timestamp()
         await query_loop.run_aperiodic_queries()
         await query_tracker.wait_results()
         queries_metric = registry.get_metric("m")
-        assert metric_values(queries_metric, by_labels=("l",)), {
+        assert metric_values(queries_metric, by_labels=("l",)) == {
             ("foo",): 10.0,
             ("bar",): 20.0,
         }
-        await run_queries(
-            db,
-            "DELETE FROM test WHERE m = 10",
-        )
-        # mock that more time has passed than expiration
-        mock_timestamp.return_value += 20
+        await run_queries(db, "DELETE FROM test WHERE m = 10")
+        # go beyond expiration time
+        await advance_time(20)
         await query_loop.run_aperiodic_queries()
         await query_tracker.wait_results()
         query_loop.clear_expired_series()
-        assert metric_values(queries_metric, by_labels=("l",)), {
+        assert metric_values(queries_metric, by_labels=("l",)) == {
             ("bar",): 20.0,
         }

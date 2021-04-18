@@ -83,15 +83,20 @@ class MetricsLastSeen:
         expired = {}
         for name, metric_last_seen in self._last_seen.items():
             expiration = cast(int, self._expirations[name])
-            expired[name] = [
+            expired_labels = [
                 label_values
                 for label_values, last_seen in metric_last_seen.items()
                 if timestamp > last_seen + expiration
             ]
+            if expired_labels:
+                expired[name] = expired_labels
+
         # clear expired series from tracking
         for name, series_labels in expired.items():
             for label_values in series_labels:
                 del self._last_seen[name][label_values]
+                if not self._last_seen[name]:
+                    del self._last_seen[name]
         return expired
 
 
@@ -137,7 +142,7 @@ class QueryLoop:
             call: TimedCall
             if query.interval:
                 call = PeriodicCall(self._run_query, query)
-                call.start(query.interval)
+                call.start(query.interval, now=True)
             elif query.schedule is not None:
                 call = TimedCall(self._run_query, query)
                 call.start(self._loop_times_iter(query.schedule))
@@ -153,7 +158,7 @@ class QueryLoop:
 
     def clear_expired_series(self) -> None:
         """Clear metric series that have expired."""
-        expired_series = self._last_seen.expire_series(self._timestamp())
+        expired_series = self._last_seen.expire_series(self._loop.time())
         for name, label_values in expired_series.items():
             metric = self._registry.get_metric(name)
             for values in label_values:
@@ -170,7 +175,7 @@ class QueryLoop:
 
     def _loop_times_iter(self, schedule: str) -> Iterator[float | int]:
         """Wrap a croniter iterator to sync time with the loop clock."""
-        cron_iter = croniter(schedule, self._now())
+        cron_iter = croniter(schedule, datetime.now(gettz()))
         while True:
             cc = next(cron_iter)
             t = time.time()
@@ -198,7 +203,7 @@ class QueryLoop:
             self._increment_queries_count(db, query, "error")
             if error.fatal:
                 self._logger.debug(
-                    f'removing doomed query "{query.name}" '
+                    f'removing failed query "{query.name}" '
                     f'for database "{dbname}"'
                 )
                 self._doomed_queries[query.name].add(dbname)
@@ -264,20 +269,21 @@ class QueryLoop:
         )
         metric = self._registry.get_metric(name, labels=all_labels)
         self._update_metric_value(metric, method, value)
-        self._last_seen.update(name, all_labels, self._timestamp())
+        self._last_seen.update(name, all_labels, self._loop.time())
 
     def _get_metric_method(self, metric: MetricConfig) -> str:
-        method = {
-            "counter": "inc",
-            "gauge": "set",
-            "histogram": "observe",
-            "summary": "observe",
-            "enum": "state",
-        }[metric.type]
         if metric.type == "counter" and not metric.config.get(
             "increment", True
         ):
             method = "set"
+        else:
+            method = {
+                "counter": "inc",
+                "gauge": "set",
+                "histogram": "observe",
+                "summary": "observe",
+                "enum": "state",
+            }[metric.type]
         return method
 
     def _update_metric_value(
@@ -325,11 +331,3 @@ class QueryLoop:
             timestamp,
             labels={"query": query.config_name},
         )
-
-    def _now(self) -> datetime:
-        """Return the current time with local timezone."""
-        return datetime.now().replace(tzinfo=gettz())
-
-    def _timestamp(self) -> float:
-        """Return the current timestamp."""
-        return self._now().timestamp()

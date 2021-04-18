@@ -48,8 +48,7 @@ dependencies = [
   "prometheus-client",
   "python-dateutil",
   "pyyaml",
-  "sqlalchemy<1.4",
-  "sqlalchemy-aio>=0.17",
+  "sqlalchemy>=2",
   "toolrack>=4",
 ]
 optional-dependencies.testing = [
