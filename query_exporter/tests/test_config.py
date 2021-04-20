@@ -138,12 +138,12 @@ class TestLoadConfig:
         assert database1.dsn == "sqlite:///foo"
         assert database1.keep_connected
         assert database1.autocommit
-        assert database1._engine._execution_options == {"autocommit": True}
+        assert database1.engine._execution_options == {"autocommit": True}
         assert database2.name == "db2"
         assert database2.dsn == "sqlite:///bar"
         assert not database2.keep_connected
         assert not database2.autocommit
-        assert database2._engine._execution_options == {"autocommit": False}
+        assert database2.engine._execution_options == {"autocommit": False}
 
     def test_load_databases_dsn_from_env(self, logger, write_config):
         """The database DSN can be loaded from env."""

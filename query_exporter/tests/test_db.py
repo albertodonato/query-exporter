@@ -3,12 +3,15 @@ import logging
 
 import pytest
 from sqlalchemy import create_engine
-from sqlalchemy_aio import ASYNCIO_STRATEGY
-from sqlalchemy_aio.base import AsyncConnection
+from sqlalchemy.engine import (
+    Connection,
+    Engine,
+)
 
 from ..db import (
     DataBase,
     DataBaseConnectError,
+    DataBaseConnection,
     DataBaseError,
     DataBaseQueryError,
     InvalidQueryParameters,
@@ -262,29 +265,100 @@ class TestQuery:
 
 
 class TestQueryResults:
-    @pytest.mark.asyncio
-    async def test_from_results(self):
-        """The from_results method creates a QueryResult."""
-        engine = create_engine("sqlite://", strategy=ASYNCIO_STRATEGY)
-        async with engine.connect() as conn:
-            result = await conn.execute("SELECT 1 AS a, 2 AS b")
-            query_results = await QueryResults.from_results(result)
+    def test_from_result(self):
+        """The from_result method returns a QueryResult."""
+        engine = create_engine("sqlite://")
+        with engine.connect() as conn:
+            result = conn.execute("SELECT 1 AS a, 2 AS b")
+            query_results = QueryResults.from_result(result)
         assert query_results.keys == ["a", "b"]
         assert query_results.rows == [(1, 2)]
         assert query_results.latency is None
 
-    @pytest.mark.asyncio
-    async def test_from_results_with_latency(self):
-        """The from_results method creates a QueryResult."""
-        engine = create_engine("sqlite://", strategy=ASYNCIO_STRATEGY)
-        async with engine.connect() as conn:
-            result = await conn.execute("SELECT 1 AS a, 2 AS b")
+    def test_from_empty(self):
+        """The from_result method returns empty QueryResult."""
+        engine = create_engine("sqlite://")
+        with engine.connect() as conn:
+            result = conn.execute("PRAGMA auto_vacuum = 1")
+            query_results = QueryResults.from_result(result)
+        assert query_results.keys == []
+        assert query_results.rows == []
+        assert query_results.latency is None
+
+    def test_from_result_with_latency(self):
+        """The from_result method tracks call latency."""
+        engine = create_engine("sqlite://")
+        with engine.connect() as conn:
+            result = conn.execute("SELECT 1 AS a, 2 AS b")
             # simulate latency tracking
-            conn.sync_connection.info["query_latency"] = 1.2
-            query_results = await QueryResults.from_results(result)
+            conn.info["query_latency"] = 1.2
+            query_results = QueryResults.from_result(result)
         assert query_results.keys == ["a", "b"]
         assert query_results.rows == [(1, 2)]
         assert query_results.latency == 1.2
+
+
+@pytest.fixture
+async def conn():
+    engine = create_engine("sqlite://")
+    connection = DataBaseConnection("db", engine)
+    yield connection
+    await connection.close()
+
+
+class TestDataBaseConnection:
+    def test_engine(self, conn):
+        """The connection keeps the SQLAlchemy engine."""
+        assert isinstance(conn.engine, Engine)
+
+    @pytest.mark.asyncio
+    async def test_open(self, conn):
+        """The open method opens the database connection."""
+        await conn.open()
+        assert conn.connected
+        assert conn._conn is not None
+        assert conn._worker.is_alive()
+
+    @pytest.mark.asyncio
+    async def test_open_noop(self, conn):
+        """The open method is a no-op if connection is already open."""
+        await conn.open()
+        await conn.open()
+        assert conn.connected
+
+    @pytest.mark.asyncio
+    async def test_close(self, conn):
+        """The close method closes the connection."""
+        await conn.open()
+        await conn.close()
+        assert not conn.connected
+        assert conn._conn is None
+
+    @pytest.mark.asyncio
+    async def test_close_noop(self, conn):
+        """The close method is a no-op if connection is already closed."""
+        await conn.open()
+        await conn.close()
+        await conn.close()
+        assert not conn.connected
+
+    @pytest.mark.asyncio
+    async def test_execute(self, conn):
+        """The connection can execute queries."""
+        await conn.open()
+        query_results = await conn.execute("SELECT 1 AS a, 2 AS b")
+        assert query_results.keys == ["a", "b"]
+        assert query_results.rows == [(1, 2)]
+
+    @pytest.mark.asyncio
+    async def test_execute_with_params(self, conn):
+        """The connection can execute queries with parameters."""
+        await conn.open()
+        query_results = await conn.execute(
+            "SELECT :a AS a, :b AS b", parameters={"a": 1, "b": 2}
+        )
+        assert query_results.keys == ["a", "b"]
+        assert query_results.rows == [(1, 2)]
 
 
 @pytest.fixture
@@ -334,12 +408,22 @@ class TestDataBase:
         assert str(error.value) == f'Invalid database DSN: "{dsn}"'
         assert f'Invalid database DSN: "{dsn}"' in caplog.text
 
+    def test_engine(self, db):
+        """The DataBase tracks the SQLAlchemy Engine."""
+        assert isinstance(db.engine, Engine)
+
+    def test_set_loggers(self, db):
+        """It's possible to set the logger for the DataBase."""
+        logger = logging.Logger("logger")
+        db.set_logger(logger)
+        assert db._logger is logger
+
     @pytest.mark.asyncio
     async def test_as_context_manager(self, db):
         """The database can be used as an async context manager."""
         async with DataBase("db", "sqlite://") as db:
-            result = await db.execute_sql("SELECT 10 AS a, 20 AS b")
-            assert await result.fetchall() == [(10, 20)]
+            query_result = await db.execute_sql("SELECT 10 AS a, 20 AS b")
+        assert query_result.rows == [(10, 20)]
         # the db is closed at context exit
         assert not db.connected
 
@@ -348,7 +432,8 @@ class TestDataBase:
         """The connect connects to the database."""
         with caplog.at_level(logging.DEBUG):
             await db.connect()
-        assert isinstance(db._conn, AsyncConnection)
+        assert db.connected
+        assert isinstance(db._conn._conn, Connection)
         assert caplog.messages == ['connected to database "db"']
 
     @pytest.mark.asyncio
@@ -395,12 +480,11 @@ class TestDataBase:
     async def test_close(self, caplog, db):
         """The close method closes database connection."""
         await db.connect()
-        connection = db._conn
         with caplog.at_level(logging.DEBUG):
             await db.close()
         assert caplog.messages == ['disconnected from database "db"']
-        assert connection.closed
-        assert db._conn is None
+        assert not db.connected
+        assert db._conn._conn is None
 
     @pytest.mark.asyncio
     async def test_execute_log(self, caplog):
@@ -424,7 +508,7 @@ class TestDataBase:
             "query", ["db"], [QueryMetric("metric", [])], "SELECT 1.0 AS metric"
         )
         await db.connect()
-        mock_conn_detach = mocker.patch.object(db._conn.sync_connection, "detach")
+        mock_conn_detach = mocker.patch.object(db._conn._conn, "detach")
         await db.execute(query)
         assert db.connected == connected
         if not connected:
@@ -454,7 +538,7 @@ class TestDataBase:
         metric_results = await db.execute(query)
         assert metric_results.results == [MetricResult("metric", 1, {})]
         # the connection is kept for reuse
-        assert not db._conn.closed
+        assert db.connected
 
     @pytest.mark.asyncio
     async def test_execute(self, db):
@@ -510,6 +594,15 @@ class TestDataBase:
         ]
 
     @pytest.mark.asyncio
+    async def test_execute_fail(self, caplog, db):
+        """If the query fails, an exception is raised."""
+        query = Query("query", 10, [QueryMetric("metric", [])], "WRONG")
+        await db.connect()
+        with pytest.raises(DataBaseQueryError) as error:
+            await db.execute(query)
+        assert "syntax error" in str(error.value)
+
+    @pytest.mark.asyncio
     async def test_execute_query_invalid_count(self, caplog, db):
         """If the number of fields don't match, an error is raised."""
         query = Query(
@@ -544,7 +637,7 @@ class TestDataBase:
         assert error.value.fatal
 
     @pytest.mark.asyncio
-    async def test_execute_query_invalid_names_with_labels(self, db):
+    async def test_execute_invalid_names_with_labels(self, db):
         """If the names of fields don't match, an error is raised."""
         query = Query(
             "query",
@@ -559,7 +652,7 @@ class TestDataBase:
         assert error.value.fatal
 
     @pytest.mark.asyncio
-    async def test_execute_query_traceback_debug(self, caplog, mocker, db):
+    async def test_execute_traceback_debug(self, caplog, mocker, db):
         """Traceback are logged as debug messages."""
         query = Query(
             "query",
@@ -567,15 +660,15 @@ class TestDataBase:
             [QueryMetric("metric", [])],
             "SELECT 1 AS metric",
         )
-        mocker.patch.object(db, "_execute_query").side_effect = Exception("boom!")
         await db.connect()
+        mocker.patch.object(db, "execute_sql").side_effect = Exception("boom!")
         with caplog.at_level(logging.DEBUG), pytest.raises(DataBaseQueryError) as error:
             await db.execute(query)
         assert str(error.value) == "boom!"
         assert not error.value.fatal
         assert 'query "query" on database "db" failed: boom!' in caplog.messages
         # traceback is included in messages
-        assert "await self._execute_query(query)" in caplog.messages[-1]
+        assert "await self.execute_sql(" in caplog.messages[-1]
 
     @pytest.mark.asyncio
     async def test_execute_timeout(self, caplog, db):
@@ -610,4 +703,4 @@ class TestDataBase:
         """It's possible to execute raw SQL."""
         await db.connect()
         result = await db.execute_sql("SELECT 10, 20")
-        assert await result.fetchall() == [(10, 20)]
+        assert result.rows == [(10, 20)]

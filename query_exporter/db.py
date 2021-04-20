@@ -1,13 +1,17 @@
 """Database wrapper."""
 
 import asyncio
+from concurrent import futures
+from functools import partial
 from itertools import chain
 import logging
 import sys
+from threading import Thread
 from time import perf_counter
 from traceback import format_tb
 from typing import (
     Any,
+    Callable,
     cast,
     Dict,
     FrozenSet,
@@ -25,16 +29,16 @@ from sqlalchemy import (
     event,
     text,
 )
+from sqlalchemy.engine import (
+    Connection,
+    Engine,
+    Result,
+)
 from sqlalchemy.exc import (
     ArgumentError,
     NoSuchModuleError,
 )
-from sqlalchemy_aio import ASYNCIO_STRATEGY
-from sqlalchemy_aio.asyncio import AsyncioEngine
-from sqlalchemy_aio.base import (
-    AsyncConnection,
-    AsyncResultProxy,
-)
+from sqlalchemy.sql.elements import TextClause
 
 #: Timeout for a query
 QueryTimeout = Union[int, float]
@@ -104,7 +108,7 @@ class InvalidQuerySchedule(Exception):
         super().__init__(f'Invalid schedule for query "{query_name}": {message}')
 
 
-# database errors that mean the query won't ever succeed.  Not all possible
+# Database errors that mean the query won't ever succeed.  Not all possible
 # fatal errors are tracked here, because some DBAPI errors can happen in
 # circumstances which can be fatal or not.  Since there doesn't seem to be a
 # reliable way to know, there might be cases when a query will never succeed
@@ -127,11 +131,16 @@ class QueryResults(NamedTuple):
     latency: Optional[float] = None
 
     @classmethod
-    async def from_results(cls, results: AsyncResultProxy):
+    def from_result(cls, result: Result) -> "QueryResults":
         """Return a QueryResults from results for a query."""
-        conn_info = results._result_proxy.connection.info
-        latency = conn_info.get("query_latency", None)
-        return cls(await results.keys(), await results.fetchall(), latency=latency)
+        if result.returns_rows:
+            keys = list(result.keys())
+            rows = result.all()
+        else:
+            keys = []
+            rows = []
+        latency = result.connection.info.get("query_latency", None)
+        return cls(keys, rows, latency=latency)
 
 
 class MetricResult(NamedTuple):
@@ -226,11 +235,117 @@ class Query:
             raise InvalidQueryParameters(self.name)
 
 
+class WorkerAction:
+    """An action to be called in the worker thread."""
+
+    def __init__(self, func: Callable):
+        self.func = func
+        self._future: asyncio.Future = asyncio.Future()
+
+    def set_result(self, result):
+        """Set the result of the action."""
+        self._future.set_result(result)
+
+    def set_exception(self, exception: Exception):
+        """Set the result of the action."""
+        self._future.set_exception(exception)
+
+    async def result(self):
+        """Return the action result."""
+        return await self._future
+
+
+class DataBaseConnection:
+    """A connection to a database engine."""
+
+    engine: Engine
+    _queue: asyncio.Queue
+    _thread: Thread
+    _conn: Optional[Connection] = None
+
+    def __init__(self, dbname: str, engine: Engine):
+        self.engine = engine
+        self._queue = asyncio.Queue()
+
+        target = partial(self._run, asyncio.get_event_loop())
+        self._worker = Thread(target=target, name=f"DataBase-{dbname}", daemon=True)
+
+    @property
+    def connected(self) -> bool:
+        """Whether the connection is open."""
+        return self._conn is not None
+
+    async def open(self):
+        """Open the connection."""
+        if self.connected:
+            return
+
+        self._worker.start()
+        return await self._call_in_thread(self._connect)
+
+    async def close(self):
+        """Close the connection."""
+        if not self.connected:
+            return
+
+        await self._call_in_thread(self._close)
+
+    async def execute(
+        self,
+        sql: TextClause,
+        parameters: Optional[Dict[str, Any]] = None,
+    ) -> QueryResults:
+        """Execute a query, returning results."""
+        if parameters is None:
+            parameters = {}
+        result = await self._call_in_thread(self._execute, sql, parameters)
+        query_results = await self._call_in_thread(QueryResults.from_result, result)
+        return cast(QueryResults, query_results)
+
+    def _connect(self):
+        self._conn = self.engine.connect()
+
+    def _execute(self, sql: TextClause, parameters: Dict[str, Any]) -> Result:
+        self._conn: Connection
+        return self._conn.execute(sql, parameters)
+
+    def _close(self):
+        self._conn: Connection
+        self._conn.detach()
+        self._conn.close()
+        self._conn = None
+
+    def _run(self, loop):
+        """The worker thread function."""
+        result = None
+        while True:
+            future = asyncio.run_coroutine_threadsafe(self._queue.get(), loop)
+            try:
+                action = future.result()
+            except futures.CancelledError:
+                # shut down
+                return
+
+            try:
+                result = action.func()
+            except Exception as e:
+                action.set_exception(e)
+            else:
+                action.set_result(result)
+            finally:
+                self._queue.task_done()
+
+    async def _call_in_thread(self, func: Callable, *args, **kwargs):
+        """Call a sync action in the worker thread."""
+        call = WorkerAction(partial(func, *args, **kwargs))
+        await self._queue.put(call)
+        return await call.result()
+
+
 class DataBase:
     """A database to perform Queries."""
 
-    _engine: AsyncioEngine
-    _conn: Optional[AsyncConnection] = None
+    _conn: DataBaseConnection
     _logger: logging.Logger = logging.getLogger()
     _pending_queries: int = 0
 
@@ -251,9 +366,8 @@ class DataBase:
         self.labels = labels or {}
         self._connect_lock = asyncio.Lock()
         try:
-            self._engine = create_engine(
+            engine = create_engine(
                 dsn,
-                strategy=ASYNCIO_STRATEGY,
                 execution_options={"autocommit": self.autocommit},
             )
         except ImportError as error:
@@ -261,11 +375,8 @@ class DataBase:
         except (ArgumentError, ValueError, NoSuchModuleError):
             raise self._db_error(f'Invalid database DSN: "{self.dsn}"', fatal=True)
 
-        # XXX workaround https://github.com/RazerM/sqlalchemy_aio/pull/37
-        self._engine.hide_parameters = self._engine.sync_engine.hide_parameters
-        self._engine.url = self._engine.sync_engine.url
-
-        self._setup_query_latency_tracking()
+        self._conn = DataBaseConnection(self.name, engine)
+        self._setup_query_latency_tracking(engine)
 
     async def __aenter__(self):
         await self.connect()
@@ -275,9 +386,14 @@ class DataBase:
         await self.close()
 
     @property
+    def engine(self) -> Engine:
+        """The database Engine."""
+        return self._conn.engine
+
+    @property
     def connected(self) -> bool:
         """Whether the database is connected."""
-        return self._conn is not None
+        return self._conn.connected
 
     def set_logger(self, logger: logging.Logger):
         """Set a logger for the DataBase"""
@@ -290,7 +406,7 @@ class DataBase:
                 return
 
             try:
-                self._conn = await self._engine.connect()
+                await self._conn.open()
             except Exception as error:
                 raise self._db_error(error, exc_class=DataBaseConnectError)
 
@@ -317,10 +433,11 @@ class DataBase:
         await self.connect()
         self._logger.debug(f'running query "{query.name}" on database "{self.name}"')
         self._pending_queries += 1
-        self._conn: AsyncConnection
         try:
-            result = await self._execute_query(query)
-            return query.results(await QueryResults.from_results(result))
+            query_results = await self.execute_sql(
+                query.sql, parameters=query.parameters, timeout=query.timeout
+            )
+            return query.results(query_results)
         except asyncio.TimeoutError:
             raise self._query_timeout_error(
                 query.name, cast(QueryTimeout, query.timeout)
@@ -340,33 +457,22 @@ class DataBase:
         sql: str,
         parameters: Optional[Dict[str, Any]] = None,
         timeout: Optional[QueryTimeout] = None,
-    ) -> AsyncResultProxy:
+    ) -> QueryResults:
         """Execute a raw SQL query."""
         if parameters is None:
             parameters = {}
-        self._conn: AsyncConnection
         return await asyncio.wait_for(
             self._conn.execute(text(sql), parameters),
             timeout=timeout,
         )
 
-    async def _execute_query(self, query: Query) -> AsyncResultProxy:
-        """Execute a query."""
-        return await self.execute_sql(
-            query.sql, parameters=query.parameters, timeout=query.timeout
-        )
-
     async def _close(self):
         # ensure the connection with the DB is actually closed
-        self._conn.sync_connection.detach()
         await self._conn.close()
-        self._conn = None
         self._pending_queries = 0
         self._logger.debug(f'disconnected from database "{self.name}"')
 
-    def _setup_query_latency_tracking(self):
-        engine = self._engine.sync_engine
-
+    def _setup_query_latency_tracking(self, engine: Engine):
         @event.listens_for(engine, "before_cursor_execute")
         def before_cursor_execute(
             conn, cursor, statement, parameters, context, executemany
