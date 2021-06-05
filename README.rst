@@ -172,11 +172,11 @@ Each metric definition can have the following keys:
   the type of the metric, must be specified. The following metric types are
   supported:
 
-  - counter
-  - enum
-  - gauge
-  - histogram
-  - summary
+  - ``counter``: value is incremented with each result from queries
+  - ``enum``: value is set with each result from queries
+  - ``gauge``: value is set with each result from queries
+  - ``histogram``: each result from queries is added to observations
+  - ``summary``: each result from queries is added to observations
 
 ``description``:
   an optional description of the metric.
