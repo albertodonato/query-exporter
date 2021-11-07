@@ -82,7 +82,7 @@ def metric_values(metric, by_labels=()):
         suffix = "_total"
 
     values = defaultdict(list)
-    for sample_suffix, labels, value in metric._samples():
+    for sample_suffix, labels, value, *_ in metric._samples():
         if sample_suffix == suffix:
             if by_labels:
                 label_values = tuple(labels[label] for label in by_labels)
