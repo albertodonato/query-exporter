@@ -4,7 +4,7 @@ fail_under = 100.0
 skip_covered = true
 
 [tool.coverage.run]
-source = ["${project.base}"]
+source = ["query_exporter"]
 omit = [
   "query_exporter/main.py",
   "query_exporter/conftest.py"
