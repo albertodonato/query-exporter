@@ -9,7 +9,6 @@ import time
 from typing import (
     Any,
     Dict,
-    Iterable,
     List,
     Mapping,
     Optional,
@@ -71,7 +70,16 @@ class QueryLoop:
         # track last seen time for label values for metrics that have an
         # expiration. The key is a tuple with metric name and label values
         self._series_last_seen: Dict[Tuple, float] = {}
-        self._setup()
+
+        self._databases: Dict[str, DataBase] = {
+            db_config.name: DataBase(db_config, logger=self._logger)
+            for db_config in self._config.databases.values()
+        }
+        for query in self._config.queries.values():
+            if query.timed:
+                self._timed_queries.append(query)
+            else:
+                self._aperiodic_queries.append(query)
 
     async def start(self):
         """Start timed queries execution."""
@@ -89,7 +97,7 @@ class QueryLoop:
         coros = (call.stop() for call in self._timed_calls.values())
         await asyncio.gather(*coros, return_exceptions=True)
         self._timed_calls.clear()
-        coros = (db.close() for db in self._databases)
+        coros = (db.close() for db in self._databases.values())
         await asyncio.gather(*coros, return_exceptions=True)
 
     def clear_expired_series(self):
@@ -127,22 +135,6 @@ class QueryLoop:
             delta = cc - t
             yield self._loop.time() + delta
 
-    @property
-    def _databases(self) -> Iterable[DataBase]:
-        """Return an iterable with defined Databases."""
-        return self._config.databases.values()
-
-    def _setup(self):
-        """Initialize instance attributes."""
-        for database in self._databases:
-            database.set_logger(self._logger)
-
-        for query in self._config.queries.values():
-            if query.timed:
-                self._timed_queries.append(query)
-            else:
-                self._aperiodic_queries.append(query)
-
     def _run_query(self, query: Query):
         """Periodic task to run a query."""
         for dbname in query.databases:
@@ -153,7 +145,7 @@ class QueryLoop:
         if await self._remove_if_dooomed(query, dbname):
             return
 
-        db = self._config.databases[dbname]
+        db = self._databases[dbname]
         try:
             metric_results = await db.execute(query)
         except DataBaseConnectError:
@@ -210,8 +202,8 @@ class QueryLoop:
         elif isinstance(value, Decimal):
             value = float(value)
         method = self._METRIC_METHODS[self._config.metrics[name].type]
-        all_labels = {DATABASE_LABEL: database.name}
-        all_labels.update(database.labels)
+        all_labels = {DATABASE_LABEL: database.config.name}
+        all_labels.update(database.config.labels)
         if labels:
             all_labels.update(labels)
         labels_string = ",".join(

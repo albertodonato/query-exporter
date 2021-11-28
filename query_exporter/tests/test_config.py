@@ -138,12 +138,10 @@ class TestLoadConfig:
         assert database1.dsn == "sqlite:///foo"
         assert database1.keep_connected
         assert database1.autocommit
-        assert database1._engine._execution_options == {"autocommit": True}
         assert database2.name == "db2"
         assert database2.dsn == "sqlite:///bar"
         assert not database2.keep_connected
         assert not database2.autocommit
-        assert database2._engine._execution_options == {"autocommit": False}
 
     def test_load_databases_dsn_from_env(self, logger, write_config):
         """The database DSN can be loaded from env."""
@@ -270,6 +268,23 @@ class TestLoadConfig:
             str(err.value)
             == 'Unable to read dsn file : "/not/found": No such file or directory'
         )
+
+    def test_load_databases_no_labels(self, logger, write_config):
+        """If no labels are defined, an empty dict is returned."""
+        config = {
+            "databases": {
+                "db": {
+                    "dsn": "sqlite://",
+                }
+            },
+            "metrics": {},
+            "queries": {},
+        }
+        config_file = write_config(config)
+        with config_file.open() as fd:
+            result = load_config(fd, logger)
+        db = result.databases["db"]
+        assert db.labels == {}
 
     def test_load_databases_labels(self, logger, write_config):
         """Labels can be defined for databases."""

@@ -6,7 +6,9 @@ from sqlalchemy import create_engine
 from sqlalchemy_aio import ASYNCIO_STRATEGY
 from sqlalchemy_aio.base import AsyncConnection
 
+from ..config import DataBaseConfig
 from ..db import (
+    create_db_engine,
     DataBase,
     DataBaseConnectError,
     DataBaseError,
@@ -28,6 +30,22 @@ class TestInvalidResultCount:
         """The error messagecontains counts."""
         error = InvalidResultCount(1, 2)
         assert str(error) == "Wrong result count from query: expected 1, got 2"
+
+
+class TestCreateDBEngine:
+    def test_instantiate_missing_engine_module(self, caplog):
+        """An error is raised if a module for the engine is missing."""
+        with caplog.at_level(logging.ERROR):
+            with pytest.raises(DataBaseError) as error:
+                create_db_engine("postgresql:///foo")
+        assert str(error.value) == 'module "psycopg2" not found'
+
+    @pytest.mark.parametrize("dsn", ["foo-bar", "unknown:///db"])
+    def test_instantiate_invalid_dsn(self, caplog, dsn):
+        """An error is raised if a the provided DSN is invalid."""
+        with caplog.at_level(logging.ERROR), pytest.raises(DataBaseError) as error:
+            create_db_engine(dsn)
+        assert str(error.value) == f'Invalid database DSN: "{dsn}"'
 
 
 class TestQuery:
@@ -288,56 +306,31 @@ class TestQueryResults:
 
 
 @pytest.fixture
-async def db():
-    db = DataBase("db", "sqlite://")
+def db_config():
+    return DataBaseConfig(
+        name="db",
+        dsn="sqlite://",
+    )
+
+
+@pytest.fixture
+async def db(db_config):
+    db = DataBase(db_config)
     yield db
     await db.close()
 
 
 class TestDataBase:
-    def test_instantiate(self):
+    def test_instantiate(self, db_config):
         """A DataBase can be instantiated with the specified arguments."""
-        db = DataBase("db", "sqlite:///foo")
-        assert db.name == "db"
-        assert db.dsn == "sqlite:///foo"
-        assert db.keep_connected
-        assert db.labels == {}
-
-    def test_instantiate_no_keep_connected(self):
-        """keep_connected can be set to false."""
-        db = DataBase("db", "sqlite:///foo", keep_connected=False)
-        assert not db.keep_connected
-
-    def test_instantiate_with_labels(self):
-        """Static labels can be passed to a database."""
-        db = DataBase("db", "sqlite:///foo", labels={"l1": "v1", "l2": "v2"})
-        assert db.labels == {"l1": "v1", "l2": "v2"}
-
-    def test_instantiate_missing_engine_module(self, caplog):
-        """An error is raised if a module for the engine is missing."""
-        with caplog.at_level(logging.ERROR):
-            with pytest.raises(DataBaseError) as error:
-                DataBase("db", "postgresql:///foo")
-        assert str(error.value) == 'module "psycopg2" not found'
-        assert 'module "psycopg2" not found' in caplog.text
-
-    def test_instantiate_autocommit_false(self):
-        """Query autocommit can be set to False."""
-        db = DataBase("db", "sqlite:///foo", autocommit=False)
-        assert not db.autocommit
-
-    @pytest.mark.parametrize("dsn", ["foo-bar", "unknown:///db"])
-    def test_instantiate_invalid_dsn(self, caplog, dsn):
-        """An error is raised if a the provided DSN is invalid."""
-        with caplog.at_level(logging.ERROR), pytest.raises(DataBaseError) as error:
-            DataBase("db", dsn)
-        assert str(error.value) == f'Invalid database DSN: "{dsn}"'
-        assert f'Invalid database DSN: "{dsn}"' in caplog.text
+        db = DataBase(db_config)
+        assert db.config is db_config
+        assert db.logger == logging.getLogger()
 
     @pytest.mark.asyncio
     async def test_as_context_manager(self, db):
         """The database can be used as an async context manager."""
-        async with DataBase("db", "sqlite://") as db:
+        async with db:
             result = await db.execute_sql("SELECT 10 AS a, 20 AS b")
             assert await result.fetchall() == [(10, 20)]
         # the db is closed at context exit
@@ -361,7 +354,8 @@ class TestDataBase:
     @pytest.mark.asyncio
     async def test_connect_error(self):
         """A DataBaseConnectError is raised if database connection fails."""
-        db = DataBase("db", "sqlite:////invalid")
+        config = DataBaseConfig(name="db", dsn="sqlite:////invalid")
+        db = DataBase(config)
         with pytest.raises(DataBaseConnectError) as error:
             await db.connect()
         assert "unable to open database file" in str(error.value)
@@ -369,7 +363,12 @@ class TestDataBase:
     @pytest.mark.asyncio
     async def test_connect_sql(self):
         """If connect_sql is specified, it's run at connection."""
-        db = DataBase("db", "sqlite://", connect_sql=["SELECT 1", "SELECT 2"])
+        config = DataBaseConfig(
+            name="db",
+            dsn="sqlite://",
+            connect_sql=["SELECT 1", "SELECT 2"],
+        )
+        db = DataBase(config)
 
         queries = []
 
@@ -384,7 +383,12 @@ class TestDataBase:
     @pytest.mark.asyncio
     async def test_connect_sql_fail(self, caplog):
         """If the SQL at connection fails, an error is raised."""
-        db = DataBase("db", "sqlite://", connect_sql=["WRONG"])
+        config = DataBaseConfig(
+            name="db",
+            dsn="sqlite://",
+            connect_sql=["WRONG"],
+        )
+        db = DataBase(config)
         with caplog.at_level(logging.DEBUG), pytest.raises(DataBaseQueryError) as error:
             await db.connect()
         assert not db.connected
@@ -403,9 +407,8 @@ class TestDataBase:
         assert db._conn is None
 
     @pytest.mark.asyncio
-    async def test_execute_log(self, caplog):
+    async def test_execute_log(self, db, caplog):
         """A message is logged about the query being executed."""
-        db = DataBase("db", "sqlite://")
         query = Query(
             "query", ["db"], [QueryMetric("metric", [])], "SELECT 1.0 AS metric"
         )
@@ -419,7 +422,8 @@ class TestDataBase:
     @pytest.mark.asyncio
     async def test_execute_keep_connected(self, mocker, connected):
         """If keep_connected is set to true, the db is not closed."""
-        db = DataBase("db", "sqlite://", keep_connected=connected)
+        config = DataBaseConfig(name="db", dsn="sqlite://", keep_connected=connected)
+        db = DataBase(config)
         query = Query(
             "query", ["db"], [QueryMetric("metric", [])], "SELECT 1.0 AS metric"
         )
@@ -434,7 +438,8 @@ class TestDataBase:
     @pytest.mark.asyncio
     async def test_execute_no_keep_disconnect_after_pending_queries(self):
         """The db is disconnected only after pending queries are run."""
-        db = DataBase("db", "sqlite://", keep_connected=False)
+        config = DataBaseConfig(name="db", dsn="sqlite://", keep_connected=False)
+        db = DataBase(config)
         query1 = Query(
             "query1", ["db"], [QueryMetric("metric1", [])], "SELECT 1.0 AS metric1"
         )

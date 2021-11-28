@@ -2,6 +2,10 @@
 
 from collections import defaultdict
 from copy import deepcopy
+from dataclasses import (
+    dataclass,
+    field,
+)
 from logging import Logger
 import os
 from pathlib import Path
@@ -13,7 +17,6 @@ from typing import (
     IO,
     List,
     Mapping,
-    NamedTuple,
     Optional,
     Set,
     Tuple,
@@ -30,8 +33,9 @@ import yaml
 
 from . import PACKAGE
 from .db import (
-    DataBase,
+    create_db_engine,
     DATABASE_LABEL,
+    DataBaseError,
     InvalidQueryParameters,
     InvalidQuerySchedule,
     Query,
@@ -74,10 +78,29 @@ class ConfigError(Exception):
     """Configuration is invalid."""
 
 
-class Config(NamedTuple):
+@dataclass(frozen=True)
+class DataBaseConfig:
+    """Configuration for a database."""
+
+    name: str
+    dsn: str
+    connect_sql: List[str] = field(default_factory=list)
+    labels: Dict[str, str] = field(default_factory=dict)
+    keep_connected: bool = True
+    autocommit: bool = True
+
+    def __post_init__(self):
+        try:
+            create_db_engine(self.dsn)
+        except DataBaseError as e:
+            raise ConfigError(str(e))
+
+
+@dataclass(frozen=True)
+class Config:
     """Top-level configuration."""
 
-    databases: Dict[str, DataBase]
+    databases: Dict[str, DataBaseConfig]
     metrics: Dict[str, MetricConfig]
     queries: Dict[str, Query]
 
@@ -101,21 +124,21 @@ def load_config(config_fd: IO, logger: Logger, env: Environ = os.environ) -> Con
 
 def _get_databases(
     configs: Dict[str, Dict[str, Any]], env: Environ
-) -> Tuple[Dict[str, DataBase], FrozenSet[str]]:
-    """Return a dict mapping names to DataBases."""
+) -> Tuple[Dict[str, DataBaseConfig], FrozenSet[str]]:
+    """Return a dict mapping names to database configs, and a set of database labels."""
     databases = {}
     all_db_labels: Set[FrozenSet[str]] = set()  # set of all labels sets
     try:
         for name, config in configs.items():
-            labels = config.get("labels")
-            all_db_labels.add(frozenset((labels) if labels else frozenset()))
-            databases[name] = DataBase(
+            labels = config.get("labels", {})
+            all_db_labels.add(frozenset(labels))
+            databases[name] = DataBaseConfig(
                 name,
                 _resolve_dsn(config["dsn"], env),
-                connect_sql=config.get("connect-sql"),
+                connect_sql=config.get("connect-sql", []),
+                labels=labels,
                 keep_connected=config.get("keep-connected", True),
                 autocommit=config.get("autocommit", True),
-                labels=labels,
             )
     except Exception as e:
         raise ConfigError(str(e))

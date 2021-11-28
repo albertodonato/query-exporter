@@ -10,7 +10,10 @@ import pytest
 import yaml
 
 from .. import loop
-from ..config import load_config
+from ..config import (
+    DataBaseConfig,
+    load_config,
+)
 from ..db import DataBase
 
 
@@ -94,7 +97,8 @@ def metric_values(metric, by_labels=()):
 
 
 async def run_queries(db_file: Path, *queries: str):
-    async with DataBase("db", f"sqlite:///{db_file}") as db:
+    config = DataBaseConfig(name="db", dsn=f"sqlite:///{db_file}")
+    async with DataBase(config) as db:
         for query in queries:
             await db.execute_sql(query)
 
@@ -206,7 +210,7 @@ class TestQueryLoop:
 
     async def test_update_metric_decimal_value(self, registry, make_query_loop):
         """A Decimal value in query results is converted to float."""
-        db = DataBase("db", "sqlite://")
+        db = DataBase(DataBaseConfig(name="db", dsn="sqlite://"))
         query_loop = make_query_loop()
         query_loop._update_metric(db, "m", Decimal("100.123"))
         metric = registry.get_metric("m")
@@ -265,7 +269,7 @@ class TestQueryLoop:
     ):
         """Count of database errors is incremented on failed connection."""
         query_loop = make_query_loop()
-        db = query_loop._config.databases["db"]
+        db = query_loop._databases["db"]
         mock_connect = mocker.patch.object(db._engine, "connect")
         mock_connect.side_effect = Exception("connection failed")
         await query_loop.start()
@@ -291,7 +295,7 @@ class TestQueryLoop:
         config_data["queries"]["q"]["timeout"] = 0.1
         query_loop = make_query_loop()
         await query_loop.start()
-        db = query_loop._config.databases["db"]
+        db = query_loop._databases["db"]
         await db.connect()
 
         async def execute(sql, parameters):

@@ -1,6 +1,7 @@
 """Script entry point."""
 
 import argparse
+from functools import partial
 from typing import (
     IO,
     List,
@@ -49,24 +50,27 @@ class QueryExporterScript(PrometheusExporterScript):
         autocomplete(parser)
 
     def configure(self, args: argparse.Namespace):
-        config = self._load_config(args.config)
+        self.config = self._load_config(args.config)
         if args.check_only:
             self.exit()
-        self.create_metrics(config.metrics.values())
-        self.query_loop = QueryLoop(config, self.registry, self.logger)
+        self.create_metrics(self.config.metrics.values())
 
     async def on_application_startup(self, application: Application):
         self.logger.info(f"version {__version__} starting up")
-        application["exporter"].set_metric_update_handler(self._update_handler)
-        await self.query_loop.start()
+        query_loop = QueryLoop(self.config, self.registry, self.logger)
+        application["exporter"].set_metric_update_handler(
+            partial(self._update_handler, query_loop)
+        )
+        application["query-loop"] = query_loop
+        await query_loop.start()
 
     async def on_application_shutdown(self, application: Application):
-        await self.query_loop.stop()
+        await application["query-loop"].stop()
 
-    async def _update_handler(self, metrics: List[MetricConfig]):
+    async def _update_handler(self, query_loop: QueryLoop, metrics: List[MetricConfig]):
         """Run queries with no specified schedule on each request."""
-        await self.query_loop.run_aperiodic_queries()
-        self.query_loop.clear_expired_series()
+        await query_loop.run_aperiodic_queries()
+        query_loop.clear_expired_series()
 
     def _load_config(self, config_file: IO) -> Config:
         """Load the application configuration."""

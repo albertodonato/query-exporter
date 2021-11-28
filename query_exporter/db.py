@@ -112,6 +112,16 @@ class InvalidQuerySchedule(Exception):
 FATAL_ERRORS = (InvalidResultCount, InvalidResultColumnNames)
 
 
+def create_db_engine(dsn: str, **kwargs) -> AsyncioEngine:
+    """Create the database engine, validating the DSN"""
+    try:
+        return create_engine(dsn, **kwargs)
+    except ImportError as error:
+        raise DataBaseError(f'module "{error.name}" not found')
+    except (ArgumentError, ValueError, NoSuchModuleError):
+        raise DataBaseError(f'Invalid database DSN: "{dsn}"')
+
+
 class QueryMetric(NamedTuple):
     """Metric details for a Query."""
 
@@ -231,35 +241,21 @@ class DataBase:
 
     _engine: AsyncioEngine
     _conn: Optional[AsyncConnection] = None
-    _logger: logging.Logger = logging.getLogger()
     _pending_queries: int = 0
 
     def __init__(
         self,
-        name: str,
-        dsn: str,
-        connect_sql: Optional[List[str]] = None,
-        keep_connected: Optional[bool] = True,
-        autocommit: Optional[bool] = True,
-        labels: Optional[Dict[str, str]] = None,
+        config,
+        logger: logging.Logger = logging.getLogger(),
     ):
-        self.name = name
-        self.dsn = dsn
-        self.connect_sql = connect_sql or []
-        self.keep_connected = keep_connected
-        self.autocommit = autocommit
-        self.labels = labels or {}
+        self.config = config
+        self.logger = logger
         self._connect_lock = asyncio.Lock()
-        try:
-            self._engine = create_engine(
-                dsn,
-                strategy=ASYNCIO_STRATEGY,
-                execution_options={"autocommit": self.autocommit},
-            )
-        except ImportError as error:
-            raise self._db_error(f'module "{error.name}" not found', fatal=True)
-        except (ArgumentError, ValueError, NoSuchModuleError):
-            raise self._db_error(f'Invalid database DSN: "{self.dsn}"', fatal=True)
+        self._engine = create_db_engine(
+            self.config.dsn,
+            strategy=ASYNCIO_STRATEGY,
+            execution_options={"autocommit": self.config.autocommit},
+        )
 
         # XXX workaround https://github.com/RazerM/sqlalchemy_aio/pull/37
         self._engine.hide_parameters = self._engine.sync_engine.hide_parameters
@@ -279,10 +275,6 @@ class DataBase:
         """Whether the database is connected."""
         return self._conn is not None
 
-    def set_logger(self, logger: logging.Logger):
-        """Set a logger for the DataBase"""
-        self._logger = logger
-
     async def connect(self):
         """Connect to the database."""
         async with self._connect_lock:
@@ -294,8 +286,8 @@ class DataBase:
             except Exception as error:
                 raise self._db_error(error, exc_class=DataBaseConnectError)
 
-            self._logger.debug(f'connected to database "{self.name}"')
-            for sql in self.connect_sql:
+            self.logger.debug(f'connected to database "{self.config.name}"')
+            for sql in self.config.connect_sql:
                 try:
                     await self.execute_sql(sql)
                 except Exception as error:
@@ -315,7 +307,9 @@ class DataBase:
     async def execute(self, query: Query) -> MetricResults:
         """Execute a query."""
         await self.connect()
-        self._logger.debug(f'running query "{query.name}" on database "{self.name}"')
+        self.logger.debug(
+            f'running query "{query.name}" on database "{self.config.name}"'
+        )
         self._pending_queries += 1
         self._conn: AsyncConnection
         try:
@@ -332,7 +326,7 @@ class DataBase:
         finally:
             assert self._pending_queries >= 0, "pending queries is negative"
             self._pending_queries -= 1
-            if not self.keep_connected and not self._pending_queries:
+            if not self.config.keep_connected and not self._pending_queries:
                 await self.close()
 
     async def execute_sql(
@@ -362,7 +356,7 @@ class DataBase:
         await self._conn.close()
         self._conn = None
         self._pending_queries = 0
-        self._logger.debug(f'disconnected from database "{self.name}"')
+        self.logger.debug(f'disconnected from database "{self.config.name}"')
 
     def _setup_query_latency_tracking(self):
         engine = self._engine.sync_engine
@@ -389,18 +383,18 @@ class DataBase:
     ) -> DataBaseError:
         """Create and log a DataBaseError for a failed query."""
         message = self._error_message(error)
-        self._logger.error(
-            f'query "{query_name}" on database "{self.name}" failed: ' + message
+        self.logger.error(
+            f'query "{query_name}" on database "{self.config.name}" failed: ' + message
         )
         _, _, traceback = sys.exc_info()
-        self._logger.debug("".join(format_tb(traceback)))
+        self.logger.debug("".join(format_tb(traceback)))
         return DataBaseQueryError(message, fatal=fatal)
 
     def _query_timeout_error(
         self, query_name: str, timeout: QueryTimeout
     ) -> QueryTimeoutExpired:
         error = QueryTimeoutExpired(query_name, timeout)
-        self._logger.warning(str(error))
+        self.logger.warning(str(error))
         raise error
 
     def _db_error(
@@ -411,7 +405,7 @@ class DataBase:
     ) -> DataBaseError:
         """Create and log a DataBaseError."""
         message = self._error_message(error)
-        self._logger.error(f'error from database "{self.name}": {message}')
+        self.logger.error(f'error from database "{self.config.name}": {message}')
         return exc_class(message, fatal=fatal)
 
     def _error_message(self, error: Union[str, Exception]) -> str:
