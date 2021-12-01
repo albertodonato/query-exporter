@@ -1,3 +1,12 @@
+v2.7.1 - 2021-12-01
+===================
+
+- Require Python3.8
+- Move creation of async locks and queues after loop setup (#90, #96).
+- Update Python project config.
+- Document action performed for each query type (#86).
+
+
 v2.7.0 - 2021-03-28
 ===================
 
