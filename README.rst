@@ -533,7 +533,7 @@ The image has support for connecting the following databases:
 .. _`Docker Hub`: https://hub.docker.com/r/adonato/query-exporter
 .. _`database-specific options`: databases.rst
 
-.. |query-exporter logo| image:: https://raw.githubusercontent.com/albertodonato/query-exporter/master/logo.svg
+.. |query-exporter logo| image:: https://raw.githubusercontent.com/albertodonato/query-exporter/main/logo.svg
    :alt: query-exporter logo
 .. |Latest Version| image:: https://img.shields.io/pypi/v/query-exporter.svg
    :alt: Latest Version
@@ -541,7 +541,7 @@ The image has support for connecting the following databases:
 .. |Build Status| image:: https://github.com/albertodonato/query-exporter/workflows/CI/badge.svg
    :alt: Build Status
    :target: https://github.com/albertodonato/query-exporter/actions?query=workflow%3ACI
-.. |Coverage Status| image:: https://img.shields.io/codecov/c/github/albertodonato/query-exporter/master.svg
+.. |Coverage Status| image:: https://img.shields.io/codecov/c/github/albertodonato/query-exporter/main.svg
    :alt: Coverage Status
    :target: https://codecov.io/gh/albertodonato/query-exporter
 .. |Snap Package| image:: https://snapcraft.io/query-exporter/badge.svg
