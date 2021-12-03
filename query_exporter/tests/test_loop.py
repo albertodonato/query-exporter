@@ -1,5 +1,6 @@
 import asyncio
 from collections import defaultdict
+from datetime import datetime
 from decimal import Decimal
 import logging
 from pathlib import Path
@@ -77,6 +78,15 @@ async def query_loop(make_query_loop):
     yield make_query_loop()
 
 
+@pytest.fixture
+def metrics_expiration():
+    yield {
+        "m1": 50,
+        "m2": 100,
+        "m3": None,
+    }
+
+
 def metric_values(metric, by_labels=()):
     """Return values for the metric."""
     if metric._type == "gauge":
@@ -101,6 +111,40 @@ async def run_queries(db_file: Path, *queries: str):
     async with DataBase(config) as db:
         for query in queries:
             await db.execute_sql(query)
+
+
+class TestMetricsLastSeen:
+    def test_update(self, metrics_expiration):
+        """Last seen times are tracked for each series of metrics with expiration."""
+        last_seen = loop.MetricsLastSeen(metrics_expiration)
+        last_seen.update("m1", {"l1": "v1", "l2": "v2"}, 100)
+        last_seen.update("m1", {"l1": "v3", "l2": "v4"}, 200)
+        last_seen.update("other", {"l3": "v100"}, 300)
+        assert last_seen._last_seen == {
+            "m1": {
+                ("v1", "v2"): 100,
+                ("v3", "v4"): 200,
+            }
+        }
+
+    def test_update_label_values_sorted_by_name(self, metrics_expiration):
+        """Last values are sorted by label names."""
+        last_seen = loop.MetricsLastSeen(metrics_expiration)
+        last_seen.update("m1", {"l2": "v2", "l1": "v1"}, 100)
+        assert last_seen._last_seen == {"m1": {("v1", "v2"): 100}}
+
+    def test_expire_series(self, metrics_expiration):
+        """Expired metric series are returned and removed."""
+        last_seen = loop.MetricsLastSeen(metrics_expiration)
+        last_seen.update("m1", {"l1": "v1", "l2": "v2"}, 10)
+        last_seen.update("m1", {"l1": "v3", "l2": "v4"}, 100)
+        last_seen.update("m2", {"l3": "v100"}, 100)
+        expired = last_seen.expire_series(120)
+        assert expired == {"m1": [("v1", "v2")], "m2": []}
+        assert last_seen._last_seen == {
+            "m1": {("v3", "v4"): 100},
+            "m2": {("v100",): 100},
+        }
 
 
 @pytest.mark.asyncio
@@ -472,6 +516,8 @@ class TestQueryLoop:
             'INSERT INTO test VALUES (20, "bar")',
         )
         query_loop = make_query_loop()
+        mock_timestamp = mocker.patch.object(query_loop, "_timestamp")
+        mock_timestamp.return_value = datetime.now().timestamp()
         await query_loop.run_aperiodic_queries()
         await query_tracker.wait_results()
         queries_metric = registry.get_metric("m")
@@ -479,14 +525,12 @@ class TestQueryLoop:
             ("foo",): 10.0,
             ("bar",): 20.0,
         }
-        # mock that more time has passed than expiration
-        mocker.patch.object(query_loop, "_timestamp").return_value = (
-            query_loop._timestamp() + 20
-        )
         await run_queries(
             db,
             "DELETE FROM test WHERE m = 10",
         )
+        # mock that more time has passed than expiration
+        mock_timestamp.return_value += 20
         await query_loop.run_aperiodic_queries()
         await query_tracker.wait_results()
         query_loop.clear_expired_series()

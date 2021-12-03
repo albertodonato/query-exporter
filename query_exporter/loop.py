@@ -40,6 +40,58 @@ from .db import (
 )
 
 
+class MetricsLastSeen:
+    """Track last seen times for metrics.
+
+    It assumes labels are sorted by name in metrics.
+
+    """
+
+    def __init__(self, expirations: Dict[str, Optional[int]]):
+        self._expirations = expirations
+        self._last_seen: Dict[str, Dict[Tuple[str, ...], float]] = defaultdict(dict)
+
+    def update(
+        self,
+        name: str,
+        labels: Dict[str, str],
+        timestamp: float,
+    ):
+        """Update last seen for a metric with a set of labels to given timestamp."""
+        if not self._expirations.get(name):
+            return
+
+        # sort by label name
+        label_values = tuple(value for _, value in sorted(labels.items()))
+        self._last_seen[name][label_values] = timestamp
+
+    def expire_series(self, timestamp: float) -> Dict[str, List[Tuple[str, ...]]]:
+        """Expire and return expired metric series at the given timestamp.
+
+        Expired series are removed internally.
+
+        Return a dict mapping metric names to a list of tuples of sorted label
+        values for expired series.
+
+        """
+        expired = {}
+        for name, metric_last_seen in self._last_seen.items():
+            expiration = self._expirations[name]
+            if expiration is None:
+                continue
+
+            expired[name] = [
+                label_values
+                for label_values, last_seen in metric_last_seen.items()
+                if timestamp > last_seen + expiration
+            ]
+        # clear expired series from tracking
+        for name, series_labels in expired.items():
+            for label_values in series_labels:
+                del self._last_seen[name][label_values]
+        return expired
+
+
 class QueryLoop:
     """Run database queries and collect metrics."""
 
@@ -67,14 +119,17 @@ class QueryLoop:
         # map query names to list of database names
         self._doomed_queries: Dict[str, Set[str]] = defaultdict(set)
         self._loop = asyncio.get_event_loop()
-        # track last seen time for label values for metrics that have an
-        # expiration. The key is a tuple with metric name and label values
-        self._series_last_seen: Dict[Tuple, float] = {}
-
+        self._last_seen = MetricsLastSeen(
+            {
+                name: metric.config.get("expiration")
+                for name, metric in self._config.metrics.items()
+            }
+        )
         self._databases: Dict[str, DataBase] = {
             db_config.name: DataBase(db_config, logger=self._logger)
             for db_config in self._config.databases.values()
         }
+
         for query in self._config.queries.values():
             if query.timed:
                 self._timed_queries.append(query)
@@ -102,20 +157,11 @@ class QueryLoop:
 
     def clear_expired_series(self):
         """Clear metric series that have expired."""
-        expired = []
-        now = self._timestamp()
-        for key, timestamp in self._series_last_seen.items():
-            name, *label_values = key
-            expiration = self._config.metrics[name].config["expiration"]
-            if timestamp + expiration > now:
-                continue
-
-            expired.append(key)
+        expired_series = self._last_seen.expire_series(self._timestamp())
+        for name, label_values in expired_series.items():
             metric = self._registry.get_metric(name)
-            metric.remove(*label_values)
-
-        for key in expired:
-            del self._series_last_seen[key]
+            for values in label_values:
+                metric.remove(*values)
 
     async def run_aperiodic_queries(self):
         """Run queries on request."""
@@ -214,15 +260,7 @@ class QueryLoop:
         )
         metric = self._registry.get_metric(name, labels=all_labels)
         getattr(metric, method)(value)
-        self._update_metric_expiration(name, all_labels)
-
-    def _update_metric_expiration(self, name: str, labels: Dict[str, str]):
-        if not self._config.metrics[name].config.get("expiration"):
-            return
-
-        # key by metric name and label values, sorted by label name
-        key = (name, *(value for _, value in sorted(labels.items())))
-        self._series_last_seen[key] = self._timestamp()
+        self._last_seen.update(name, all_labels, self._timestamp())
 
     def _increment_queries_count(self, database: DataBase, query: Query, status: str):
         """Increment count of queries in a status for a database."""
