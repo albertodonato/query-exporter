@@ -8,6 +8,7 @@ from logging import Logger
 import time
 from typing import (
     Any,
+    cast,
     Dict,
     List,
     Mapping,
@@ -76,7 +77,7 @@ class MetricsLastSeen:
         """
         expired = {}
         for name, metric_last_seen in self._last_seen.items():
-            expiration = self._expirations[name]
+            expiration = cast(int, self._expirations[name])
             expired[name] = [
                 label_values
                 for label_values, last_seen in metric_last_seen.items()
