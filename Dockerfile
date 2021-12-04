@@ -1,4 +1,6 @@
-FROM python:3.8-slim AS build-image
+# XXX change back to the default 3.8 image once the microsoft repository
+# supports Debian 11
+FROM python:3.8-slim-buster AS build-image
 
 RUN apt update
 RUN apt full-upgrade -y
@@ -30,7 +32,7 @@ RUN mkdir -p /opt/oracle/instantclient
 RUN mv instantclient*/* /opt/oracle/instantclient
 
 
-FROM python:3.8-slim
+FROM python:3.8-slim-buster
 
 RUN apt update && \
     apt full-upgrade -y && \
