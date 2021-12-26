@@ -230,15 +230,33 @@ definitions:
       parameters:
         title: Parameter sets for the query
         description: >
+          For list format: 
           Queries can have named parameters (in the form ":param").
 
           If they are defined, this must be a list of parameters set for the query.
           The query will be run once for each set.
-        type: array
-        items:
-          type: object
-        minItems: 1
-        uniqueItems: true
+
+          For matrix format
+          Queries can have named matrix of parameters (in the form ":param").
+
+          If it is defined - must be a dict of size 2, each value is an array
+          of possible parameters. The query will run once for each permutation.
+        oneOf:
+          - type: array
+            items:
+              type: object
+            minItems: 1
+            uniqueItems: true
+          - type: object
+            minItems: 1
+            uniqueItems: true
+            patternProperties:
+              .*:
+                type: array
+                items:
+                  type: object
+                minItems: 1
+                uniqueItems: true
       schedule:
         title: Time schedule for executing the query
         description: >

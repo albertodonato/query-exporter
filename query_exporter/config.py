@@ -6,6 +6,8 @@ from dataclasses import (
     dataclass,
     field,
 )
+from functools import reduce
+import itertools
 from logging import Logger
 import os
 from pathlib import Path
@@ -213,23 +215,84 @@ def _get_queries(
         parameters = config.get("parameters")
         try:
             if parameters:
-                queries.update(
-                    (
-                        f"{name}[params{index}]",
-                        Query(
+                if isinstance(parameters, list):
+                    queries.update(
+                        (
+                            f"{name}[params{index}]",
+                            Query(
+                                f"{name}[params{index}]",
+                                config["databases"],
+                                query_metrics,
+                                config["sql"].strip(),
+                                parameters=params,
+                                timeout=config.get("timeout"),
+                                interval=config["interval"],
+                                schedule=config.get("schedule"),
+                                config_name=name,
+                            ),
+                        )
+                        for index, params in enumerate(parameters)
+                    )
+                if isinstance(parameters, dict):
+                    """merge 2 objects into 1"""
+
+                    def merge(a, b):
+                        return {**a, **b}
+
+                    """
+                    add top level key to each param name, because sqlalchemy
+                    does not support nested params (like :param.a)
+                    so object
+                    {
+                        'a': [{'arg1': 1, 'arg2': 1}],
+                        'b': [{'arg1': 1, 'arg2': 1}],
+                    }
+                    turns into list
+                    [
+                        [{'a__arg1': 1, 'a__arg2': 2}],
+                        [{'b__arg1': 1, 'b__arg2': 2}],
+                    ]
+                    """
+
+                    def flatten_matrix(matrix):
+                        result = []
+                        for top_level_key, value in matrix.items():
+
+                            def add_key_prefix(obj):
+                                return {
+                                    f"{top_level_key}__{key}": value
+                                    for key, value in obj.items()
+                                }
+
+                            result.append(list(map(add_key_prefix, value)))
+                        return result
+
+                    """
+                    flat matrix, because sqlalchemy does not support
+                    nested params like :param.a
+                    """
+                    flat_matrix = flatten_matrix(parameters)
+
+                    # query build shorthand
+                    def getQuery(name, index, items):
+                        return Query(
                             f"{name}[params{index}]",
                             config["databases"],
                             query_metrics,
                             config["sql"].strip(),
-                            parameters=params,
+                            parameters=reduce(merge, items),
                             timeout=config.get("timeout"),
                             interval=config["interval"],
                             schedule=config.get("schedule"),
                             config_name=name,
-                        ),
+                        )
+
+                    # get all permutations of elements in matrix,
+                    # and add them as queries
+                    queries.update(
+                        (f"{name}[params{index}]", getQuery(name, index, items))
+                        for index, items in enumerate(itertools.product(*flat_matrix))
                     )
-                    for index, params in enumerate(parameters)
-                )
             else:
                 queries[name] = Query(
                     name,
@@ -278,12 +341,21 @@ def _validate_query_config(
         raise ConfigError(f'Unknown metrics for query "{name}": {unknown_list}')
     parameters = config.get("parameters")
     if parameters:
-        keys = {frozenset(param.keys()) for param in parameters}
-        if len(keys) > 1:
-            raise ConfigError(
-                f'Invalid parameters definition for query "{name}": '
-                "parameters dictionaries must all have the same keys"
-            )
+        if isinstance(parameters, dict):
+            for key, params in parameters.items():
+                keys = {frozenset(param.keys()) for param in params}
+                if len(keys) > 1:
+                    raise ConfigError(
+                        f'Invalid parameters definition by path "{key}" for query "{name}": '
+                        "parameters dictionaries must all have the same keys"
+                    )
+        else:
+            keys = {frozenset(param.keys()) for param in parameters}
+            if len(keys) > 1:
+                raise ConfigError(
+                    f'Invalid parameters definition for query "{name}": '
+                    "parameters dictionaries must all have the same keys"
+                )
 
 
 def _convert_interval(interval: Union[int, str, None]) -> Optional[int]:

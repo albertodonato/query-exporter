@@ -268,6 +268,34 @@ Each query definition can have the following keys:
           - param1: 30
             param2: 40
 
+  It can be also in a form of multidimensional matrix of
+  parameters lists to run the query with.
+
+  If a query is specified with parameters as matrix in its ``sql``, it will be run once
+  for every permutation in matrix of parameters, for every interval.
+
+  Variable format in sql query: ``:top_level_key__inner_key``
+
+  .. code:: yaml
+
+      query:
+        databases: [db]
+        metrics: [apps_count]
+        sql: |
+          SELECT COUNT(1) AS apps_count FROM apps_list
+          WHERE os = :os__name AND lang = :lang__name
+        parameters:
+            os:
+              - name: MacOS
+              - name: Linux
+              - name: Windows
+            lang:
+              - name: Python3
+              - name: Java
+              - name: Typescript
+
+  This example will generate 9 sql queries to database with all permutations of ``os`` and ``lang``
+
 ``schedule``:
   a schedule for executing queries at specific times.
 
