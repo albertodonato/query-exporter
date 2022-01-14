@@ -4,6 +4,7 @@ import pytest
 import yaml
 
 from ..config import (
+    _get_parameters_sets,
     _resolve_dsn,
     ConfigError,
     DB_ERRORS_METRIC_NAME,
@@ -937,3 +938,108 @@ class TestResolveDSN:
             _resolve_dsn(details, {})
             == "postgresql:///mydb?foo=a+value&bar=another%2Fvalue"
         )
+
+
+class TestGetParametersSets:
+    def test_list(self):
+        params = [
+            {
+                "param1": 100,
+                "param2": "foo",
+            },
+            {
+                "param1": 200,
+                "param2": "bar",
+            },
+        ]
+        assert list(_get_parameters_sets(params)) == params
+
+    def test_dict(self):
+        params = {
+            "param1": [
+                {
+                    "sub1": 100,
+                    "sub2": "foo",
+                },
+                {
+                    "sub1": 200,
+                    "sub2": "bar",
+                },
+            ],
+            "param2": [
+                {
+                    "sub3": "a",
+                    "sub4": False,
+                },
+                {
+                    "sub3": "b",
+                    "sub4": True,
+                },
+            ],
+            "param3": [
+                {
+                    "sub5": "X",
+                },
+                {
+                    "sub5": "Y",
+                },
+            ],
+        }
+        assert list(_get_parameters_sets(params)) == [
+            {
+                "param1__sub1": 100,
+                "param1__sub2": "foo",
+                "param2__sub3": "a",
+                "param2__sub4": False,
+                "param3__sub5": "X",
+            },
+            {
+                "param1__sub1": 100,
+                "param1__sub2": "foo",
+                "param2__sub3": "a",
+                "param2__sub4": False,
+                "param3__sub5": "Y",
+            },
+            {
+                "param1__sub1": 100,
+                "param1__sub2": "foo",
+                "param2__sub3": "b",
+                "param2__sub4": True,
+                "param3__sub5": "X",
+            },
+            {
+                "param1__sub1": 100,
+                "param1__sub2": "foo",
+                "param2__sub3": "b",
+                "param2__sub4": True,
+                "param3__sub5": "Y",
+            },
+            {
+                "param1__sub1": 200,
+                "param1__sub2": "bar",
+                "param2__sub3": "a",
+                "param2__sub4": False,
+                "param3__sub5": "X",
+            },
+            {
+                "param1__sub1": 200,
+                "param1__sub2": "bar",
+                "param2__sub3": "a",
+                "param2__sub4": False,
+                "param3__sub5": "Y",
+            },
+            {
+                "param1__sub1": 200,
+                "param1__sub2": "bar",
+                "param2__sub3": "b",
+                "param2__sub4": True,
+                "param3__sub5": "X",
+            },
+            {
+                "param1__sub1": 200,
+                "param1__sub2": "bar",
+                "param2__sub3": "b",
+                "param2__sub4": True,
+                "param3__sub5": "Y",
+            },
+        ]
