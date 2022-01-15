@@ -228,17 +228,37 @@ definitions:
         minItems: 1
         uniqueItems: true
       parameters:
-        title: Parameter sets for the query
+        title: Parameter sets for the query (either a list or a dictionary)
         description: >
-          Queries can have named parameters (in the form ":param").
+          Specify values for parameters defined in the query.
 
-          If they are defined, this must be a list of parameters set for the query.
-          The query will be run once for each set.
-        type: array
-        items:
-          type: object
-        minItems: 1
-        uniqueItems: true
+          Parameters are specified in the form ":param".
+
+          The value of this config can be
+
+          - a list of dictionaries mapping parameter names to values.
+            The query is run once for each entry in the list.
+
+          - a dictionary mapping names to a list of dictionaries mapping sub-names and values.
+            In this case, the parameter name format is ":key__subkey".
+
+            The query is executed once for every combination of entries from the top level keys.
+        oneOf:
+          - type: array
+            items:
+              type: object
+            minItems: 1
+            uniqueItems: true
+          - type: object
+            minItems: 1
+            uniqueItems: true
+            patternProperties:
+              .*:
+                type: array
+                items:
+                  type: object
+                minItems: 1
+                uniqueItems: true
       schedule:
         title: Time schedule for executing the query
         description: >

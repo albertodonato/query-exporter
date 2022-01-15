@@ -4,6 +4,7 @@ import pytest
 import yaml
 
 from ..config import (
+    _get_parameters_sets,
     _resolve_dsn,
     ConfigError,
     DB_ERRORS_METRIC_NAME,
@@ -108,6 +109,20 @@ CONFIG_INVALID_METRICS_PARAMS_DIFFERENT_KEYS = {
             "metrics": ["m"],
             "sql": "SELECT :param AS m",
             "parameters": [{"foo": 1}, {"bar": 2}],
+        },
+    },
+}
+
+CONFIG_INVALID_METRICS_PARAMS_MATRIX_DIFFERENT_KEYS = {
+    "databases": {"db": {"dsn": "sqlite://"}},
+    "metrics": {"m": {"type": "gauge"}},
+    "queries": {
+        "q": {
+            "interval": 10,
+            "databases": ["db"],
+            "metrics": ["m"],
+            "sql": "SELECT :param AS m",
+            "parameters": {"a": [{"foo": 1}, {"bar": 2}]},
         },
     },
 }
@@ -533,6 +548,65 @@ class TestLoadConfig:
             "param2": 20,
         }
 
+    def test_load_queries_section_with_parameters_matrix(self, logger, write_config):
+        """Queries can have parameters matrix."""
+        config = {
+            "databases": {"db": {"dsn": "sqlite://"}},
+            "metrics": {"m": {"type": "summary", "labels": ["l"]}},
+            "queries": {
+                "q": {
+                    "interval": 10,
+                    "databases": ["db"],
+                    "metrics": ["m"],
+                    "sql": "SELECT :marketplace__name AS l, :item__status AS m",
+                    "parameters": {
+                        "marketplace": [{"name": "amazon"}, {"name": "ebay"}],
+                        "item": [{"status": "active"}, {"status": "inactive"}],
+                    },
+                },
+            },
+        }
+        config_file = write_config(config)
+        with config_file.open() as fd:
+            result = load_config(fd, logger)
+
+        assert len(result.queries) == 4
+
+        # check common props for each query
+        for query_name, query in result.queries.items():
+            assert query.databases == ["db"]
+            assert query.metrics == [QueryMetric("m", ["l"])]
+            assert query.sql == "SELECT :marketplace__name AS l, :item__status AS m"
+
+        # Q1
+        query1 = result.queries["q[params0]"]
+        assert query1.name == "q[params0]"
+        assert query1.parameters == {
+            "marketplace__name": "amazon",
+            "item__status": "active",
+        }
+        # Q2
+        query2 = result.queries["q[params1]"]
+        assert query2.name == "q[params1]"
+        assert query2.parameters == {
+            "marketplace__name": "ebay",
+            "item__status": "active",
+        }
+        # Q3
+        query3 = result.queries["q[params2]"]
+        assert query3.name == "q[params2]"
+        assert query3.parameters == {
+            "marketplace__name": "amazon",
+            "item__status": "inactive",
+        }
+        # Q4
+        query4 = result.queries["q[params3]"]
+        assert query4.name == "q[params3]"
+        assert query4.parameters == {
+            "marketplace__name": "ebay",
+            "item__status": "inactive",
+        }
+
     def test_load_queries_section_with_wrong_parameters(self, logger, write_config):
         """An error is raised if query parameters don't match."""
         config = {
@@ -667,6 +741,11 @@ class TestLoadConfig:
             (
                 CONFIG_INVALID_METRICS_PARAMS_DIFFERENT_KEYS,
                 'Invalid parameters definition for query "q": '
+                "parameters dictionaries must all have the same keys",
+            ),
+            (
+                CONFIG_INVALID_METRICS_PARAMS_MATRIX_DIFFERENT_KEYS,
+                'Invalid parameters definition by path "a" for query "q": '
                 "parameters dictionaries must all have the same keys",
             ),
         ],
@@ -859,3 +938,108 @@ class TestResolveDSN:
             _resolve_dsn(details, {})
             == "postgresql:///mydb?foo=a+value&bar=another%2Fvalue"
         )
+
+
+class TestGetParametersSets:
+    def test_list(self):
+        params = [
+            {
+                "param1": 100,
+                "param2": "foo",
+            },
+            {
+                "param1": 200,
+                "param2": "bar",
+            },
+        ]
+        assert list(_get_parameters_sets(params)) == params
+
+    def test_dict(self):
+        params = {
+            "param1": [
+                {
+                    "sub1": 100,
+                    "sub2": "foo",
+                },
+                {
+                    "sub1": 200,
+                    "sub2": "bar",
+                },
+            ],
+            "param2": [
+                {
+                    "sub3": "a",
+                    "sub4": False,
+                },
+                {
+                    "sub3": "b",
+                    "sub4": True,
+                },
+            ],
+            "param3": [
+                {
+                    "sub5": "X",
+                },
+                {
+                    "sub5": "Y",
+                },
+            ],
+        }
+        assert list(_get_parameters_sets(params)) == [
+            {
+                "param1__sub1": 100,
+                "param1__sub2": "foo",
+                "param2__sub3": "a",
+                "param2__sub4": False,
+                "param3__sub5": "X",
+            },
+            {
+                "param1__sub1": 100,
+                "param1__sub2": "foo",
+                "param2__sub3": "a",
+                "param2__sub4": False,
+                "param3__sub5": "Y",
+            },
+            {
+                "param1__sub1": 100,
+                "param1__sub2": "foo",
+                "param2__sub3": "b",
+                "param2__sub4": True,
+                "param3__sub5": "X",
+            },
+            {
+                "param1__sub1": 100,
+                "param1__sub2": "foo",
+                "param2__sub3": "b",
+                "param2__sub4": True,
+                "param3__sub5": "Y",
+            },
+            {
+                "param1__sub1": 200,
+                "param1__sub2": "bar",
+                "param2__sub3": "a",
+                "param2__sub4": False,
+                "param3__sub5": "X",
+            },
+            {
+                "param1__sub1": 200,
+                "param1__sub2": "bar",
+                "param2__sub3": "a",
+                "param2__sub4": False,
+                "param3__sub5": "Y",
+            },
+            {
+                "param1__sub1": 200,
+                "param1__sub2": "bar",
+                "param2__sub3": "b",
+                "param2__sub4": True,
+                "param3__sub5": "X",
+            },
+            {
+                "param1__sub1": 200,
+                "param1__sub2": "bar",
+                "param2__sub3": "b",
+                "param2__sub4": True,
+                "param3__sub5": "Y",
+            },
+        ]

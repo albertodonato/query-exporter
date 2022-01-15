@@ -6,6 +6,8 @@ from dataclasses import (
     dataclass,
     field,
 )
+from functools import reduce
+import itertools
 from logging import Logger
 import os
 from pathlib import Path
@@ -108,6 +110,9 @@ class Config:
 # Type matching os.environ.
 Environ = Mapping[str, str]
 
+# Content for the "parameters" config option
+ParametersConfig = Union[List[Dict[str, Any]], Dict[str, List[Dict[str, Any]]]]
+
 
 def load_config(config_fd: IO, logger: Logger, env: Environ = os.environ) -> Config:
     """Load YAML config from file."""
@@ -208,38 +213,35 @@ def _get_queries(
     queries: Dict[str, Query] = {}
     for name, config in configs.items():
         _validate_query_config(name, config, database_names, metric_names)
-        config["interval"] = _convert_interval(config.get("interval"))
         query_metrics = _get_query_metrics(config, metrics, extra_labels)
         parameters = config.get("parameters")
+
+        query_args = {
+            "databases": config["databases"],
+            "metrics": query_metrics,
+            "sql": config["sql"].strip(),
+            "timeout": config.get("timeout"),
+            "interval": _convert_interval(config.get("interval")),
+            "schedule": config.get("schedule"),
+            "config_name": name,
+        }
+
         try:
             if parameters:
+                parameters_sets = _get_parameters_sets(parameters)
                 queries.update(
                     (
                         f"{name}[params{index}]",
                         Query(
-                            f"{name}[params{index}]",
-                            config["databases"],
-                            query_metrics,
-                            config["sql"].strip(),
+                            name=f"{name}[params{index}]",
                             parameters=params,
-                            timeout=config.get("timeout"),
-                            interval=config["interval"],
-                            schedule=config.get("schedule"),
-                            config_name=name,
+                            **query_args,
                         ),
                     )
-                    for index, params in enumerate(parameters)
+                    for index, params in enumerate(parameters_sets)
                 )
             else:
-                queries[name] = Query(
-                    name,
-                    config["databases"],
-                    query_metrics,
-                    config["sql"].strip(),
-                    timeout=config.get("timeout"),
-                    interval=config["interval"],
-                    schedule=config.get("schedule"),
-                )
+                queries[name] = Query(name, **query_args)
         except (InvalidQueryParameters, InvalidQuerySchedule) as e:
             raise ConfigError(str(e))
     return queries
@@ -278,12 +280,21 @@ def _validate_query_config(
         raise ConfigError(f'Unknown metrics for query "{name}": {unknown_list}')
     parameters = config.get("parameters")
     if parameters:
-        keys = {frozenset(param.keys()) for param in parameters}
-        if len(keys) > 1:
-            raise ConfigError(
-                f'Invalid parameters definition for query "{name}": '
-                "parameters dictionaries must all have the same keys"
-            )
+        if isinstance(parameters, dict):
+            for key, params in parameters.items():
+                keys = {frozenset(param.keys()) for param in params}
+                if len(keys) > 1:
+                    raise ConfigError(
+                        f'Invalid parameters definition by path "{key}" for query "{name}": '
+                        "parameters dictionaries must all have the same keys"
+                    )
+        else:
+            keys = {frozenset(param.keys()) for param in parameters}
+            if len(keys) > 1:
+                raise ConfigError(
+                    f'Invalid parameters definition for query "{name}": '
+                    "parameters dictionaries must all have the same keys"
+                )
 
 
 def _convert_interval(interval: Union[int, str, None]) -> Optional[int]:
@@ -398,3 +409,42 @@ def _warn_if_unused(config: Config, logger: Logger):
         logger.warning(
             f"unused entries in \"metrics\" section: {', '.join(unused_metrics)}"
         )
+
+
+def _get_parameters_sets(parameters: ParametersConfig) -> List[Dict[str, Any]]:
+    """Return an sequence of set of paramters with their values."""
+    if isinstance(parameters, dict):
+        return _get_parameters_matrix(parameters)
+    return parameters
+
+
+def _get_parameters_matrix(
+    parameters: Dict[str, List[Dict[str, Any]]]
+) -> List[Dict[str, Any]]:
+    """Return parameters combinations from a matrix."""
+    # first, flatten dict like
+    #
+    # {
+    #     'a': [{'arg1': 1, 'arg2': 1}],
+    #     'b': [{'arg1': 1, 'arg2': 1}],
+    # }
+    #
+    # into a sequence like
+    #
+    # (
+    #     [{'a__arg1': 1, 'a__arg2': 2}],
+    #     [{'b__arg1': 1, 'b__arg2': 2}],
+    # )
+    flattened_params = (
+        [
+            {f"{top_key}__{key}": value for key, value in arg_set.items()}
+            for arg_set in arg_sets
+        ]
+        for top_key, arg_sets in parameters.items()
+    )
+    # return a list of merged dictionaries from each combination of the two
+    # sets
+    return list(
+        reduce(lambda p1, p2: {**p1, **p2}, params)
+        for params in itertools.product(*flattened_params)
+    )
