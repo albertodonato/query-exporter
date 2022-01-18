@@ -1,3 +1,10 @@
+v2.8.0 - 2022-01-18
+===================
+
+- Add support for paramters matrix in queries.
+- Allow freetext name for databases in config (#99).
+
+
 v2.7.1 - 2021-12-01
 ===================
 
