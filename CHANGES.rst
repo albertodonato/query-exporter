@@ -1,3 +1,10 @@
+v2.8.1 - 2022-02-18
+===================
+
+- Require `sqlalchemy_aio` 0.17.0, drop workaround for previous versions
+  (#105).
+
+
 v2.8.0 - 2022-01-18
 ===================
 
