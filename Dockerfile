@@ -15,7 +15,6 @@ RUN apt install -y --no-install-recommends \
 ADD . /srcdir
 RUN python3 -m venv /virtualenv
 ENV PATH="/virtualenv/bin:$PATH"
-RUN pip install --upgrade pip
 RUN pip install \
     /srcdir \
     cx-Oracle \
