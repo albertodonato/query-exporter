@@ -46,7 +46,9 @@ RUN apt update && \
     curl https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > /etc/apt/trusted.gpg.d/microsoft.gpg && \
     curl https://packages.microsoft.com/config/debian/$(. /etc/os-release; echo "$VERSION_ID")/prod.list > /etc/apt/sources.list.d/mssql-release.list && \
     apt update && \
-    ACCEPT_EULA=Y apt install -y --no-install-recommends msodbcsql17
+    ACCEPT_EULA=Y apt install -y --no-install-recommends msodbcsql17 && \
+    rm -rf /var/lib/apt/lists/* /usr/share/doc /usr/share/man && \
+    apt clean
 
 COPY --from=build-image /virtualenv /virtualenv
 COPY --from=build-image /opt /opt
