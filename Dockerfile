@@ -2,9 +2,9 @@
 # supports Debian 11
 FROM python:3.8-slim-buster AS build-image
 
-RUN apt update
-RUN apt full-upgrade -y
-RUN apt install -y --no-install-recommends \
+RUN apt-get update
+RUN apt-get full-upgrade -y
+RUN apt-get install -y --no-install-recommends \
     build-essential \
     curl \
     default-libmysqlclient-dev \
@@ -33,9 +33,9 @@ RUN mv instantclient*/* /opt/oracle/instantclient
 
 FROM python:3.8-slim-buster
 
-RUN apt update && \
-    apt full-upgrade -y && \
-    apt install -y --no-install-recommends \
+RUN apt-get update && \
+    apt-get full-upgrade -y && \
+    apt-get install -y --no-install-recommends \
     curl \
     gnupg2 \
     libaio1 \
@@ -45,10 +45,10 @@ RUN apt update && \
     libxml2 && \
     curl https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > /etc/apt/trusted.gpg.d/microsoft.gpg && \
     curl https://packages.microsoft.com/config/debian/$(. /etc/os-release; echo "$VERSION_ID")/prod.list > /etc/apt/sources.list.d/mssql-release.list && \
-    apt update && \
-    ACCEPT_EULA=Y apt install -y --no-install-recommends msodbcsql17 && \
+    apt-get update && \
+    ACCEPT_EULA=Y apt-get install -y --no-install-recommends msodbcsql17 && \
     rm -rf /var/lib/apt/lists/* /usr/share/doc /usr/share/man && \
-    apt clean
+    apt-get clean
 
 COPY --from=build-image /virtualenv /virtualenv
 COPY --from=build-image /opt /opt
