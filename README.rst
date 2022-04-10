@@ -554,6 +554,8 @@ The image has support for connecting the following databases:
 - IBM DB2 (``db2://``)
 - Oracle (``oracle://``)
 
+A `Helm chart`_ to run the container in Kubernetes is also available.
+
 
 .. _Prometheus: https://prometheus.io/
 .. _SQLAlchemy: https://www.sqlalchemy.org/
@@ -565,6 +567,7 @@ The image has support for connecting the following databases:
 .. _Docker: http://docker.com/
 .. _`Docker Hub`: https://hub.docker.com/r/adonato/query-exporter
 .. _`database-specific options`: databases.rst
+.. _`Helm chart`: https://github.com/makezbs/helm-charts/tree/main/charts/query-exporter
 
 .. |query-exporter logo| image:: https://raw.githubusercontent.com/albertodonato/query-exporter/main/logo.svg
    :alt: query-exporter logo
