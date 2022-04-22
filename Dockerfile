@@ -1,6 +1,4 @@
-# XXX change back to the default 3.8 image once the microsoft repository
-# supports Debian 11
-FROM python:3.8-slim-buster AS build-image
+FROM python:3.8-slim AS build-image
 
 RUN apt-get update
 RUN apt-get full-upgrade -y
