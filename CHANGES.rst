@@ -1,7 +1,7 @@
 v2.8.3 - 2022-07-16
 ===================
 
-- Test with Python 3.10 and 3.11 in  GitHub actions
+- Test with Python 3.10 in GitHub actions
 - Fix tests
 
 
