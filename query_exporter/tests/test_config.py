@@ -828,9 +828,9 @@ class TestLoadConfig:
         config_file = write_config(config_full)
         with pytest.raises(ConfigError) as err, config_file.open() as fd:
             load_config(fd, logger)
-        assert (
-            str(err.value)
-            == f"Invalid config at queries/q/interval: '{interval}' is not of type 'integer'"
+        assert str(err.value) == (
+            "Invalid config at queries/q/interval: "
+            f"'{interval}' does not match '^[0-9]+[smhd]?$'"
         )
 
     @pytest.mark.parametrize("interval", [0, -20])
