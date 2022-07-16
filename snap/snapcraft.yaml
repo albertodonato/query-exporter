@@ -29,7 +29,7 @@ license: GPL-3.0+
 icon: logo.svg
 confinement: strict
 grade: stable
-base: core20
+base: core22
 
 apps:
   daemon:
@@ -68,18 +68,13 @@ parts:
       - libodbc1
       - libpq5
       - libxml2
-    filesets:
-      bins:
-        - bin/python3
-        - bin/query-exporter
-      libs:
-      - lib
-      - usr/lib
     prime:
-      - $bins
-      - $libs
+      - bin/python3
+      - bin/query-exporter
       - etc
+      - lib
       - pyvenv.cfg
+      - usr/lib
 
   wrappers:
     plugin: dump
