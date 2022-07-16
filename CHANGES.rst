@@ -1,3 +1,12 @@
+v2.8.2 - 2022-07-16
+===================
+
+- Require Python 3.10
+- [snap] Change base to core22
+- [docker] Use Python 3.10
+- [docker] Base on Debian 11
+
+
 v2.8.1 - 2022-02-18
 ===================
 
