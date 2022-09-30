@@ -19,7 +19,8 @@ RUN pip install \
     ibm-db-sa \
     mysqlclient \
     psycopg2 \
-    pyodbc
+    pyodbc \
+    pymssql
 
 RUN curl \
     https://download.oracle.com/otn_software/linux/instantclient/instantclient-basiclite-linuxx64.zip \
