@@ -19,6 +19,7 @@ RUN pip install \
     ibm-db-sa \
     mysqlclient \
     psycopg2 \
+    pymssql \
     pyodbc
 
 RUN curl \
