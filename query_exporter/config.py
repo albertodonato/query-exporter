@@ -30,10 +30,10 @@ from urllib.parse import (
 )
 
 import jsonschema
+from pkg_resources import get_distribution
 from prometheus_aioexporter import MetricConfig
 import yaml
 
-from . import PACKAGE
 from .db import (
     create_db_engine,
     DATABASE_LABEL,
@@ -114,14 +114,18 @@ Environ = Mapping[str, str]
 ParametersConfig = Union[List[Dict[str, Any]], Dict[str, List[Dict[str, Any]]]]
 
 
-def load_config(config_fd: IO, logger: Logger, env: Environ = os.environ) -> Config:
+def load_config(
+    config_fd: IO, logger: Logger, env: Environ = os.environ
+) -> Config:
     """Load YAML config from file."""
     data = defaultdict(dict, yaml.safe_load(config_fd))
     _validate_config(data)
     databases, database_labels = _get_databases(data["databases"], env)
     extra_labels = frozenset([DATABASE_LABEL]) | database_labels
     metrics = _get_metrics(data["metrics"], extra_labels)
-    queries = _get_queries(data["queries"], frozenset(databases), metrics, extra_labels)
+    queries = _get_queries(
+        data["queries"], frozenset(databases), metrics, extra_labels
+    )
     config = Config(databases, metrics, queries)
     _warn_if_unused(config, logger)
     return config
@@ -273,11 +277,15 @@ def _validate_query_config(
     unknown_databases = set(config["databases"]) - database_names
     if unknown_databases:
         unknown_list = ", ".join(sorted(unknown_databases))
-        raise ConfigError(f'Unknown databases for query "{name}": {unknown_list}')
+        raise ConfigError(
+            f'Unknown databases for query "{name}": {unknown_list}'
+        )
     unknown_metrics = set(config["metrics"]) - metric_names
     if unknown_metrics:
         unknown_list = ", ".join(sorted(unknown_metrics))
-        raise ConfigError(f'Unknown metrics for query "{name}": {unknown_list}')
+        raise ConfigError(
+            f'Unknown metrics for query "{name}": {unknown_list}'
+        )
     parameters = config.get("parameters")
     if parameters:
         if isinstance(parameters, dict):
@@ -332,7 +340,9 @@ def _resolve_dsn(dsn: Union[str, Dict[str, Any]], env: Environ) -> str:
         try:
             return Path(filename).read_text().strip()
         except OSError as err:
-            raise ValueError(f'Unable to read dsn file : "{filename}": {err.strerror}')
+            raise ValueError(
+                f'Unable to read dsn file : "{filename}": {err.strerror}'
+            )
 
     origins = {
         "env": from_env,
@@ -379,7 +389,8 @@ def _build_dsn(details: Dict[str, Any]) -> str:
 
 
 def _validate_config(config: Dict[str, Any]):
-    schema_path = PACKAGE.get_resource_filename(  # type: ignore
+    package = get_distribution("query_exporter")
+    schema_path = package.get_resource_filename(  # type: ignore
         None, "query_exporter/schemas/config.yaml"
     )
     with open(schema_path) as fd:
@@ -404,7 +415,9 @@ def _warn_if_unused(config: Config, logger: Logger):
         logger.warning(
             f"unused entries in \"databases\" section: {', '.join(unused_dbs)}"
         )
-    unused_metrics = sorted(set(config.metrics) - GLOBAL_METRICS - used_metrics)
+    unused_metrics = sorted(
+        set(config.metrics) - GLOBAL_METRICS - used_metrics
+    )
     if unused_metrics:
         logger.warning(
             f"unused entries in \"metrics\" section: {', '.join(unused_metrics)}"

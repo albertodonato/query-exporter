@@ -67,7 +67,9 @@ class QueryExporterScript(PrometheusExporterScript):
     async def on_application_shutdown(self, application: Application):
         await application["query-loop"].stop()
 
-    async def _update_handler(self, query_loop: QueryLoop, metrics: List[MetricConfig]):
+    async def _update_handler(
+        self, query_loop: QueryLoop, metrics: List[MetricConfig]
+    ):
         """Run queries with no specified schedule on each request."""
         await query_loop.run_aperiodic_queries()
         query_loop.clear_expired_series()

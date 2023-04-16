@@ -1,14 +1,79 @@
-[tool.coverage.report]
-show_missing = true
-fail_under = 100.0
-skip_covered = true
-
-[tool.coverage.run]
-source = ["query_exporter"]
-omit = [
-  "query_exporter/main.py",
-  "query_exporter/conftest.py"
+[build-system]
+build-backend = "setuptools.build_meta"
+requires = [
+  "setuptools",
 ]
+
+[project]
+name = "query-exporter"
+description = "Export Prometheus metrics generated from SQL queries"
+readme = "README.rst"
+keywords = [
+  "exporter",
+  "metric",
+  "prometheus",
+  "sql",
+]
+license = {file = "LICENSE.txt"}
+maintainers = [
+    {name = "Alberto Donato", email = "alberto.donato@gmail.com"},
+]
+authors = [
+    {name = "Alberto Donato", email = "alberto.donato@gmail.com"},
+]
+requires-python = ">=3.10"
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+  "Framework :: AsyncIO",
+  "Intended Audience :: System Administrators",
+  "License :: OSI Approved :: GNU General Public License (GPL)",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Topic :: Database",
+  "Topic :: System :: Monitoring",
+  "Topic :: Utilities",
+]
+dynamic = [
+  "version",
+]
+dependencies = [
+  "aiohttp",
+  "argcomplete",
+  "croniter",
+  "jsonschema",
+  "prometheus-aioexporter>=1.5.1",
+  "prometheus-client",
+  "python-dateutil",
+  "PyYAML",
+  "SQLAlchemy<1.4",
+  "sqlalchemy_aio>=0.17",
+  "toolrack>=4",
+]
+[project.optional-dependencies]
+testing = [
+  "pytest",
+  "pytest-asyncio",
+  "pytest-mock",
+]
+[project.urls]
+changelog = "https://github.com/albertodonato/query-exporter/blob/main/CHANGES.rst"
+homepage = "https://github.com/albertodonato/query-exporter"
+repository = "https://github.com/albertodonato/query-exporter"
+[project.scripts]
+query-exporter = "query_exporter.main:script"
+
+[tool.setuptools.dynamic]
+version = {attr = "query_exporter.__version__"}
+
+[tool.setuptools.packages.find]
+include = ["query_exporter*"]
+
+
+[tool.setuptools.package-data]
+query_exporter = ["schemas/*"]
+
+[tool.black]
+line-length = 79
 
 [tool.isort]
 combine_as_imports = true
@@ -21,12 +86,28 @@ order_by_type = false
 profile = "black"
 use_parentheses = true
 
+[tool.flake8]
+ignore = ["E203", "E501", "W503"]
+max-line-length = 80
+select = ["C", "E", "F", "W", "B", "B950"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+
+[tool.coverage.report]
+fail_under = 100.0
+show_missing = true
+skip_covered = true
+
+[tool.coverage.run]
+source = ["query_exporter"]
+omit = [
+  "query_exporter/main.py",
+]
+
 [tool.mypy]
+ignore_missing_imports = true
 install_types = true
 non_interactive = true
 warn_return_any = true
 warn_unused_configs = true
-ignore_missing_imports = true
-
-[tool.pytest.ini_options]
-asyncio_mode = "auto"

@@ -50,7 +50,9 @@ class MetricsLastSeen:
 
     def __init__(self, expirations: Dict[str, Optional[int]]):
         self._expirations = expirations
-        self._last_seen: Dict[str, Dict[Tuple[str, ...], float]] = defaultdict(dict)
+        self._last_seen: Dict[str, Dict[Tuple[str, ...], float]] = defaultdict(
+            dict
+        )
 
     def update(
         self,
@@ -66,7 +68,9 @@ class MetricsLastSeen:
         label_values = tuple(value for _, value in sorted(labels.items()))
         self._last_seen[name][label_values] = timestamp
 
-    def expire_series(self, timestamp: float) -> Dict[str, List[Tuple[str, ...]]]:
+    def expire_series(
+        self, timestamp: float
+    ) -> Dict[str, List[Tuple[str, ...]]]:
         """Expire and return expired metric series at the given timestamp.
 
         Expired series are removed internally.
@@ -200,7 +204,8 @@ class QueryLoop:
             self._increment_queries_count(db, query, "error")
             if error.fatal:
                 self._logger.debug(
-                    f'removing doomed query "{query.name}" ' f'for database "{dbname}"'
+                    f'removing doomed query "{query.name}" '
+                    f'for database "{dbname}"'
                 )
                 self._doomed_queries[query.name].add(dbname)
         else:
@@ -209,7 +214,9 @@ class QueryLoop:
                     db, result.metric, result.value, labels=result.labels
                 )
             if metric_results.latency:
-                self._update_query_latency_metric(db, query, metric_results.latency)
+                self._update_query_latency_metric(
+                    db, query, metric_results.latency
+                )
             self._increment_queries_count(db, query, "success")
 
     async def _remove_if_dooomed(self, query: Query, dbname: str) -> bool:
@@ -260,7 +267,9 @@ class QueryLoop:
         getattr(metric, method)(value)
         self._last_seen.update(name, all_labels, self._timestamp())
 
-    def _increment_queries_count(self, database: DataBase, query: Query, status: str):
+    def _increment_queries_count(
+        self, database: DataBase, query: Query, status: str
+    ):
         """Increment count of queries in a status for a database."""
         self._update_metric(
             database,

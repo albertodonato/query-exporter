@@ -12,40 +12,40 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-    - name: Repository checkout
-      uses: actions/checkout@v2
+      - name: Repository checkout
+        uses: actions/checkout@v3
 
-    - name: Set up Python
-      uses: actions/setup-python@v2
-      with:
-        python-version: "3.10"
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
 
-    - name: Install dependencies
-      run: |
-        pip install --upgrade pip tox
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip tox
 
-    - name: Lint
-      run: |
-        tox -e lint
+      - name: Lint
+        run: |
+          tox -e lint
 
   check:
     runs-on: ubuntu-latest
     steps:
-    - name: Repository checkout
-      uses: actions/checkout@v2
+      - name: Repository checkout
+        uses: actions/checkout@v3
 
-    - name: Set up Python
-      uses: actions/setup-python@v2
-      with:
-        python-version: "3.10"
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
 
-    - name: Install dependencies
-      run: |
-        pip install --upgrade pip tox
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip tox
 
-    - name: Check
-      run: |
-        tox -e check
+      - name: Check
+        run: |
+          tox -e check
 
   test:
     runs-on: ubuntu-latest
@@ -53,20 +53,27 @@ jobs:
       matrix:
         python-version:
           - "3.10"
+          - "3.11"
     steps:
-    - name: Repository checkout
-      uses: actions/checkout@v2
+      - name: Repository checkout
+        uses: actions/checkout@v3
 
-    - name: Set up Python
-      uses: actions/setup-python@v2
-      with:
-        python-version: ${{ matrix.python-version }}
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
 
-    - name: Install dependencies
-      run: |
-        pip install --upgrade pip tox codecov
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip tox
 
-    - name: Test
-      run: |
-        tox -e py
-        codecov
+      - name: Test
+        run: |
+          tox -e coverage -- --cov-report xml:coverage.xml
+
+      - name: Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          env_vars: PYTHON
+          full_report: coverage.xml

@@ -3,7 +3,7 @@ import asyncio
 import pytest
 from toolrack.testing.fixtures import advance_time
 
-from .db import DataBase
+from query_exporter.db import DataBase
 
 __all__ = ["advance_time", "query_tracker"]
 

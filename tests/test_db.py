@@ -6,8 +6,8 @@ from sqlalchemy import create_engine
 from sqlalchemy_aio import ASYNCIO_STRATEGY
 from sqlalchemy_aio.base import AsyncConnection
 
-from ..config import DataBaseConfig
-from ..db import (
+from query_exporter.config import DataBaseConfig
+from query_exporter.db import (
     create_db_engine,
     DataBase,
     DataBaseConnectError,
@@ -43,7 +43,9 @@ class TestCreateDBEngine:
     @pytest.mark.parametrize("dsn", ["foo-bar", "unknown:///db"])
     def test_instantiate_invalid_dsn(self, caplog, dsn):
         """An error is raised if a the provided DSN is invalid."""
-        with caplog.at_level(logging.ERROR), pytest.raises(DataBaseError) as error:
+        with caplog.at_level(logging.ERROR), pytest.raises(
+            DataBaseError
+        ) as error:
             create_db_engine(dsn)
         assert str(error.value) == f'Invalid database DSN: "{dsn}"'
 
@@ -175,13 +177,21 @@ class TestQuery:
     def test_instantiate_with_timeout(self):
         """A query can be instantiated with a timeout."""
         query = Query(
-            "query", ["db"], [QueryMetric("metric", [])], "SELECT 1", timeout=2.0
+            "query",
+            ["db"],
+            [QueryMetric("metric", [])],
+            "SELECT 1",
+            timeout=2.0,
         )
         assert query.timeout == 2.0
 
     @pytest.mark.parametrize(
         "kwargs,is_timed",
-        [({}, False), ({"interval": 20}, True), ({"schedule": "1 * * * *"}, True)],
+        [
+            ({}, False),
+            ({"interval": 20}, True),
+            ({"schedule": "1 * * * *"}, True),
+        ],
     )
     def test_timed(self, kwargs, is_timed):
         """Query.timed reports whether the query is run with a time schedule"""
@@ -225,7 +235,9 @@ class TestQuery:
             [QueryMetric("metric1", []), QueryMetric("metric2", [])],
             "",
         )
-        query_results = QueryResults(["metric2", "metric1"], [(11, 22), (33, 44)])
+        query_results = QueryResults(
+            ["metric2", "metric1"], [(11, 22), (33, 44)]
+        )
         metrics_results = query.results(query_results)
         assert metrics_results.results == [
             MetricResult("metric1", 22, {}),
@@ -266,14 +278,18 @@ class TestQuery:
 
     def test_results_wrong_result_count_with_label(self):
         """An error is raised if the result column count is wrong."""
-        query = Query("query", ["db"], [QueryMetric("metric1", ["label1"])], "")
+        query = Query(
+            "query", ["db"], [QueryMetric("metric1", ["label1"])], ""
+        )
         query_results = QueryResults(["one"], [(1,)])
         with pytest.raises(InvalidResultCount):
             query.results(query_results)
 
     def test_results_wrong_names_with_labels(self):
         """An error is raised if metric and labels names don't match."""
-        query = Query("query", ["db"], [QueryMetric("metric1", ["label1"])], "")
+        query = Query(
+            "query", ["db"], [QueryMetric("metric1", ["label1"])], ""
+        )
         query_results = QueryResults(["one", "two"], [(1, 2)])
         with pytest.raises(InvalidResultColumnNames):
             query.results(query_results)
@@ -389,7 +405,9 @@ class TestDataBase:
             connect_sql=["WRONG"],
         )
         db = DataBase(config)
-        with caplog.at_level(logging.DEBUG), pytest.raises(DataBaseQueryError) as error:
+        with caplog.at_level(logging.DEBUG), pytest.raises(
+            DataBaseQueryError
+        ) as error:
             await db.connect()
         assert not db.connected
         assert 'failed executing query "WRONG"' in str(error.value)
@@ -410,7 +428,10 @@ class TestDataBase:
     async def test_execute_log(self, db, caplog):
         """A message is logged about the query being executed."""
         query = Query(
-            "query", ["db"], [QueryMetric("metric", [])], "SELECT 1.0 AS metric"
+            "query",
+            ["db"],
+            [QueryMetric("metric", [])],
+            "SELECT 1.0 AS metric",
         )
         await db.connect()
         with caplog.at_level(logging.DEBUG):
@@ -422,13 +443,20 @@ class TestDataBase:
     @pytest.mark.asyncio
     async def test_execute_keep_connected(self, mocker, connected):
         """If keep_connected is set to true, the db is not closed."""
-        config = DataBaseConfig(name="db", dsn="sqlite://", keep_connected=connected)
+        config = DataBaseConfig(
+            name="db", dsn="sqlite://", keep_connected=connected
+        )
         db = DataBase(config)
         query = Query(
-            "query", ["db"], [QueryMetric("metric", [])], "SELECT 1.0 AS metric"
+            "query",
+            ["db"],
+            [QueryMetric("metric", [])],
+            "SELECT 1.0 AS metric",
         )
         await db.connect()
-        mock_conn_detach = mocker.patch.object(db._conn.sync_connection, "detach")
+        mock_conn_detach = mocker.patch.object(
+            db._conn.sync_connection, "detach"
+        )
         await db.execute(query)
         assert db.connected == connected
         if not connected:
@@ -438,13 +466,21 @@ class TestDataBase:
     @pytest.mark.asyncio
     async def test_execute_no_keep_disconnect_after_pending_queries(self):
         """The db is disconnected only after pending queries are run."""
-        config = DataBaseConfig(name="db", dsn="sqlite://", keep_connected=False)
+        config = DataBaseConfig(
+            name="db", dsn="sqlite://", keep_connected=False
+        )
         db = DataBase(config)
         query1 = Query(
-            "query1", ["db"], [QueryMetric("metric1", [])], "SELECT 1.0 AS metric1"
+            "query1",
+            ["db"],
+            [QueryMetric("metric1", [])],
+            "SELECT 1.0 AS metric1",
         )
         query2 = Query(
-            "query1", ["db"], [QueryMetric("metric2", [])], "SELECT 1.0 AS metric2"
+            "query1",
+            ["db"],
+            [QueryMetric("metric2", [])],
+            "SELECT 1.0 AS metric2",
         )
         await db.connect()
         await asyncio.gather(db.execute(query1), db.execute(query2))
@@ -524,9 +560,14 @@ class TestDataBase:
             "SELECT 1 AS metric, 2 AS other",
         )
         await db.connect()
-        with caplog.at_level(logging.ERROR), pytest.raises(DataBaseQueryError) as error:
+        with caplog.at_level(logging.ERROR), pytest.raises(
+            DataBaseQueryError
+        ) as error:
             await db.execute(query)
-        assert str(error.value) == "Wrong result count from query: expected 1, got 2"
+        assert (
+            str(error.value)
+            == "Wrong result count from query: expected 1, got 2"
+        )
         assert error.value.fatal
         assert caplog.messages == [
             'query "query" on database "db" failed: '
@@ -545,7 +586,10 @@ class TestDataBase:
         await db.connect()
         with pytest.raises(DataBaseQueryError) as error:
             await db.execute(query)
-        assert str(error.value) == "Wrong result count from query: expected 2, got 1"
+        assert (
+            str(error.value)
+            == "Wrong result count from query: expected 2, got 1"
+        )
         assert error.value.fatal
 
     @pytest.mark.asyncio
@@ -572,13 +616,19 @@ class TestDataBase:
             [QueryMetric("metric", [])],
             "SELECT 1 AS metric",
         )
-        mocker.patch.object(db, "_execute_query").side_effect = Exception("boom!")
+        mocker.patch.object(db, "_execute_query").side_effect = Exception(
+            "boom!"
+        )
         await db.connect()
-        with caplog.at_level(logging.DEBUG), pytest.raises(DataBaseQueryError) as error:
+        with caplog.at_level(logging.DEBUG), pytest.raises(
+            DataBaseQueryError
+        ) as error:
             await db.execute(query)
         assert str(error.value) == "boom!"
         assert not error.value.fatal
-        assert 'query "query" on database "db" failed: boom!' in caplog.messages
+        assert (
+            'query "query" on database "db" failed: boom!' in caplog.messages
+        )
         # traceback is included in messages
         assert "await self._execute_query(query)" in caplog.messages[-1]
 
@@ -604,7 +654,8 @@ class TestDataBase:
         ) as error:
             await db.execute(query)
         assert (
-            str(error.value) == 'Execution for query "query" expired after 0.1 seconds'
+            str(error.value)
+            == 'Execution for query "query" expired after 0.1 seconds'
         )
         assert caplog.messages == [
             'Execution for query "query" expired after 0.1 seconds'

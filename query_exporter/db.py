@@ -101,7 +101,9 @@ class InvalidQuerySchedule(Exception):
     """Query schedule is wrong or both schedule and interval specified."""
 
     def __init__(self, query_name: str, message: str):
-        super().__init__(f'Invalid schedule for query "{query_name}": {message}')
+        super().__init__(
+            f'Invalid schedule for query "{query_name}": {message}'
+        )
 
 
 # database errors that mean the query won't ever succeed.  Not all possible
@@ -141,7 +143,9 @@ class QueryResults(NamedTuple):
         """Return a QueryResults from results for a query."""
         conn_info = results._result_proxy.connection.info
         latency = conn_info.get("query_latency", None)
-        return cls(await results.keys(), await results.fetchall(), latency=latency)
+        return cls(
+            await results.keys(), await results.fetchall(), latency=latency
+        )
 
 
 class MetricResult(NamedTuple):
@@ -380,7 +384,8 @@ class DataBase:
         """Create and log a DataBaseError for a failed query."""
         message = self._error_message(error)
         self.logger.error(
-            f'query "{query_name}" on database "{self.config.name}" failed: ' + message
+            f'query "{query_name}" on database "{self.config.name}" failed: '
+            + message
         )
         _, _, traceback = sys.exc_info()
         self.logger.debug("".join(format_tb(traceback)))
@@ -401,7 +406,9 @@ class DataBase:
     ) -> DataBaseError:
         """Create and log a DataBaseError."""
         message = self._error_message(error)
-        self.logger.error(f'error from database "{self.config.name}": {message}')
+        self.logger.error(
+            f'error from database "{self.config.name}": {message}'
+        )
         return exc_class(message, fatal=fatal)
 
     def _error_message(self, error: Union[str, Exception]) -> str:

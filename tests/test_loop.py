@@ -10,12 +10,12 @@ from prometheus_aioexporter import MetricsRegistry
 import pytest
 import yaml
 
-from .. import loop
-from ..config import (
+from query_exporter import loop
+from query_exporter.config import (
     DataBaseConfig,
     load_config,
 )
-from ..db import DataBase
+from query_exporter.db import DataBase
 
 
 class re_match:
@@ -209,7 +209,10 @@ class TestQueryLoop:
         """Queries are run with declared parameters."""
         config_data["metrics"]["m"]["type"] = "counter"
         config_data["queries"]["q"]["sql"] = "SELECT :param AS m"
-        config_data["queries"]["q"]["parameters"] = [{"param": 10.0}, {"param": 20.0}]
+        config_data["queries"]["q"]["parameters"] = [
+            {"param": 10.0},
+            {"param": 20.0},
+        ]
         query_loop = make_query_loop()
         await query_loop.start()
         await query_tracker.wait_results()
@@ -252,7 +255,9 @@ class TestQueryLoop:
             ("db2", "v3", "v4"): 100.0,
         }
 
-    async def test_update_metric_decimal_value(self, registry, make_query_loop):
+    async def test_update_metric_decimal_value(
+        self, registry, make_query_loop
+    ):
         """A Decimal value in query results is converted to float."""
         db = DataBase(DataBaseConfig(name="db", dsn="sqlite://"))
         query_loop = make_query_loop()
@@ -330,7 +335,9 @@ class TestQueryLoop:
         await query_loop.start()
         await query_tracker.wait_failures()
         queries_metric = registry.get_metric("queries")
-        assert metric_values(queries_metric, by_labels=("status",)) == {("error",): 1.0}
+        assert metric_values(queries_metric, by_labels=("status",)) == {
+            ("error",): 1.0
+        }
 
     async def test_run_query_increase_timeout_count(
         self, query_tracker, config_data, make_query_loop, registry
@@ -353,7 +360,9 @@ class TestQueryLoop:
             ("timeout",): 1.0
         }
 
-    async def test_run_query_at_interval(self, advance_time, query_tracker, query_loop):
+    async def test_run_query_at_interval(
+        self, advance_time, query_tracker, query_loop
+    ):
         """Queries are run at the specified time interval."""
         await query_loop.start()
         await advance_time(0)  # kick the first run
@@ -408,10 +417,16 @@ class TestQueryLoop:
             "db2": {"dsn": f"sqlite:///{db2}"},
         }
         config_data["queries"]["q"].update(
-            {"databases": ["db1", "db2"], "sql": "SELECT * FROM test", "interval": 1.0}
+            {
+                "databases": ["db1", "db2"],
+                "sql": "SELECT * FROM test",
+                "interval": 1.0,
+            }
         )
         await run_queries(
-            db1, "CREATE TABLE test (m INTEGER)", "INSERT INTO test VALUES (10)"
+            db1,
+            "CREATE TABLE test (m INTEGER)",
+            "INSERT INTO test VALUES (10)",
         )
         # the query on the second database returns more columns
         await run_queries(
@@ -474,7 +489,9 @@ class TestQueryLoop:
             }
         )
         await run_queries(
-            db1, "CREATE TABLE test (m INTEGER)", "INSERT INTO test VALUES (10)"
+            db1,
+            "CREATE TABLE test (m INTEGER)",
+            "INSERT INTO test VALUES (10)",
         )
         # the query on the second database returns more columns
         await run_queries(
@@ -494,7 +511,13 @@ class TestQueryLoop:
         assert len(query_tracker.failures) == 1
 
     async def test_clear_expired_series(
-        self, mocker, tmp_path, query_tracker, config_data, make_query_loop, registry
+        self,
+        mocker,
+        tmp_path,
+        query_tracker,
+        config_data,
+        make_query_loop,
+        registry,
     ):
         """The query loop clears out series last seen earlier than the specified interval."""
         db = tmp_path / "db.sqlite"
