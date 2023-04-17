@@ -1,6 +1,7 @@
 """Configuration management functions."""
 
 from collections import defaultdict
+from collections.abc import Mapping
 from copy import deepcopy
 from dataclasses import (
     dataclass,
@@ -14,15 +15,7 @@ from pathlib import Path
 import re
 from typing import (
     Any,
-    Dict,
-    FrozenSet,
     IO,
-    List,
-    Mapping,
-    Optional,
-    Set,
-    Tuple,
-    Union,
 )
 from urllib.parse import (
     quote_plus,
@@ -86,8 +79,8 @@ class DataBaseConfig:
 
     name: str
     dsn: str
-    connect_sql: List[str] = field(default_factory=list)
-    labels: Dict[str, str] = field(default_factory=dict)
+    connect_sql: list[str] = field(default_factory=list)
+    labels: dict[str, str] = field(default_factory=dict)
     keep_connected: bool = True
     autocommit: bool = True
 
@@ -102,16 +95,16 @@ class DataBaseConfig:
 class Config:
     """Top-level configuration."""
 
-    databases: Dict[str, DataBaseConfig]
-    metrics: Dict[str, MetricConfig]
-    queries: Dict[str, Query]
+    databases: dict[str, DataBaseConfig]
+    metrics: dict[str, MetricConfig]
+    queries: dict[str, Query]
 
 
 # Type matching os.environ.
 Environ = Mapping[str, str]
 
 # Content for the "parameters" config option
-ParametersConfig = Union[List[Dict[str, Any]], Dict[str, List[Dict[str, Any]]]]
+ParametersConfig = list[dict[str, Any]] | dict[str, list[dict[str, Any]]]
 
 
 def load_config(
@@ -132,11 +125,11 @@ def load_config(
 
 
 def _get_databases(
-    configs: Dict[str, Dict[str, Any]], env: Environ
-) -> Tuple[Dict[str, DataBaseConfig], FrozenSet[str]]:
+    configs: dict[str, dict[str, Any]], env: Environ
+) -> tuple[dict[str, DataBaseConfig], frozenset[str]]:
     """Return a dict mapping names to database configs, and a set of database labels."""
     databases = {}
-    all_db_labels: Set[FrozenSet[str]] = set()  # set of all labels sets
+    all_db_labels: set[frozenset[str]] = set()  # set of all labels sets
     try:
         for name, config in configs.items():
             labels = config.get("labels", {})
@@ -152,7 +145,7 @@ def _get_databases(
     except Exception as e:
         raise ConfigError(str(e))
 
-    db_labels: FrozenSet[str]
+    db_labels: frozenset[str]
     if not all_db_labels:
         db_labels = frozenset()
     elif len(all_db_labels) > 1:
@@ -164,8 +157,8 @@ def _get_databases(
 
 
 def _get_metrics(
-    metrics: Dict[str, Dict[str, Any]], extra_labels: FrozenSet[str]
-) -> Dict[str, MetricConfig]:
+    metrics: dict[str, dict[str, Any]], extra_labels: frozenset[str]
+) -> dict[str, MetricConfig]:
     """Return a dict mapping metric names to their configuration."""
     configs = {}
     # global metrics
@@ -192,7 +185,7 @@ def _get_metrics(
 
 
 def _validate_metric_config(
-    name: str, config: Dict[str, Any], extra_labels: FrozenSet[str]
+    name: str, config: dict[str, Any], extra_labels: frozenset[str]
 ):
     """Validate a metric configuration stanza."""
     if name in GLOBAL_METRICS:
@@ -207,14 +200,14 @@ def _validate_metric_config(
 
 
 def _get_queries(
-    configs: Dict[str, Dict[str, Any]],
-    database_names: FrozenSet[str],
-    metrics: Dict[str, MetricConfig],
-    extra_labels: FrozenSet[str],
-) -> Dict[str, Query]:
+    configs: dict[str, dict[str, Any]],
+    database_names: frozenset[str],
+    metrics: dict[str, MetricConfig],
+    extra_labels: frozenset[str],
+) -> dict[str, Query]:
     """Return a list of Queries from config."""
     metric_names = frozenset(metrics)
-    queries: Dict[str, Query] = {}
+    queries: dict[str, Query] = {}
     for name, config in configs.items():
         _validate_query_config(name, config, database_names, metric_names)
         query_metrics = _get_query_metrics(config, metrics, extra_labels)
@@ -252,13 +245,13 @@ def _get_queries(
 
 
 def _get_query_metrics(
-    config: Dict[str, Any],
-    metrics: Dict[str, MetricConfig],
-    extra_labels: FrozenSet[str],
-) -> List[QueryMetric]:
+    config: dict[str, Any],
+    metrics: dict[str, MetricConfig],
+    extra_labels: frozenset[str],
+) -> list[QueryMetric]:
     """Return QueryMetrics for a query."""
 
-    def _metric_labels(labels: List[str]) -> List[str]:
+    def _metric_labels(labels: list[str]) -> list[str]:
         return sorted(set(labels) - extra_labels)
 
     return [
@@ -269,9 +262,9 @@ def _get_query_metrics(
 
 def _validate_query_config(
     name: str,
-    config: Dict[str, Any],
-    database_names: FrozenSet[str],
-    metric_names: FrozenSet[str],
+    config: dict[str, Any],
+    database_names: frozenset[str],
+    metric_names: frozenset[str],
 ):
     """Validate a query configuration stanza."""
     unknown_databases = set(config["databases"]) - database_names
@@ -305,7 +298,7 @@ def _validate_query_config(
                 )
 
 
-def _convert_interval(interval: Union[int, str, None]) -> Optional[int]:
+def _convert_interval(interval: int | str | None) -> int | None:
     """Convert a time interval to seconds.
 
     Return None if no interval is specified.
@@ -326,7 +319,7 @@ def _convert_interval(interval: Union[int, str, None]) -> Optional[int]:
     return int(interval) * multiplier
 
 
-def _resolve_dsn(dsn: Union[str, Dict[str, Any]], env: Environ) -> str:
+def _resolve_dsn(dsn: str | dict[str, Any], env: Environ) -> str:
     """Build and resolve the database DSN string from the right source."""
 
     def from_env(varname: str) -> str:
@@ -360,7 +353,7 @@ def _resolve_dsn(dsn: Union[str, Dict[str, Any]], env: Environ) -> str:
     return dsn
 
 
-def _build_dsn(details: Dict[str, Any]) -> str:
+def _build_dsn(details: dict[str, Any]) -> str:
     """Build a DSN string from details."""
     url = f"{details['dialect']}://"
     user = details.get("user")
@@ -388,7 +381,7 @@ def _build_dsn(details: Dict[str, Any]) -> str:
     return url
 
 
-def _validate_config(config: Dict[str, Any]):
+def _validate_config(config: dict[str, Any]):
     package = get_distribution("query_exporter")
     schema_path = package.get_resource_filename(  # type: ignore
         None, "query_exporter/schemas/config.yaml"
@@ -404,8 +397,8 @@ def _validate_config(config: Dict[str, Any]):
 
 def _warn_if_unused(config: Config, logger: Logger):
     """Warn if there are unused databases or metrics defined."""
-    used_dbs: Set[str] = set()
-    used_metrics: Set[str] = set()
+    used_dbs: set[str] = set()
+    used_metrics: set[str] = set()
     for query in config.queries.values():
         used_dbs.update(query.databases)
         used_metrics.update(metric.name for metric in query.metrics)
@@ -424,7 +417,7 @@ def _warn_if_unused(config: Config, logger: Logger):
         )
 
 
-def _get_parameters_sets(parameters: ParametersConfig) -> List[Dict[str, Any]]:
+def _get_parameters_sets(parameters: ParametersConfig) -> list[dict[str, Any]]:
     """Return an sequence of set of paramters with their values."""
     if isinstance(parameters, dict):
         return _get_parameters_matrix(parameters)
@@ -432,8 +425,8 @@ def _get_parameters_sets(parameters: ParametersConfig) -> List[Dict[str, Any]]:
 
 
 def _get_parameters_matrix(
-    parameters: Dict[str, List[Dict[str, Any]]]
-) -> List[Dict[str, Any]]:
+    parameters: dict[str, list[dict[str, Any]]]
+) -> list[dict[str, Any]]:
     """Return parameters combinations from a matrix."""
     # first, flatten dict like
     #

@@ -9,14 +9,7 @@ from traceback import format_tb
 from typing import (
     Any,
     cast,
-    Dict,
-    FrozenSet,
-    List,
     NamedTuple,
-    Optional,
-    Tuple,
-    Type,
-    Union,
 )
 
 from croniter import croniter
@@ -37,7 +30,7 @@ from sqlalchemy_aio.base import (
 )
 
 #: Timeout for a query
-QueryTimeout = Union[int, float]
+QueryTimeout = int | float
 
 
 #: Label used to tag metrics by database
@@ -128,15 +121,15 @@ class QueryMetric(NamedTuple):
     """Metric details for a Query."""
 
     name: str
-    labels: List[str]
+    labels: list[str]
 
 
 class QueryResults(NamedTuple):
     """Results of a database query."""
 
-    keys: List[str]
-    rows: List[Tuple]
-    latency: Optional[float] = None
+    keys: list[str]
+    rows: list[tuple]
+    latency: float | None = None
 
     @classmethod
     async def from_results(cls, results: AsyncResultProxy):
@@ -153,14 +146,14 @@ class MetricResult(NamedTuple):
 
     metric: str
     value: Any
-    labels: Dict[str, str]
+    labels: dict[str, str]
 
 
 class MetricResults(NamedTuple):
     """Collection of metric results for a query."""
 
-    results: List[MetricResult]
-    latency: Optional[float] = None
+    results: list[MetricResult]
+    latency: float | None = None
 
 
 class Query:
@@ -169,14 +162,14 @@ class Query:
     def __init__(
         self,
         name: str,
-        databases: List[str],
-        metrics: List[QueryMetric],
+        databases: list[str],
+        metrics: list[QueryMetric],
         sql: str,
-        parameters: Optional[Dict[str, Any]] = None,
-        timeout: Optional[QueryTimeout] = None,
-        interval: Optional[int] = None,
-        schedule: Optional[str] = None,
-        config_name: Optional[str] = None,
+        parameters: dict[str, Any] | None = None,
+        timeout: QueryTimeout | None = None,
+        interval: int | None = None,
+        schedule: str | None = None,
+        config_name: str | None = None,
     ):
         self.name = name
         self.databases = databases
@@ -195,7 +188,7 @@ class Query:
         """Whether the query is run periodically via interval or schedule."""
         return bool(self.interval or self.schedule)
 
-    def labels(self) -> FrozenSet[str]:
+    def labels(self) -> frozenset[str]:
         """Resturn all labels for metrics in the query."""
         return frozenset(chain(*(metric.labels for metric in self.metrics)))
 
@@ -244,7 +237,7 @@ class DataBase:
     """A database to perform Queries."""
 
     _engine: AsyncioEngine
-    _conn: Optional[AsyncConnection] = None
+    _conn: AsyncConnection | None = None
     _pending_queries: int = 0
 
     def __init__(
@@ -332,8 +325,8 @@ class DataBase:
     async def execute_sql(
         self,
         sql: str,
-        parameters: Optional[Dict[str, Any]] = None,
-        timeout: Optional[QueryTimeout] = None,
+        parameters: dict[str, Any] | None = None,
+        timeout: QueryTimeout | None = None,
     ) -> AsyncResultProxy:
         """Execute a raw SQL query."""
         if parameters is None:
@@ -378,7 +371,7 @@ class DataBase:
     def _query_db_error(
         self,
         query_name: str,
-        error: Union[str, Exception],
+        error: str | Exception,
         fatal: bool = False,
     ) -> DataBaseError:
         """Create and log a DataBaseError for a failed query."""
@@ -400,8 +393,8 @@ class DataBase:
 
     def _db_error(
         self,
-        error: Union[str, Exception],
-        exc_class: Type[DataBaseError] = DataBaseError,
+        error: str | Exception,
+        exc_class: type[DataBaseError] = DataBaseError,
         fatal: bool = False,
     ) -> DataBaseError:
         """Create and log a DataBaseError."""
@@ -411,7 +404,7 @@ class DataBase:
         )
         return exc_class(message, fatal=fatal)
 
-    def _error_message(self, error: Union[str, Exception]) -> str:
+    def _error_message(self, error: str | Exception) -> str:
         """Return a message from an error."""
         message = str(error).strip()
         if not message and isinstance(error, Exception):

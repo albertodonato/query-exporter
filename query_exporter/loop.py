@@ -2,6 +2,7 @@
 
 import asyncio
 from collections import defaultdict
+from collections.abc import Mapping
 from datetime import datetime
 from decimal import Decimal
 from logging import Logger
@@ -9,12 +10,6 @@ import time
 from typing import (
     Any,
     cast,
-    Dict,
-    List,
-    Mapping,
-    Optional,
-    Set,
-    Tuple,
 )
 
 from croniter import croniter
@@ -48,16 +43,16 @@ class MetricsLastSeen:
 
     """
 
-    def __init__(self, expirations: Dict[str, Optional[int]]):
+    def __init__(self, expirations: dict[str, int | None]):
         self._expirations = expirations
-        self._last_seen: Dict[str, Dict[Tuple[str, ...], float]] = defaultdict(
+        self._last_seen: dict[str, dict[tuple[str, ...], float]] = defaultdict(
             dict
         )
 
     def update(
         self,
         name: str,
-        labels: Dict[str, str],
+        labels: dict[str, str],
         timestamp: float,
     ):
         """Update last seen for a metric with a set of labels to given timestamp."""
@@ -70,7 +65,7 @@ class MetricsLastSeen:
 
     def expire_series(
         self, timestamp: float
-    ) -> Dict[str, List[Tuple[str, ...]]]:
+    ) -> dict[str, list[tuple[str, ...]]]:
         """Expire and return expired metric series at the given timestamp.
 
         Expired series are removed internally.
@@ -114,12 +109,12 @@ class QueryLoop:
         self._config = config
         self._registry = registry
         self._logger = logger
-        self._timed_queries: List[Query] = []
-        self._aperiodic_queries: List[Query] = []
+        self._timed_queries: list[Query] = []
+        self._aperiodic_queries: list[Query] = []
         # map query names to their TimedCalls
-        self._timed_calls: Dict[str, TimedCall] = {}
+        self._timed_calls: dict[str, TimedCall] = {}
         # map query names to list of database names
-        self._doomed_queries: Dict[str, Set[str]] = defaultdict(set)
+        self._doomed_queries: dict[str, set[str]] = defaultdict(set)
         self._loop = asyncio.get_event_loop()
         self._last_seen = MetricsLastSeen(
             {
@@ -127,7 +122,7 @@ class QueryLoop:
                 for name, metric in self._config.metrics.items()
             }
         )
-        self._databases: Dict[str, DataBase] = {
+        self._databases: dict[str, DataBase] = {
             db_config.name: DataBase(db_config, logger=self._logger)
             for db_config in self._config.databases.values()
         }
@@ -244,7 +239,7 @@ class QueryLoop:
         database: DataBase,
         name: str,
         value: Any,
-        labels: Optional[Mapping[str, str]] = None,
+        labels: Mapping[str, str] | None = None,
     ):
         """Update value for a metric."""
         if value is None:

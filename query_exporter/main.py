@@ -2,10 +2,7 @@
 
 import argparse
 from functools import partial
-from typing import (
-    IO,
-    List,
-)
+from typing import IO
 
 from aiohttp.web import Application
 from argcomplete import autocomplete
@@ -68,7 +65,7 @@ class QueryExporterScript(PrometheusExporterScript):
         await application["query-loop"].stop()
 
     async def _update_handler(
-        self, query_loop: QueryLoop, metrics: List[MetricConfig]
+        self, query_loop: QueryLoop, metrics: list[MetricConfig]
     ):
         """Run queries with no specified schedule on each request."""
         await query_loop.run_aperiodic_queries()
