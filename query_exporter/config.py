@@ -2,10 +2,7 @@
 
 from collections import defaultdict
 from collections.abc import Mapping
-from dataclasses import (
-    dataclass,
-    field,
-)
+from dataclasses import dataclass
 from functools import reduce
 from importlib import resources
 import itertools
@@ -27,9 +24,8 @@ from prometheus_aioexporter import MetricConfig
 import yaml
 
 from .db import (
-    create_db_engine,
     DATABASE_LABEL,
-    DataBaseError,
+    DataBaseConfig,
     InvalidQueryParameters,
     InvalidQuerySchedule,
     Query,
@@ -86,24 +82,6 @@ class ConfigError(Exception):
 
 
 @dataclass(frozen=True)
-class DataBaseConfig:
-    """Configuration for a database."""
-
-    name: str
-    dsn: str
-    connect_sql: list[str] = field(default_factory=list)
-    labels: dict[str, str] = field(default_factory=dict)
-    keep_connected: bool = True
-    autocommit: bool = True
-
-    def __post_init__(self):
-        try:
-            create_db_engine(self.dsn)
-        except DataBaseError as e:
-            raise ConfigError(str(e))
-
-
-@dataclass(frozen=True)
 class Config:
     """Top-level configuration."""
 
@@ -120,7 +98,7 @@ ParametersConfig = list[dict[str, Any]] | dict[str, list[dict[str, Any]]]
 
 
 def load_config(
-    config_fd: IO, logger: Logger, env: Environ = os.environ
+    config_fd: IO[str], logger: Logger, env: Environ = os.environ
 ) -> Config:
     """Load YAML config from file."""
     data = defaultdict(dict, yaml.safe_load(config_fd))
@@ -202,7 +180,7 @@ def _get_metrics(
 
 def _validate_metric_config(
     name: str, config: dict[str, Any], extra_labels: frozenset[str]
-):
+) -> None:
     """Validate a metric configuration stanza."""
     if name in GLOBAL_METRICS:
         raise ConfigError(f'Label name "{name} is reserved for builtin metric')
@@ -281,7 +259,7 @@ def _validate_query_config(
     config: dict[str, Any],
     database_names: frozenset[str],
     metric_names: frozenset[str],
-):
+) -> None:
     """Validate a query configuration stanza."""
     unknown_databases = set(config["databases"]) - database_names
     if unknown_databases:
@@ -397,7 +375,7 @@ def _build_dsn(details: dict[str, Any]) -> str:
     return url
 
 
-def _validate_config(config: dict[str, Any]):
+def _validate_config(config: dict[str, Any]) -> None:
     schema_file = resources.files("query_exporter") / "schemas" / "config.yaml"
     schema = yaml.safe_load(schema_file.read_bytes())
     try:
@@ -407,7 +385,7 @@ def _validate_config(config: dict[str, Any]):
         raise ConfigError(f"Invalid config at {path}: {e.message}")
 
 
-def _warn_if_unused(config: Config, logger: Logger):
+def _warn_if_unused(config: Config, logger: Logger) -> None:
     """Warn if there are unused databases or metrics defined."""
     used_dbs: set[str] = set()
     used_metrics: set[str] = set()

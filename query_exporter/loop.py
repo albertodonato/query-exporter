@@ -10,6 +10,7 @@ import time
 from typing import (
     Any,
     cast,
+    Iterator,
 )
 
 from croniter import croniter
@@ -60,7 +61,7 @@ class MetricsLastSeen:
         name: str,
         labels: dict[str, str],
         timestamp: float,
-    ):
+    ) -> None:
         """Update last seen for a metric with a set of labels to given timestamp."""
         if not self._expirations.get(name):
             return
@@ -131,18 +132,18 @@ class QueryLoop:
             else:
                 self._aperiodic_queries.append(query)
 
-    async def start(self):
+    async def start(self) -> None:
         """Start timed queries execution."""
         for query in self._timed_queries:
             if query.interval:
                 call = PeriodicCall(self._run_query, query)
                 call.start(query.interval)
-            else:
+            elif query.schedule is not None:
                 call = TimedCall(self._run_query, query)
                 call.start(self._loop_times_iter(query.schedule))
             self._timed_calls[query.name] = call
 
-    async def stop(self):
+    async def stop(self) -> None:
         """Stop timed query execution."""
         coros = (call.stop() for call in self._timed_calls.values())
         await asyncio.gather(*coros, return_exceptions=True)
@@ -150,7 +151,7 @@ class QueryLoop:
         coros = (db.close() for db in self._databases.values())
         await asyncio.gather(*coros, return_exceptions=True)
 
-    def clear_expired_series(self):
+    def clear_expired_series(self) -> None:
         """Clear metric series that have expired."""
         expired_series = self._last_seen.expire_series(self._timestamp())
         for name, label_values in expired_series.items():
@@ -158,7 +159,7 @@ class QueryLoop:
             for values in label_values:
                 metric.remove(*values)
 
-    async def run_aperiodic_queries(self):
+    async def run_aperiodic_queries(self) -> None:
         """Run queries on request."""
         coros = (
             self._execute_query(query, dbname)
@@ -167,7 +168,7 @@ class QueryLoop:
         )
         await asyncio.gather(*coros, return_exceptions=True)
 
-    def _loop_times_iter(self, schedule: str):
+    def _loop_times_iter(self, schedule: str) -> Iterator[float | int]:
         """Wrap a croniter iterator to sync time with the loop clock."""
         cron_iter = croniter(schedule, self._now())
         while True:
@@ -176,12 +177,12 @@ class QueryLoop:
             delta = cc - t
             yield self._loop.time() + delta
 
-    def _run_query(self, query: Query):
+    def _run_query(self, query: Query) -> None:
         """Periodic task to run a query."""
         for dbname in query.databases:
             self._loop.create_task(self._execute_query(query, dbname))
 
-    async def _execute_query(self, query: Query, dbname: str):
+    async def _execute_query(self, query: Query, dbname: str) -> None:
         """'Execute a Query on a DataBase."""
         if await self._remove_if_dooomed(query, dbname):
             return
@@ -242,7 +243,7 @@ class QueryLoop:
         name: str,
         value: Any,
         labels: Mapping[str, str] | None = None,
-    ):
+    ) -> None:
         """Update value for a metric."""
         if value is None:
             # don't fail is queries that count return NULL
@@ -290,7 +291,7 @@ class QueryLoop:
 
     def _increment_queries_count(
         self, database: DataBase, query: Query, status: str
-    ):
+    ) -> None:
         """Increment count of queries in a status for a database."""
         self._update_metric(
             database,
@@ -299,13 +300,13 @@ class QueryLoop:
             labels={"query": query.config_name, "status": status},
         )
 
-    def _increment_db_error_count(self, database: DataBase):
+    def _increment_db_error_count(self, database: DataBase) -> None:
         """Increment number of errors for a database."""
         self._update_metric(database, DB_ERRORS_METRIC_NAME, 1)
 
     def _update_query_latency_metric(
         self, database: DataBase, query: Query, latency: float
-    ):
+    ) -> None:
         """Update latency metric for a query on a database."""
         self._update_metric(
             database,
@@ -316,7 +317,7 @@ class QueryLoop:
 
     def _update_query_timestamp_metric(
         self, database: DataBase, query: Query, timestamp: float
-    ):
+    ) -> None:
         """Update timestamp metric for a query on a database."""
         self._update_metric(
             database,

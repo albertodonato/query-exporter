@@ -2,6 +2,10 @@
 
 import asyncio
 from collections.abc import Iterable
+from dataclasses import (
+    dataclass,
+    field,
+)
 from itertools import chain
 import logging
 import sys
@@ -10,6 +14,7 @@ from time import (
     time,
 )
 from traceback import format_tb
+from types import TracebackType
 from typing import (
     Any,
     cast,
@@ -47,7 +52,7 @@ class DataBaseError(Exception):
     if `fatal` is True, it means the Query will never succeed.
     """
 
-    def __init__(self, message: str, fatal: bool = False):
+    def __init__(self, message: str, fatal: bool = False) -> None:
         super().__init__(message)
         self.fatal = fatal
 
@@ -63,7 +68,7 @@ class DataBaseQueryError(DataBaseError):
 class QueryTimeoutExpired(Exception):
     """Query execution timeout expired."""
 
-    def __init__(self, query_name: str, timeout: QueryTimeout):
+    def __init__(self, query_name: str, timeout: QueryTimeout) -> None:
         super().__init__(
             f'Execution for query "{query_name}" expired after {timeout} seconds'
         )
@@ -72,7 +77,7 @@ class QueryTimeoutExpired(Exception):
 class InvalidResultCount(Exception):
     """Number of results from a query don't match metrics count."""
 
-    def __init__(self, expected: int, got: int):
+    def __init__(self, expected: int, got: int) -> None:
         super().__init__(
             f"Wrong result count from query: expected {expected}, got {got}"
         )
@@ -95,7 +100,7 @@ class InvalidResultColumnNames(Exception):
 class InvalidQueryParameters(Exception):
     """Query parameter names don't match those in query SQL."""
 
-    def __init__(self, query_name: str):
+    def __init__(self, query_name: str) -> None:
         super().__init__(
             f'Parameters for query "{query_name}" don\'t match those from SQL'
         )
@@ -104,7 +109,7 @@ class InvalidQueryParameters(Exception):
 class InvalidQuerySchedule(Exception):
     """Query schedule is wrong or both schedule and interval specified."""
 
-    def __init__(self, query_name: str, message: str):
+    def __init__(self, query_name: str, message: str) -> None:
         super().__init__(
             f'Invalid schedule for query "{query_name}": {message}'
         )
@@ -118,7 +123,23 @@ class InvalidQuerySchedule(Exception):
 FATAL_ERRORS = (InvalidResultCount, InvalidResultColumnNames)
 
 
-def create_db_engine(dsn: str, **kwargs) -> AsyncioEngine:
+@dataclass(frozen=True)
+class DataBaseConfig:
+    """Configuration for a database."""
+
+    name: str
+    dsn: str
+    connect_sql: list[str] = field(default_factory=list)
+    labels: dict[str, str] = field(default_factory=dict)
+    keep_connected: bool = True
+    autocommit: bool = True
+
+    def __post_init__(self) -> None:
+        # raise DatabaseError error if the DSN in invalid
+        create_db_engine(self.dsn)
+
+
+def create_db_engine(dsn: str, **kwargs: Any) -> AsyncioEngine:
     """Create the database engine, validating the DSN"""
     try:
         return create_engine(dsn, **kwargs)
@@ -139,12 +160,12 @@ class QueryResults(NamedTuple):
     """Results of a database query."""
 
     keys: list[str]
-    rows: list[tuple]
+    rows: list[tuple[Any]]
     timestamp: float | None = None
     latency: float | None = None
 
     @classmethod
-    async def from_results(cls, results: AsyncResultProxy):
+    async def from_results(cls, results: AsyncResultProxy) -> "QueryResults":
         """Return a QueryResults from results for a query."""
         timestamp = time()
         conn_info = results._result_proxy.connection.info
@@ -187,7 +208,7 @@ class Query:
         interval: int | None = None,
         schedule: str | None = None,
         config_name: str | None = None,
-    ):
+    ) -> None:
         self.name = name
         self.databases = databases
         self.metrics = metrics
@@ -239,7 +260,7 @@ class Query:
             latency=query_results.latency,
         )
 
-    def _check_schedule(self):
+    def _check_schedule(self) -> None:
         if self.interval and self.schedule:
             raise InvalidQuerySchedule(
                 self.name, "both interval and schedule specified"
@@ -247,7 +268,7 @@ class Query:
         if self.schedule and not croniter.is_valid(self.schedule):
             raise InvalidQuerySchedule(self.name, "invalid schedule format")
 
-    def _check_query_parameters(self):
+    def _check_query_parameters(self) -> None:
         expr = text(self.sql)
         query_params = set(expr.compile().params)
         if set(self.parameters) != query_params:
@@ -263,9 +284,9 @@ class DataBase:
 
     def __init__(
         self,
-        config,
+        config: DataBaseConfig,
         logger: logging.Logger = logging.getLogger(),
-    ):
+    ) -> None:
         self.config = config
         self.logger = logger
         self._connect_lock = asyncio.Lock()
@@ -277,11 +298,13 @@ class DataBase:
 
         self._setup_query_latency_tracking()
 
-    async def __aenter__(self):
+    async def __aenter__(self) -> "DataBase":
         await self.connect()
         return self
 
-    async def __aexit__(self, exc_type, exc_value, traceback):
+    async def __aexit__(
+        self, exc_type: type, exc_value: Exception, traceback: TracebackType
+    ) -> None:
         await self.close()
 
     @property
@@ -289,7 +312,7 @@ class DataBase:
         """Whether the database is connected."""
         return self._conn is not None
 
-    async def connect(self):
+    async def connect(self) -> None:
         """Connect to the database."""
         async with self._connect_lock:
             if self.connected:
@@ -311,7 +334,7 @@ class DataBase:
                         exc_class=DataBaseQueryError,
                     )
 
-    async def close(self):
+    async def close(self) -> None:
         """Close the database connection."""
         async with self._connect_lock:
             if not self.connected:
@@ -364,27 +387,28 @@ class DataBase:
             query.sql, parameters=query.parameters, timeout=query.timeout
         )
 
-    async def _close(self):
+    async def _close(self) -> None:
         # ensure the connection with the DB is actually closed
+        self._conn: AsyncConnection
         self._conn.sync_connection.detach()
         await self._conn.close()
         self._conn = None
         self._pending_queries = 0
         self.logger.debug(f'disconnected from database "{self.config.name}"')
 
-    def _setup_query_latency_tracking(self):
+    def _setup_query_latency_tracking(self) -> None:
         engine = self._engine.sync_engine
 
-        @event.listens_for(engine, "before_cursor_execute")
+        @event.listens_for(engine, "before_cursor_execute")  # type: ignore
         def before_cursor_execute(
             conn, cursor, statement, parameters, context, executemany
-        ):
+        ) -> None:
             conn.info["query_start_time"] = perf_counter()
 
-        @event.listens_for(engine, "after_cursor_execute")
+        @event.listens_for(engine, "after_cursor_execute")  # type: ignore
         def after_cursor_execute(
             conn, cursor, statement, parameters, context, executemany
-        ):
+        ) -> None:
             conn.info["query_latency"] = perf_counter() - conn.info.pop(
                 "query_start_time"
             )

@@ -109,5 +109,4 @@ omit = [
 ignore_missing_imports = true
 install_types = true
 non_interactive = true
-warn_return_any = true
-warn_unused_configs = true
+strict = true
