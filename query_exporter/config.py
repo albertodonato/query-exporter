@@ -8,6 +8,7 @@ from dataclasses import (
     field,
 )
 from functools import reduce
+from importlib import resources
 import itertools
 from logging import Logger
 import os
@@ -23,7 +24,6 @@ from urllib.parse import (
 )
 
 import jsonschema
-from pkg_resources import get_distribution
 from prometheus_aioexporter import MetricConfig
 import yaml
 
@@ -382,12 +382,8 @@ def _build_dsn(details: dict[str, Any]) -> str:
 
 
 def _validate_config(config: dict[str, Any]):
-    package = get_distribution("query_exporter")
-    schema_path = package.get_resource_filename(  # type: ignore
-        None, "query_exporter/schemas/config.yaml"
-    )
-    with open(schema_path) as fd:
-        schema = yaml.safe_load(fd)
+    schema_file = resources.files("query_exporter") / "schemas" / "config.yaml"
+    schema = yaml.safe_load(schema_file.read_bytes())
     try:
         jsonschema.validate(config, schema)
     except jsonschema.ValidationError as e:
