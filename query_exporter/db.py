@@ -77,8 +77,15 @@ class InvalidResultCount(Exception):
 class InvalidResultColumnNames(Exception):
     """Invalid column names in query results."""
 
-    def __init__(self):
-        super().__init__("Wrong column names from query")
+    def __init__(self, expected: list[str], got: list[str]) -> None:
+        super().__init__(
+            "Wrong column names from query: "
+            f"expected {self._names(expected)}, got {self._names(got)}"
+        )
+
+    def _names(self, names: list[str]) -> str:
+        names_list = ", ".join(names)
+        return f"({names_list})"
 
 
 class InvalidQueryParameters(Exception):
@@ -204,7 +211,7 @@ class Query:
         if len(expected_keys) != len(result_keys):
             raise InvalidResultCount(len(expected_keys), len(result_keys))
         if result_keys != expected_keys:
-            raise InvalidResultColumnNames()
+            raise InvalidResultColumnNames(result_keys, expected_keys)
         results = []
         for row in query_results.rows:
             values = dict(zip(query_results.keys, row))

@@ -604,7 +604,10 @@ class TestDataBase:
         await db.connect()
         with pytest.raises(DataBaseQueryError) as error:
             await db.execute(query)
-        assert str(error.value) == "Wrong column names from query"
+        assert (
+            str(error.value)
+            == "Wrong column names from query: expected (foo, label), got (label, metric)"
+        )
         assert error.value.fatal
 
     @pytest.mark.asyncio
