@@ -192,6 +192,18 @@ definitions:
           The expiration is tracked independently for each labels value
           combination.
         $ref: "#/definitions/time-interval"
+      increment:
+        title: For counter metrics, whether to increment by query result
+        description: >
+          If set to false, the counter value is set to the result of the query.
+
+          By default, counters are incremented by the value returned by the
+          query.
+
+          NOTE: This behavior will be reversed in the 3.0 release, and
+          increment will be set to false by default.
+        type: boolean
+        default: true
 
   query:
     title: Definition for a SQL query to run
