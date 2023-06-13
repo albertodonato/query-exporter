@@ -8,6 +8,10 @@ engines.
 Microsoft SQL Server [``mssql://``]
 ===================================
 
+Sample DSN::
+
+  mssql://<username>:<password>@<host>:<port>/<db>?driver=ODBC+Driver+17+for+SQL+Server
+
 
 Multiple queries on a single connection
 ---------------------------------------
@@ -18,7 +22,7 @@ reported correctly.
 
 This can be done via the ``MARS_Connection`` parameter on the database DSN::
 
-  mssql://username:password@host:port/db?MARS_Connection=yes
+  mssql://<username>:<password>@<host>:<port>/<db>?MARS_Connection=yes
 
 
 Connection closed error during query execution
@@ -29,6 +33,15 @@ returned when fetching query results.
 
 If this happens, setting ``autocommit: false`` in database configuration should
 solve it.
+
+
+Oracle [``oracle://``]
+======================
+
+Sample DSN::
+
+  oracle://<username>:<password>@(DESCRIPTION =(ADDRESS = (PROTOCOL = TCP)(HOST = <hostname>)(PORT = <port>))(CONNECT_DATA =(SERVER = DEDICATED)(SERVICE_NAME = <service>)))
+
 
 
 .. _MARS: https://docs.microsoft.com/en-us/dotnet/framework/data/adonet/sql/enabling-multiple-active-result-sets
