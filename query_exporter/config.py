@@ -2,7 +2,6 @@
 
 from collections import defaultdict
 from collections.abc import Mapping
-from copy import deepcopy
 from dataclasses import (
     dataclass,
     field,
@@ -40,26 +39,26 @@ from .db import (
 # metric for counting database errors
 DB_ERRORS_METRIC_NAME = "database_errors"
 _DB_ERRORS_METRIC_CONFIG = MetricConfig(
-    DB_ERRORS_METRIC_NAME,
-    "Number of database errors",
-    "counter",
-    {"labels": []},
+    name=DB_ERRORS_METRIC_NAME,
+    description="Number of database errors",
+    type="counter",
 )
+
 # metric for counting performed queries
 QUERIES_METRIC_NAME = "queries"
 _QUERIES_METRIC_CONFIG = MetricConfig(
-    QUERIES_METRIC_NAME,
-    "Number of database queries",
-    "counter",
-    {"labels": ["query", "status"]},
+    name=QUERIES_METRIC_NAME,
+    description="Number of database queries",
+    type="counter",
+    labels=("query", "status"),
 )
 # metric for counting queries execution latency
 QUERY_LATENCY_METRIC_NAME = "query_latency"
 _QUERY_LATENCY_METRIC_CONFIG = MetricConfig(
-    QUERY_LATENCY_METRIC_NAME,
-    "Query execution latency",
-    "histogram",
-    {"labels": ["query"]},
+    name=QUERY_LATENCY_METRIC_NAME,
+    description="Query execution latency",
+    type="histogram",
+    labels=("query",),
 )
 GLOBAL_METRICS = frozenset(
     [DB_ERRORS_METRIC_NAME, QUERIES_METRIC_NAME, QUERY_LATENCY_METRIC_NAME]
@@ -167,20 +166,23 @@ def _get_metrics(
         _QUERIES_METRIC_CONFIG,
         _QUERY_LATENCY_METRIC_CONFIG,
     ):
-        # make a copy since labels are not immutable
-        metric_config = deepcopy(metric_config)
-        metric_config.config["labels"].extend(extra_labels)
-        metric_config.config["labels"].sort()
-        configs[metric_config.name] = metric_config
+        configs[metric_config.name] = MetricConfig(
+            metric_config.name,
+            metric_config.description,
+            metric_config.type,
+            labels=set(metric_config.labels) | extra_labels,
+            config=metric_config.config,
+        )
     # other metrics
     for name, config in metrics.items():
         _validate_metric_config(name, config, extra_labels)
         metric_type = config.pop("type")
-        config.setdefault("labels", []).extend(extra_labels)
-        config["labels"].sort()
+        labels = set(config.pop("labels", ())) | extra_labels
         config["expiration"] = _convert_interval(config.get("expiration"))
         description = config.pop("description", "")
-        configs[name] = MetricConfig(name, description, metric_type, config)
+        configs[name] = MetricConfig(
+            name, description, metric_type, labels=labels, config=config
+        )
     return configs
 
 
@@ -255,7 +257,7 @@ def _get_query_metrics(
         return sorted(set(labels) - extra_labels)
 
     return [
-        QueryMetric(name, _metric_labels(metrics[name].config["labels"]))
+        QueryMetric(name, _metric_labels(metrics[name].labels))
         for name in config["metrics"]
     ]
 

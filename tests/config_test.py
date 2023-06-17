@@ -394,23 +394,21 @@ class TestLoadConfig:
         metric1 = result.metrics["metric1"]
         assert metric1.type == "summary"
         assert metric1.description == "metric one"
-        assert metric1.config == {
-            "labels": ["database", "label1", "label2"],
-            "expiration": 120,
-        }
+        assert metric1.labels == ("database", "label1", "label2")
+        assert metric1.config == {"expiration": 120}
         metric2 = result.metrics["metric2"]
         assert metric2.type == "histogram"
         assert metric2.description == "metric two"
+        assert metric2.labels == ("database",)
         assert metric2.config == {
-            "labels": ["database"],
             "buckets": [10, 100, 1000],
             "expiration": None,
         }
         metric3 = result.metrics["metric3"]
         assert metric3.type == "enum"
         assert metric3.description == "metric three"
+        assert metric3.labels == ("database",)
         assert metric3.config == {
-            "labels": ["database"],
             "states": ["on", "off"],
             "expiration": 100,
         }
