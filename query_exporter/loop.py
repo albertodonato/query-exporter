@@ -15,6 +15,7 @@ from typing import (
 from croniter import croniter
 from dateutil.tz import gettz
 from prometheus_aioexporter import MetricsRegistry
+from prometheus_client import Metric
 from toolrack.aio import (
     PeriodicCall,
     TimedCall,
@@ -247,7 +248,12 @@ class QueryLoop:
             value = 0.0
         elif isinstance(value, Decimal):
             value = float(value)
-        method = self._METRIC_METHODS[self._config.metrics[name].type]
+        metric = self._config.metrics[name]
+        method = self._METRIC_METHODS[metric.type]
+        if metric.type == "counter" and not metric.config.get(
+            "increment", True
+        ):
+            method = "set"
         all_labels = {DATABASE_LABEL: database.config.name}
         all_labels.update(database.config.labels)
         if labels:
@@ -259,8 +265,17 @@ class QueryLoop:
             f'updating metric "{name}" {method} {value} {{{labels_string}}}'
         )
         metric = self._registry.get_metric(name, labels=all_labels)
-        getattr(metric, method)(value)
+        self._update_metric_value(metric, method, value)
         self._last_seen.update(name, all_labels, self._timestamp())
+
+    def _update_metric_value(
+        self, metric: Metric, method: str, value: Any
+    ) -> None:
+        if metric._type == "counter" and method == "set":
+            # counters can only be incremented, directly set the underlying value
+            metric._value.set(value)
+        else:
+            getattr(metric, method)(value)
 
     def _increment_queries_count(
         self, database: DataBase, query: Query, status: str

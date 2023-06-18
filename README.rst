@@ -211,6 +211,17 @@ Each metric definition can have the following keys:
   The value is interpreted as seconds if no suffix is specified; valid suffixes
   are ``s``, ``m``, ``h``, ``d``. Only integer values are accepted.
 
+``increment``:
+  for ``counter`` metrics, whether to increment the value by the query result,
+  or set the value to it.
+
+  By default, counters are incremented by the value returned by the query. If
+  this is set to ``false``, instead, the metric value will be set to the result
+  of the query.
+
+  **NOTE**: The default will be reversed in the 3.0 release, and ``increment``
+  will be set to ``false`` by default.
+
 ``queries`` section
 ~~~~~~~~~~~~~~~~~~~
 

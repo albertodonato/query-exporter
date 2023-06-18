@@ -208,18 +208,21 @@ class TestQueryLoop:
     ):
         """Queries are run with declared parameters."""
         config_data["metrics"]["m"]["type"] = "counter"
-        config_data["queries"]["q"]["sql"] = "SELECT :param AS m"
+        config_data["metrics"]["m"]["labels"] = ["l"]
+        config_data["queries"]["q"]["sql"] = "SELECT :param AS m, :label as l"
         config_data["queries"]["q"]["parameters"] = [
-            {"param": 10.0},
-            {"param": 20.0},
+            {"param": 10.0, "label": "l1"},
+            {"param": 20.0, "label": "l2"},
         ]
         query_loop = make_query_loop()
         await query_loop.start()
         await query_tracker.wait_results()
         # the metric is updated
         metric = registry.get_metric("m")
-        # the sum is recorded
-        assert metric_values(metric) == [30.0]
+        assert metric_values(metric, by_labels=("l",)) == {
+            ("l1",): 10,
+            ("l2",): 20,
+        }
         # the number of queries is updated
         queries_metric = registry.get_metric("queries")
         assert metric_values(queries_metric, by_labels=("status",)) == {
@@ -236,6 +239,24 @@ class TestQueryLoop:
         await query_tracker.wait_results()
         metric = registry.get_metric("m")
         assert metric_values(metric) == [0]
+
+    async def test_run_query_counter_no_increment(
+        self, query_tracker, registry, config_data, make_query_loop
+    ):
+        """If increment is set to False, counter is set to the new value."""
+        config_data["metrics"]["m"]["type"] = "counter"
+        config_data["metrics"]["m"]["increment"] = False
+        config_data["queries"]["q"]["sql"] = "SELECT :param AS m"
+        config_data["queries"]["q"]["parameters"] = [
+            {"param": 10.0},
+            {"param": 20.0},
+        ]
+        query_loop = make_query_loop()
+        await query_loop.start()
+        await query_tracker.wait_results()
+        # the metric is updated
+        metric = registry.get_metric("m")
+        assert metric_values(metric) == [20.0]
 
     async def test_run_query_metrics_with_database_labels(
         self, query_tracker, registry, config_data, make_query_loop
