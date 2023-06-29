@@ -43,7 +43,7 @@ class QueryExporterScript(PrometheusExporterScript):
             "--port",
             type=int,
             default=self.default_port,
-            help="set default_port"
+            help="set default_port",
         )
         parser.add_argument(
             "--check-only",
