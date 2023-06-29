@@ -40,6 +40,12 @@ class QueryExporterScript(PrometheusExporterScript):
             version=f"%(prog)s {__version__}",
         )
         parser.add_argument(
+            "--port",
+            type=int,
+            default=self.default_port,
+            help="set default_port"
+        )
+        parser.add_argument(
             "--check-only",
             action="store_true",
             help="only check configuration, don't run the exporter",
