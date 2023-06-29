@@ -43,7 +43,7 @@ RUN apt-get update && \
     libpq5 \
     libxml2 && \
     curl https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > /etc/apt/trusted.gpg.d/microsoft.gpg && \
-    curl https://packages.microsoft.com/config/debian/$(. /etc/os-release; echo "$VERSION_ID")/prod.list > /etc/apt/sources.list.d/mssql-release.list && \
+    (. /etc/os-release; echo "deb https://packages.microsoft.com/debian/$VERSION_ID/prod $VERSION_CODENAME main") > /etc/apt/sources.list.d/mssql-release.list && \
     apt-get update && \
     ACCEPT_EULA=Y apt-get install -y --no-install-recommends msodbcsql17 && \
     rm -rf /var/lib/apt/lists/* /usr/share/doc /usr/share/man && \
