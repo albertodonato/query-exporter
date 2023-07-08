@@ -1,4 +1,4 @@
-FROM python:3.10-slim AS build-image
+FROM python:3.10-slim-bullseye AS build-image
 
 RUN apt-get update
 RUN apt-get full-upgrade -y
@@ -7,6 +7,7 @@ RUN apt-get install -y --no-install-recommends \
     curl \
     default-libmysqlclient-dev \
     libpq-dev \
+    pkg-config \
     unixodbc-dev \
     unzip
 
@@ -30,7 +31,7 @@ RUN mkdir -p /opt/oracle/instantclient
 RUN mv instantclient*/* /opt/oracle/instantclient
 
 
-FROM python:3.10-slim
+FROM python:3.10-slim-bullseye
 
 RUN apt-get update && \
     apt-get full-upgrade -y && \
@@ -45,7 +46,7 @@ RUN apt-get update && \
     curl https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > /etc/apt/trusted.gpg.d/microsoft.gpg && \
     (. /etc/os-release; echo "deb https://packages.microsoft.com/debian/$VERSION_ID/prod $VERSION_CODENAME main") > /etc/apt/sources.list.d/mssql-release.list && \
     apt-get update && \
-    ACCEPT_EULA=Y apt-get install -y --no-install-recommends msodbcsql17 && \
+    ACCEPT_EULA=Y apt-get install -y --no-install-recommends msodbcsql18 && \
     rm -rf /var/lib/apt/lists/* /usr/share/doc /usr/share/man && \
     apt-get clean
 
