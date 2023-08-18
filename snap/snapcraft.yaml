@@ -52,6 +52,7 @@ parts:
     source: .
     source-type: git
     python-packages:
+      - .
       - ibm-db-sa; platform_machine == 'x86_64'
       - ibm-db-sa; platform_machine == 'ppc64le'
       - ibm-db-sa; platform_machine == 's390x'
@@ -62,6 +63,7 @@ parts:
       - libmysqlclient-dev
       - libpq-dev
       - libssl-dev
+      - pkg-config
       - unixodbc-dev
     stage-packages:
       - libmysqlclient21

@@ -4,7 +4,7 @@ v2.9.0 - 2023-08-18
 - Add `increment` flag for counter metrics (#124).
 - Rework project setup.
 - [docker] Add `pymssql` package (#133).
-- [docker] Fix setup for Microsoft repository.
+- [docker] Fix setup for Microsoft repository (#159).
 
 
 v2.8.3 - 2022-07-16
