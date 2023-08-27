@@ -24,9 +24,13 @@ description: |
     - Microsoft SQL Server (`mssql://`)
     - IBM DB2 (`db2://`) on supported architectures (x86_64, ppc64le and
       s390x)
-
-license: GPL-3.0+
 icon: logo.svg
+license: GPL-3.0+
+website: https://github.com/albertodonato/query-exporter
+source-code: https://github.com/albertodonato/query-exporter
+contact: https://github.com/albertodonato/query-expoter/issues
+issues: https://github.com/albertodonato/query-exporter/issues
+
 confinement: strict
 grade: stable
 base: core22
