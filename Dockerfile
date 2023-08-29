@@ -11,7 +11,7 @@ RUN apt-get install -y --no-install-recommends \
     libpq-dev \
     pkg-config \
     unixodbc-dev \
-    unzip 
+    unzip
 
 COPY . /srcdir
 RUN python3 -m venv /virtualenv
