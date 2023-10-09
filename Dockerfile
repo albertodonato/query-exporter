@@ -19,14 +19,14 @@ ENV PATH="/virtualenv/bin:$PATH"
 RUN pip install \
     /srcdir \
     cx-Oracle \
+    "ibm-db-sa; platform_machine == 'x86_64' or platform_machine == 'ppc64le' or platform_machine == 's390x'" \
     mysqlclient \
     psycopg2 \
     pymssql \
-    pyodbc \
-    $(arch | sed -e 's/x86_64/ibm-db-sa/g' -e 's/aarch64//g')
+    pyodbc
 
 RUN curl \
-    https://download.oracle.com/otn_software/linux/instantclient/instantclient-basiclite-linux$(arch | sed -e 's/x86_64/x64/g' -e 's/aarch64/-arm64/g').zip \
+    https://download.oracle.com/otn_software/linux/instantclient/instantclient-basiclite-linux$(arch | sed -e 's/x86_64/x64/g; s/aarch64/-arm64/g').zip \
     -o instantclient.zip
 RUN unzip instantclient.zip
 RUN mkdir -p /opt/oracle/instantclient
