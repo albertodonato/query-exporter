@@ -6,6 +6,8 @@ RUN apt-get install -y --no-install-recommends \
     build-essential \
     curl \
     default-libmysqlclient-dev \
+    freetds-dev \
+    libkrb5-dev \
     libpq-dev \
     pkg-config \
     unixodbc-dev \
@@ -17,14 +19,14 @@ ENV PATH="/virtualenv/bin:$PATH"
 RUN pip install \
     /srcdir \
     cx-Oracle \
-    ibm-db-sa \
+    "ibm-db-sa; platform_machine == 'x86_64' or platform_machine == 'ppc64le' or platform_machine == 's390x'" \
     mysqlclient \
     psycopg2 \
     pymssql \
     pyodbc
 
 RUN curl \
-    https://download.oracle.com/otn_software/linux/instantclient/instantclient-basiclite-linuxx64.zip \
+    https://download.oracle.com/otn_software/linux/instantclient/instantclient-basiclite-linux$(arch | sed -e 's/x86_64/x64/g; s/aarch64/-arm64/g').zip \
     -o instantclient.zip
 RUN unzip instantclient.zip
 RUN mkdir -p /opt/oracle/instantclient
