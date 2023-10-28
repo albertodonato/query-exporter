@@ -1,9 +1,17 @@
+v2.9.1 - 2023-10-28
+===================
+
+- Update dependency to ``prometheus-aioexporter`` 2.0.
+- [snap] Add support for ClickHouse.
+- [docker] Add support for ClickHouse.
+
+
 v2.9.0 - 2023-08-18
 ===================
 
-- Add `increment` flag for counter metrics (#124).
+- Add ``increment`` flag for counter metrics (#124).
 - Rework project setup.
-- [docker] Add `pymssql` package (#133).
+- [docker] Add ``pymssql`` package (#133).
 - [docker] Fix setup for Microsoft repository (#159).
 
 
@@ -17,16 +25,16 @@ v2.8.3 - 2022-07-16
 v2.8.2 - 2022-07-16
 ===================
 
-- Require Python 3.10
-- [snap] Change base to core22
-- [docker] Use Python 3.10
-- [docker] Base on Debian 11
+- Require Python 3.10.
+- [snap] Change base to core22.
+- [docker] Use Python 3.10.
+- [docker] Base on Debian 11.
 
 
 v2.8.1 - 2022-02-18
 ===================
 
-- Require `sqlalchemy_aio` 0.17.0, drop workaround for previous versions
+- Require ``sqlalchemy_aio`` 0.17.0, drop workaround for previous versions
   (#105).
 
 
