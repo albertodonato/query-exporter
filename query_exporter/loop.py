@@ -15,7 +15,8 @@ from typing import (
 from croniter import croniter
 from dateutil.tz import gettz
 from prometheus_aioexporter import MetricsRegistry
-from prometheus_client import Metric
+from prometheus_client import Counter
+from prometheus_client.metrics import MetricWrapperBase
 from toolrack.aio import (
     PeriodicCall,
     TimedCall,
@@ -269,11 +270,11 @@ class QueryLoop:
         self._last_seen.update(name, all_labels, self._timestamp())
 
     def _update_metric_value(
-        self, metric: Metric, method: str, value: Any
+        self, metric: MetricWrapperBase, method: str, value: Any
     ) -> None:
         if metric._type == "counter" and method == "set":
             # counters can only be incremented, directly set the underlying value
-            metric._value.set(value)
+            cast(Counter, metric)._value.set(value)
         else:
             getattr(metric, method)(value)
 

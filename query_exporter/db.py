@@ -9,6 +9,7 @@ from traceback import format_tb
 from typing import (
     Any,
     cast,
+    Iterable,
     NamedTuple,
 )
 
@@ -128,7 +129,7 @@ class QueryMetric(NamedTuple):
     """Metric details for a Query."""
 
     name: str
-    labels: list[str]
+    labels: Iterable[str]
 
 
 class QueryResults(NamedTuple):
