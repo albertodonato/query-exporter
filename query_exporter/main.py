@@ -7,10 +7,10 @@ from typing import IO
 from aiohttp.web import Application
 from argcomplete import autocomplete
 from prometheus_aioexporter import (
+    InvalidMetricType,
     MetricConfig,
     PrometheusExporterScript,
 )
-from prometheus_aioexporter.metric import InvalidMetricType
 from toolrack.script import ErrorExitMessage
 
 from . import __version__
