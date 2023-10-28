@@ -24,6 +24,7 @@ description: |
     - Microsoft SQL Server (`mssql://`)
     - IBM DB2 (`db2://`) on supported architectures (x86_64, ppc64le and
       s390x)
+    - ClickHouse (`clickhouse+native://`)
 icon: logo.svg
 license: GPL-3.0+
 website: https://github.com/albertodonato/query-exporter
@@ -57,6 +58,7 @@ parts:
     source-type: git
     python-packages:
       - .
+      - clickhouse-sqlalchemy
       - ibm-db-sa; platform_machine == 'x86_64'
       - ibm-db-sa; platform_machine == 'ppc64le'
       - ibm-db-sa; platform_machine == 's390x'
