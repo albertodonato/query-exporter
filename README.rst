@@ -94,10 +94,10 @@ A sample configuration file for the application looks like this:
 ``databases`` section
 ~~~~~~~~~~~~~~~~~~~~~
 
-This section contains defintions for databases to connect to. Key names are
+This section contains definitions for databases to connect to. Key names are
 arbitrary and only used to reference databases in the ``queries`` section.
 
-Each database defintions can have the following keys:
+Each database definitions can have the following keys:
 
 ``dsn``:
   database connection details.
