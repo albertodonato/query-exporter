@@ -33,7 +33,7 @@ v2.8.1 - 2022-02-18
 v2.8.0 - 2022-01-18
 ===================
 
-- Add support for paramters matrix in queries.
+- Add support for parameters matrix in queries.
 - Allow freetext name for databases in config (#99).
 
 
@@ -98,7 +98,7 @@ v2.4.0 - 2020-06-20
 ===================
 
 - Add a ``query_latency`` metric to track query execution times. This is
-  lebeled by database and query name (#46).
+  labeled by database and query name (#46).
 
 
 v2.3.0 - 2020-06-04
@@ -168,7 +168,7 @@ v2.0.0 - 2020-02-02
 
  - Only named parameters with the ``:param`` style are now supported, queries
    using positional parameters or other styles of named parameters need to be
-   udpated.
+   updated.
  - Literal ``:`` at the beginning of a word need to be escaped (with backslash)
    to avoid confusion with parameter markers. Colons that appear inside words
    don't need to be escaped.
@@ -218,13 +218,13 @@ v1.8.0 - 2019-05-25
 - Disable queries that will certainly always fail (e.g. because of invalid.
   returned column names/number) (#6).
 - Support disconnecting from after each query (#8).
-- Rework tests to use actualy SQLite in-memory databases instead of fakes.
+- Rework tests to use actually SQLite in-memory databases instead of fakes.
 
 
 v1.7.0 - 2019-04-07
 ===================
 
-- Add a ``queries`` and ``database_errors`` metrics lebeled by database (#1).
+- Add a ``queries`` and ``database_errors`` metrics labeled by database (#1).
 - Support database DSNs defined as ``env:<VARNAME>`` to supply the dns from the
   environment (#5).
 
@@ -248,7 +248,7 @@ v1.4.0 - 2018-06-08
 ===================
 
 - Support for python3.7.
-- Use asynctest for asyncronous tests.
+- Use asynctest for asynchronous tests.
 - Updated toolrack dependency.
 
 
