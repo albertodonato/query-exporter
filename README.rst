@@ -310,7 +310,7 @@ Each query definition can have the following keys:
               - name: Typescript
 
   This example will generate 9 queries with all permutations of ``os`` and
-  ``lang`` paramters.
+  ``lang`` parameters.
 
 ``schedule``:
   a schedule for executing queries at specific times.
