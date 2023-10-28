@@ -236,7 +236,7 @@ Each query definition can have the following keys:
   Names must match those defined in the ``databases`` section.
 
   Metrics are automatically tagged with the ``database`` label so that
-  indipendent series are generated for each database that a query is run on.
+  independent series are generated for each database that a query is run on.
 
 ``interval``:
   the time interval at which the query is run.
