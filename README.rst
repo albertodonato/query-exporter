@@ -547,7 +547,7 @@ The snap has support for connecting the following databases:
 Run in Docker
 -------------
 
-``query-exporter`` can be run inside Docker_ containers, and is availble from
+``query-exporter`` can be run inside Docker_ containers, and is available from
 the `Docker Hub`_::
 
   docker run -p 9560:9560/tcp -v "$CONFIG_FILE:/config.yaml" --rm -it adonato/query-exporter:latest
