@@ -307,7 +307,7 @@ Each query definition can have the following keys:
             lang:
               - name: Python3
               - name: Java
-              - name: Typescript
+              - name: TypeScript
 
   This example will generate 9 queries with all permutations of ``os`` and
   ``lang`` parameters.
@@ -490,7 +490,7 @@ The exporter provides a few builtin metrics which can be useful to track query e
   a histogram with query latencies, per database and query.
 
 
-In addition, metrics for resources usage for the exporter procecss can be
+In addition, metrics for resources usage for the exporter process can be
 included by passing ``--process-stats`` in the command line.
 
 
@@ -525,7 +525,7 @@ are supported, via::
 
   sudo snap install query-exporter
 
-The snap provides both the ``query-exporter`` command and a deamon instance of
+The snap provides both the ``query-exporter`` command and a daemon instance of
 the command, managed via a Systemd service.
 
 To configure the daemon:
