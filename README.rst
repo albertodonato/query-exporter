@@ -567,6 +567,7 @@ The image has support for connecting the following databases:
 - Microsoft SQL Server (``mssql://``)
 - IBM DB2 (``db2://``)
 - Oracle (``oracle://``)
+- ClickHouse (``clickhouse+native://``)
 
 A `Helm chart`_ to run the container in Kubernetes is also available.
 
