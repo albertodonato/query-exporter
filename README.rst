@@ -556,7 +556,7 @@ where ``$CONFIG_FILE`` is the absolute path of the configuration file to
 use. Note that the image expects the file to be available as ``/config.yaml``
 in the container.
 
-In case you want to support other ODBC version simply build the image using --build-arg VERSION_NUMBER:
+For other ODBC versions, build the image with --build-arg VERSION_NUMBER:
   docker build --build-arg ODBC_DRIVER_VERSION=17
 
 The image has support for connecting the following databases:
