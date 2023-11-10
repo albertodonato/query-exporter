@@ -35,6 +35,8 @@ RUN mv instantclient*/* /opt/oracle/instantclient
 
 
 FROM python:3.10-slim-bullseye
+ARG ODBC_DRIVER_VERSION=18
+ENV ODBC_DRIVER=msodbcsql${ODBC_DRIVER_VERSION}
 
 RUN apt-get update && \
     apt-get full-upgrade -y && \
@@ -49,7 +51,7 @@ RUN apt-get update && \
     curl https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > /etc/apt/trusted.gpg.d/microsoft.gpg && \
     (. /etc/os-release; echo "deb https://packages.microsoft.com/debian/$VERSION_ID/prod $VERSION_CODENAME main") > /etc/apt/sources.list.d/mssql-release.list && \
     apt-get update && \
-    ACCEPT_EULA=Y apt-get install -y --no-install-recommends msodbcsql18 && \
+    ACCEPT_EULA=Y apt-get install -y --no-install-recommends $ODBC_DRIVER && \
     rm -rf /var/lib/apt/lists/* /usr/share/doc /usr/share/man && \
     apt-get clean
 
