@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import time
 
 import pytest
 from sqlalchemy import create_engine
@@ -306,6 +307,7 @@ class TestQueryResults:
         assert query_results.keys == ["a", "b"]
         assert query_results.rows == [(1, 2)]
         assert query_results.latency is None
+        assert query_results.timestamp < time.time()
 
     @pytest.mark.asyncio
     async def test_from_results_with_latency(self):
@@ -319,6 +321,7 @@ class TestQueryResults:
         assert query_results.keys == ["a", "b"]
         assert query_results.rows == [(1, 2)]
         assert query_results.latency == 1.2
+        assert query_results.timestamp < time.time()
 
 
 @pytest.fixture
