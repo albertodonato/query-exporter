@@ -178,7 +178,6 @@ class TestQueryLoop:
     async def test_run_scheduled_query(
         self,
         mocker,
-        event_loop,
         advance_time,
         query_tracker,
         registry,
@@ -186,6 +185,7 @@ class TestQueryLoop:
         make_query_loop,
     ):
         """Queries are run and update metrics."""
+        event_loop = asyncio.get_running_loop()
 
         def croniter(*args):
             while True:

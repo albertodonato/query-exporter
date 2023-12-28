@@ -14,8 +14,8 @@ import os
 from pathlib import Path
 import re
 from typing import (
-    Any,
     IO,
+    Any,
 )
 from urllib.parse import (
     quote_plus,
@@ -27,13 +27,13 @@ from prometheus_aioexporter import MetricConfig
 import yaml
 
 from .db import (
-    create_db_engine,
     DATABASE_LABEL,
     DataBaseError,
     InvalidQueryParameters,
     InvalidQuerySchedule,
     Query,
     QueryMetric,
+    create_db_engine,
 )
 
 # metric for counting database errors
@@ -423,7 +423,7 @@ def _get_parameters_sets(parameters: ParametersConfig) -> list[dict[str, Any]]:
 
 
 def _get_parameters_matrix(
-    parameters: dict[str, list[dict[str, Any]]]
+    parameters: dict[str, list[dict[str, Any]]],
 ) -> list[dict[str, Any]]:
     """Return parameters combinations from a matrix."""
     # first, flatten dict like
