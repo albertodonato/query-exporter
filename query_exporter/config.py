@@ -52,6 +52,14 @@ _QUERIES_METRIC_CONFIG = MetricConfig(
     type="counter",
     labels=("query", "status"),
 )
+# metric for tracking last query execution timestamp
+QUERY_TIMESTAMP_METRIC_NAME = "query_timestamp"
+_QUERY_TIMESTAMP_METRIC_CONFIG = MetricConfig(
+    name=QUERY_TIMESTAMP_METRIC_NAME,
+    description="Query last execution timestamp",
+    type="gauge",
+    labels=("query",),
+)
 # metric for counting queries execution latency
 QUERY_LATENCY_METRIC_NAME = "query_latency"
 _QUERY_LATENCY_METRIC_CONFIG = MetricConfig(
@@ -61,7 +69,12 @@ _QUERY_LATENCY_METRIC_CONFIG = MetricConfig(
     labels=("query",),
 )
 GLOBAL_METRICS = frozenset(
-    [DB_ERRORS_METRIC_NAME, QUERIES_METRIC_NAME, QUERY_LATENCY_METRIC_NAME]
+    (
+        DB_ERRORS_METRIC_NAME,
+        QUERIES_METRIC_NAME,
+        QUERY_LATENCY_METRIC_NAME,
+        QUERY_TIMESTAMP_METRIC_NAME,
+    )
 )
 
 # regexp for validating environment variables names
@@ -165,6 +178,7 @@ def _get_metrics(
         _DB_ERRORS_METRIC_CONFIG,
         _QUERIES_METRIC_CONFIG,
         _QUERY_LATENCY_METRIC_CONFIG,
+        _QUERY_TIMESTAMP_METRIC_CONFIG,
     ):
         configs[metric_config.name] = MetricConfig(
             metric_config.name,

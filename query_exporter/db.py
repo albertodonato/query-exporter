@@ -5,7 +5,7 @@ from collections.abc import Iterable
 from itertools import chain
 import logging
 import sys
-from time import perf_counter
+from time import perf_counter, time
 from traceback import format_tb
 from typing import (
     Any,
@@ -137,15 +137,20 @@ class QueryResults(NamedTuple):
 
     keys: list[str]
     rows: list[tuple]
+    timestamp: float | None = None
     latency: float | None = None
 
     @classmethod
     async def from_results(cls, results: AsyncResultProxy):
         """Return a QueryResults from results for a query."""
+        timestamp = time()
         conn_info = results._result_proxy.connection.info
         latency = conn_info.get("query_latency", None)
         return cls(
-            await results.keys(), await results.fetchall(), latency=latency
+            await results.keys(),
+            await results.fetchall(),
+            timestamp=timestamp,
+            latency=latency,
         )
 
 
@@ -161,6 +166,7 @@ class MetricResults(NamedTuple):
     """Collection of metric results for a query."""
 
     results: list[MetricResult]
+    timestamp: float | None = None
     latency: float | None = None
 
 
@@ -224,7 +230,11 @@ class Query:
                 )
                 results.append(metric_result)
 
-        return MetricResults(results, latency=query_results.latency)
+        return MetricResults(
+            results,
+            timestamp=query_results.timestamp,
+            latency=query_results.latency,
+        )
 
     def _check_schedule(self):
         if self.interval and self.schedule:

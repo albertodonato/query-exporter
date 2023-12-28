@@ -59,10 +59,11 @@ async def make_query_loop(tmp_path, config_data, registry):
     def make_loop():
         config_file = tmp_path / "config.yaml"
         config_file.write_text(yaml.dump(config_data), "utf-8")
+        logger = logging.getLogger()
         with config_file.open() as fh:
-            config = load_config(fh, logging.getLogger())
+            config = load_config(fh, logger)
         registry.create_metrics(config.metrics.values())
-        query_loop = loop.QueryLoop(config, registry, logging)
+        query_loop = loop.QueryLoop(config, registry, logger)
         query_loops.append(query_loop)
         return query_loop
 
@@ -300,6 +301,9 @@ class TestQueryLoop:
             re_match(
                 r'updating metric "query_latency" observe .* \{database="db",query="q"\}'
             ),
+            re_match(
+                r'updating metric "query_timestamp" set .* \{database="db",query="q"\}'
+            ),
             'updating metric "queries" inc 1 {database="db",query="q",status="success"}',
         ]
 
@@ -319,6 +323,9 @@ class TestQueryLoop:
             'updating metric "m" set 100.0 {database="db",l="foo"}',
             re_match(
                 r'updating metric "query_latency" observe .* \{database="db",query="q"\}'
+            ),
+            re_match(
+                r'updating metric "query_timestamp" set .* \{database="db",query="q"\}'
             ),
             'updating metric "queries" inc 1 {database="db",query="q",status="success"}',
         ]

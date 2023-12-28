@@ -26,6 +26,7 @@ from .config import (
     DB_ERRORS_METRIC_NAME,
     QUERIES_METRIC_NAME,
     QUERY_LATENCY_METRIC_NAME,
+    QUERY_TIMESTAMP_METRIC_NAME,
     Config,
 )
 from .db import (
@@ -206,6 +207,10 @@ class QueryLoop:
                 self._update_query_latency_metric(
                     db, query, metric_results.latency
                 )
+            if metric_results.timestamp:
+                self._update_query_timestamp_metric(
+                    db, query, metric_results.timestamp
+                )
             self._increment_queries_count(db, query, "success")
 
     async def _remove_if_dooomed(self, query: Query, dbname: str) -> bool:
@@ -303,6 +308,17 @@ class QueryLoop:
             database,
             QUERY_LATENCY_METRIC_NAME,
             latency,
+            labels={"query": query.config_name},
+        )
+
+    def _update_query_timestamp_metric(
+        self, database: DataBase, query: Query, timestamp: float
+    ):
+        """Update timestamp metric for a query on a database."""
+        self._update_metric(
+            database,
+            QUERY_TIMESTAMP_METRIC_NAME,
+            timestamp,
             labels={"query": query.config_name},
         )
 

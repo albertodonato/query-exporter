@@ -433,6 +433,11 @@ For the configuration above, the endpoint would return something like this::
   query_latency_created{app="app1",database="db1",query="query1",region="us1"} 1.594544244446163e+09
   query_latency_created{app="app1",database="db2",query="query2",region="us2"} 1.5945442444470239e+09
   query_latency_created{app="app1",database="db1",query="query2",region="us1"} 1.594544244447551e+09
+  # HELP query_timestamp Query last execution timestamp
+  # TYPE query_timestamp gauge
+  query_timestamp{app="app1",database="db2",query="query2",region="us2"} 1.594544244446199e+09
+  query_timestamp{app="app1",database="db1",query="query1",region="us1"} 1.594544244452181e+09
+  query_timestamp{app="app1",database="db1",query="query2",region="us1"} 1.594544244481839e+09
   # HELP metric1 A sample gauge
   # TYPE metric1 gauge
   metric1{app="app1",database="db1",region="us1"} -3561.0
@@ -489,6 +494,8 @@ The exporter provides a few builtin metrics which can be useful to track query e
 ``query_latency{database="db",query="q"}``:
   a histogram with query latencies, per database and query.
 
+``query_timestamp{database="db",query="q"}``:
+  a gauge with query last execution timestamps, per database and query.
 
 In addition, metrics for resources usage for the exporter process can be
 included by passing ``--process-stats`` in the command line.
