@@ -1,6 +1,7 @@
 """Database wrapper."""
 
 import asyncio
+from collections.abc import Iterable
 from itertools import chain
 import logging
 import sys
@@ -8,9 +9,8 @@ from time import perf_counter
 from traceback import format_tb
 from typing import (
     Any,
-    cast,
-    Iterable,
     NamedTuple,
+    cast,
 )
 
 from croniter import croniter

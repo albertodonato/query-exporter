@@ -4,13 +4,13 @@ import pytest
 import yaml
 
 from query_exporter.config import (
-    _get_parameters_sets,
-    _resolve_dsn,
-    ConfigError,
     DB_ERRORS_METRIC_NAME,
     GLOBAL_METRICS,
-    load_config,
     QUERIES_METRIC_NAME,
+    ConfigError,
+    _get_parameters_sets,
+    _resolve_dsn,
+    load_config,
 )
 from query_exporter.db import QueryMetric
 

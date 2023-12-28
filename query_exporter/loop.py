@@ -14,7 +14,7 @@ from typing import (
 
 from croniter import croniter
 from dateutil.tz import gettz
-from prometheus_aioexporter import MetricsRegistry
+from prometheus_aioexporter import MetricConfig, MetricsRegistry
 from prometheus_client import Counter
 from prometheus_client.metrics import MetricWrapperBase
 from toolrack.aio import (
@@ -23,14 +23,14 @@ from toolrack.aio import (
 )
 
 from .config import (
-    Config,
     DB_ERRORS_METRIC_NAME,
     QUERIES_METRIC_NAME,
     QUERY_LATENCY_METRIC_NAME,
+    Config,
 )
 from .db import (
-    DataBase,
     DATABASE_LABEL,
+    DataBase,
     DataBaseConnectError,
     DataBaseError,
     Query,
@@ -93,14 +93,6 @@ class MetricsLastSeen:
 
 class QueryLoop:
     """Run database queries and collect metrics."""
-
-    _METRIC_METHODS = {
-        "counter": "inc",
-        "gauge": "set",
-        "histogram": "observe",
-        "summary": "observe",
-        "enum": "state",
-    }
 
     def __init__(
         self,
@@ -250,11 +242,6 @@ class QueryLoop:
         elif isinstance(value, Decimal):
             value = float(value)
         metric = self._config.metrics[name]
-        method = self._METRIC_METHODS[metric.type]
-        if metric.type == "counter" and not metric.config.get(
-            "increment", True
-        ):
-            method = "set"
         all_labels = {DATABASE_LABEL: database.config.name}
         all_labels.update(database.config.labels)
         if labels:
@@ -262,12 +249,27 @@ class QueryLoop:
         labels_string = ",".join(
             f'{label}="{value}"' for label, value in sorted(all_labels.items())
         )
+        method = self._get_metric_method(metric)
         self._logger.debug(
             f'updating metric "{name}" {method} {value} {{{labels_string}}}'
         )
         metric = self._registry.get_metric(name, labels=all_labels)
         self._update_metric_value(metric, method, value)
         self._last_seen.update(name, all_labels, self._timestamp())
+
+    def _get_metric_method(self, metric: MetricConfig) -> str:
+        method = {
+            "counter": "inc",
+            "gauge": "set",
+            "histogram": "observe",
+            "summary": "observe",
+            "enum": "state",
+        }[metric.type]
+        if metric.type == "counter" and not metric.config.get(
+            "increment", True
+        ):
+            method = "set"
+        return method
 
     def _update_metric_value(
         self, metric: MetricWrapperBase, method: str, value: Any
