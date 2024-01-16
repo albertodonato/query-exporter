@@ -557,14 +557,18 @@ Run in Docker
 ``query-exporter`` can be run inside Docker_ containers, and is available from
 the `Docker Hub`_::
 
-  docker run -p 9560:9560/tcp -v "$CONFIG_FILE:/config.yaml" --rm -it adonato/query-exporter:latest
+  docker run --rm -it -p 9560:9560/tcp -v "$CONFIG_DIR:/config" adonato/query-exporter:latest
 
-where ``$CONFIG_FILE`` is the absolute path of the configuration file to
-use. Note that the image expects the file to be available as ``/config.yaml``
-in the container.
+where ``$CONFIG_DIR`` is the absolute path of a directory containing a
+``config.yaml`` file, the configuration file to use. Alternatively, a volume
+name can be specified.
 
-For other ODBC versions, build the image with --build-arg VERSION_NUMBER:
-  docker build --build-arg ODBC_DRIVER_VERSION=17
+
+A different ODBC driver version to use can be specified during image building,
+by passing ``--build-arg ODBC_bVERSION_NUMBER``, e.g.::
+
+  docker build . --build-arg ODBC_DRIVER_VERSION=17
+
 
 The image has support for connecting the following databases:
 
