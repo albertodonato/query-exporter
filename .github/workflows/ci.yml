@@ -70,11 +70,4 @@ jobs:
 
       - name: Test
         run: |
-          tox -e coverage -- --cov-report xml:coverage.xml
-
-      - name: Codecov
-        uses: codecov/codecov-action@v3
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          env_vars: PYTHON
-          full_report: coverage.xml
+          tox run -e coverage

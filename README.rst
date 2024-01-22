@@ -3,7 +3,7 @@
 Export Prometheus metrics from SQL queries
 ==========================================
 
-|Latest Version| |Build Status| |Coverage Status| |Snap Package| |Docker Pulls|
+|Latest Version| |Build Status| |Snap Package| |Docker Pulls|
 
 ``query-exporter`` is a Prometheus_ exporter which allows collecting metrics
 from database queries, at specified time intervals.
@@ -603,9 +603,6 @@ A `Helm chart`_ to run the container in Kubernetes is also available.
 .. |Build Status| image:: https://github.com/albertodonato/query-exporter/workflows/CI/badge.svg
    :alt: Build Status
    :target: https://github.com/albertodonato/query-exporter/actions?query=workflow%3ACI
-.. |Coverage Status| image:: https://img.shields.io/codecov/c/github/albertodonato/query-exporter/main.svg
-   :alt: Coverage Status
-   :target: https://codecov.io/gh/albertodonato/query-exporter
 .. |Snap Package| image:: https://snapcraft.io/query-exporter/badge.svg
    :alt: Snap Package
    :target: https://snapcraft.io/query-exporter
