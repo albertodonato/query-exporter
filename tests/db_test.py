@@ -292,8 +292,12 @@ class TestQuery:
             "query", ["db"], [QueryMetric("metric1", ["label1"])], ""
         )
         query_results = QueryResults(["one", "two"], [(1, 2)])
-        with pytest.raises(InvalidResultColumnNames):
+        with pytest.raises(InvalidResultColumnNames) as error:
             query.results(query_results)
+        assert str(error.value) == (
+            "Wrong column names from query: "
+            "expected (label1, metric1), got (one, two)"
+        )
 
 
 class TestQueryResults:
@@ -609,7 +613,7 @@ class TestDataBase:
             await db.execute(query)
         assert (
             str(error.value)
-            == "Wrong column names from query: expected (foo, label), got (label, metric)"
+            == "Wrong column names from query: expected (label, metric), got (foo, label)"
         )
         assert error.value.fatal
 
@@ -618,7 +622,7 @@ class TestDataBase:
         """Traceback are logged as debug messages."""
         query = Query(
             "query",
-            20,
+            ["db"],
             [QueryMetric("metric", [])],
             "SELECT 1 AS metric",
         )
