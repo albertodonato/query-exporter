@@ -218,7 +218,7 @@ class Query:
         if len(expected_keys) != len(result_keys):
             raise InvalidResultCount(len(expected_keys), len(result_keys))
         if result_keys != expected_keys:
-            raise InvalidResultColumnNames(result_keys, expected_keys)
+            raise InvalidResultColumnNames(expected_keys, result_keys)
         results = []
         for row in query_results.rows:
             values = dict(zip(query_results.keys, row))
