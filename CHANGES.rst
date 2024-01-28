@@ -1,3 +1,14 @@
+v2.10.0 - 2024-01-28
+====================
+
+- Fix columns names in InvalidResultColumnNames being reported the wrong way
+  round (#185).
+- Add a metric to track query execution timestamp (#178).
+- [docker] Define a volume containing the config file (#158).
+- [docker] Add support for ODBC version 17, support alternative versions.
+- Switch to ruff for formatting.
+
+
 v2.9.2 - 2023-10-28
 ===================
 

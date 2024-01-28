@@ -54,7 +54,7 @@ dependencies = [
 ]
 [project.optional-dependencies]
 testing = [
-  "pytest",
+  "pytest<8", # XXX https://github.com/pytest-dev/pytest-asyncio/issues/737
   "pytest-asyncio",
   "pytest-mock",
 ]
