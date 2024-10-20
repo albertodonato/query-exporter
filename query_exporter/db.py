@@ -5,12 +5,15 @@ from collections.abc import Iterable
 from itertools import chain
 import logging
 import sys
-from time import perf_counter, time
+from time import (
+    perf_counter,
+    time,
+)
 from traceback import format_tb
 from typing import (
     Any,
-    NamedTuple,
     cast,
+    NamedTuple,
 )
 
 from croniter import croniter

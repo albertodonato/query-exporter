@@ -14,8 +14,8 @@ import os
 from pathlib import Path
 import re
 from typing import (
-    IO,
     Any,
+    IO,
 )
 from urllib.parse import (
     quote_plus,
@@ -27,13 +27,13 @@ from prometheus_aioexporter import MetricConfig
 import yaml
 
 from .db import (
+    create_db_engine,
     DATABASE_LABEL,
     DataBaseError,
     InvalidQueryParameters,
     InvalidQuerySchedule,
     Query,
     QueryMetric,
-    create_db_engine,
 )
 
 # metric for counting database errors

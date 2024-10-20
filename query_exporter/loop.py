@@ -14,7 +14,10 @@ from typing import (
 
 from croniter import croniter
 from dateutil.tz import gettz
-from prometheus_aioexporter import MetricConfig, MetricsRegistry
+from prometheus_aioexporter import (
+    MetricConfig,
+    MetricsRegistry,
+)
 from prometheus_client import Counter
 from prometheus_client.metrics import MetricWrapperBase
 from toolrack.aio import (
@@ -23,15 +26,15 @@ from toolrack.aio import (
 )
 
 from .config import (
+    Config,
     DB_ERRORS_METRIC_NAME,
     QUERIES_METRIC_NAME,
     QUERY_LATENCY_METRIC_NAME,
     QUERY_TIMESTAMP_METRIC_NAME,
-    Config,
 )
 from .db import (
-    DATABASE_LABEL,
     DataBase,
+    DATABASE_LABEL,
     DataBaseConnectError,
     DataBaseError,
     Query,

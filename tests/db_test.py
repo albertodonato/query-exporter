@@ -9,6 +9,7 @@ from sqlalchemy_aio.base import AsyncConnection
 
 from query_exporter.config import DataBaseConfig
 from query_exporter.db import (
+    create_db_engine,
     DataBase,
     DataBaseConnectError,
     DataBaseError,
@@ -22,7 +23,6 @@ from query_exporter.db import (
     QueryMetric,
     QueryResults,
     QueryTimeoutExpired,
-    create_db_engine,
 )
 
 
@@ -44,9 +44,10 @@ class TestCreateDBEngine:
     @pytest.mark.parametrize("dsn", ["foo-bar", "unknown:///db"])
     def test_instantiate_invalid_dsn(self, caplog, dsn):
         """An error is raised if a the provided DSN is invalid."""
-        with caplog.at_level(logging.ERROR), pytest.raises(
-            DataBaseError
-        ) as error:
+        with (
+            caplog.at_level(logging.ERROR),
+            pytest.raises(DataBaseError) as error,
+        ):
             create_db_engine(dsn)
         assert str(error.value) == f'Invalid database DSN: "{dsn}"'
 
@@ -412,9 +413,10 @@ class TestDataBase:
             connect_sql=["WRONG"],
         )
         db = DataBase(config)
-        with caplog.at_level(logging.DEBUG), pytest.raises(
-            DataBaseQueryError
-        ) as error:
+        with (
+            caplog.at_level(logging.DEBUG),
+            pytest.raises(DataBaseQueryError) as error,
+        ):
             await db.connect()
         assert not db.connected
         assert 'failed executing query "WRONG"' in str(error.value)
@@ -567,9 +569,10 @@ class TestDataBase:
             "SELECT 1 AS metric, 2 AS other",
         )
         await db.connect()
-        with caplog.at_level(logging.ERROR), pytest.raises(
-            DataBaseQueryError
-        ) as error:
+        with (
+            caplog.at_level(logging.ERROR),
+            pytest.raises(DataBaseQueryError) as error,
+        ):
             await db.execute(query)
         assert (
             str(error.value)
@@ -630,9 +633,10 @@ class TestDataBase:
             "boom!"
         )
         await db.connect()
-        with caplog.at_level(logging.DEBUG), pytest.raises(
-            DataBaseQueryError
-        ) as error:
+        with (
+            caplog.at_level(logging.DEBUG),
+            pytest.raises(DataBaseQueryError) as error,
+        ):
             await db.execute(query)
         assert str(error.value) == "boom!"
         assert not error.value.fatal
@@ -659,9 +663,10 @@ class TestDataBase:
 
         db._conn.execute = execute
 
-        with caplog.at_level(logging.WARNING), pytest.raises(
-            QueryTimeoutExpired
-        ) as error:
+        with (
+            caplog.at_level(logging.WARNING),
+            pytest.raises(QueryTimeoutExpired) as error,
+        ):
             await db.execute(query)
         assert (
             str(error.value)
