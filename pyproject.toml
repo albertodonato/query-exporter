@@ -72,24 +72,12 @@ include = [ "query_exporter*" ]
 [tool.setuptools.package-data]
 query_exporter = [ "py.typed", "schemas/*" ]
 
-[tool.black]
+[tool.ruff]
 line-length = 79
 
-[tool.isort]
-combine_as_imports = true
-force_grid_wrap = 2
-force_sort_within_sections = true
-from_first = false
-include_trailing_comma = true
-multi_line_output = 3
-order_by_type = false
-profile = "black"
-use_parentheses = true
-
-[tool.flake8]
-ignore = [ "E203", "E501", "W503" ]
-max-line-length = 80
-select = [ "C", "E", "F", "W", "B", "B950" ]
+lint.select = [ "I", "RUF", "UP" ]
+lint.isort.combine-as-imports = true
+lint.isort.force-sort-within-sections = true
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

@@ -17,8 +17,8 @@ from traceback import format_tb
 from types import TracebackType
 from typing import (
     Any,
-    cast,
     NamedTuple,
+    cast,
 )
 
 from croniter import croniter

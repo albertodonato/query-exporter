@@ -2,7 +2,7 @@
 
 import asyncio
 from collections import defaultdict
-from collections.abc import Mapping
+from collections.abc import Iterator, Mapping
 from datetime import datetime
 from decimal import Decimal
 from logging import Logger
@@ -10,7 +10,6 @@ import time
 from typing import (
     Any,
     cast,
-    Iterator,
 )
 
 from croniter import croniter
@@ -27,15 +26,15 @@ from toolrack.aio import (
 )
 
 from .config import (
-    Config,
     DB_ERRORS_METRIC_NAME,
     QUERIES_METRIC_NAME,
     QUERY_LATENCY_METRIC_NAME,
     QUERY_TIMESTAMP_METRIC_NAME,
+    Config,
 )
 from .db import (
-    DataBase,
     DATABASE_LABEL,
+    DataBase,
     DataBaseConnectError,
     DataBaseError,
     Query,

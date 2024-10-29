@@ -11,8 +11,8 @@ import os
 from pathlib import Path
 import re
 from typing import (
-    Any,
     IO,
+    Any,
 )
 from urllib.parse import (
     quote_plus,

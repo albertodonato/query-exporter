@@ -9,7 +9,6 @@ from sqlalchemy_aio.base import AsyncConnection
 
 from query_exporter.config import DataBaseConfig
 from query_exporter.db import (
-    create_db_engine,
     DataBase,
     DataBaseConnectError,
     DataBaseError,
@@ -23,6 +22,7 @@ from query_exporter.db import (
     QueryMetric,
     QueryResults,
     QueryTimeoutExpired,
+    create_db_engine,
 )
 
 
