@@ -135,6 +135,7 @@ class QueryLoop:
     async def start(self) -> None:
         """Start timed queries execution."""
         for query in self._timed_queries:
+            call: TimedCall
             if query.interval:
                 call = PeriodicCall(self._run_query, query)
                 call.start(query.interval)
