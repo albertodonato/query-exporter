@@ -148,7 +148,6 @@ class TestMetricsLastSeen:
         }
 
 
-@pytest.mark.asyncio
 class TestQueryLoop:
     async def test_start(self, query_loop):
         """The start method starts timed calls for queries."""
