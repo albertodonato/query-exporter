@@ -34,7 +34,7 @@ issues: https://github.com/albertodonato/query-exporter/issues
 
 confinement: strict
 grade: stable
-base: core22
+base: core24
 
 apps:
   daemon:
@@ -73,7 +73,7 @@ parts:
       - unixodbc-dev
     stage-packages:
       - libmysqlclient21
-      - libodbc1
+      - libodbc2
       - libpq5
       - libxml2
     prime:
