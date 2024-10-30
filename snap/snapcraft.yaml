@@ -35,6 +35,11 @@ issues: https://github.com/albertodonato/query-exporter/issues
 confinement: strict
 grade: stable
 base: core24
+platforms:
+  amd64:
+  arm64:
+  s390x:
+  ppc64el:
 
 apps:
   daemon:
