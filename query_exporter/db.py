@@ -18,6 +18,7 @@ from types import TracebackType
 from typing import (
     Any,
     NamedTuple,
+    Self,
     cast,
 )
 
@@ -165,7 +166,7 @@ class QueryResults(NamedTuple):
     latency: float | None = None
 
     @classmethod
-    async def from_results(cls, results: AsyncResultProxy) -> "QueryResults":
+    async def from_results(cls, results: AsyncResultProxy) -> Self:
         """Return a QueryResults from results for a query."""
         timestamp = time()
         conn_info = results._result_proxy.connection.info
@@ -298,7 +299,7 @@ class DataBase:
 
         self._setup_query_latency_tracking()
 
-    async def __aenter__(self) -> "DataBase":
+    async def __aenter__(self) -> Self:
         await self.connect()
         return self
 
@@ -352,7 +353,7 @@ class DataBase:
         try:
             result = await self._execute_query(query)
             return query.results(await QueryResults.from_results(result))
-        except asyncio.TimeoutError:
+        except TimeoutError:
             raise self._query_timeout_error(
                 query.name, cast(QueryTimeout, query.timeout)
             )
