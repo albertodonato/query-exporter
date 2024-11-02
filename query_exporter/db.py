@@ -6,7 +6,6 @@ from collections.abc import (
     Iterable,
     Sequence,
 )
-from concurrent import futures
 from dataclasses import (
     dataclass,
     field,
