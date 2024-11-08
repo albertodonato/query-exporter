@@ -1,3 +1,3 @@
 """Export Prometheus metrics generated from SQL queries."""
 
-__version__ = "2.11.1"
+__version__ = "3.0.0"
