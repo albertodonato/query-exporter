@@ -12,8 +12,6 @@ from dataclasses import (
 )
 from functools import partial
 from itertools import chain
-import logging
-import sys
 from threading import (
     Thread,
     current_thread,
@@ -22,14 +20,8 @@ from time import (
     perf_counter,
     time,
 )
-from traceback import format_tb
 from types import TracebackType
-from typing import (
-    Any,
-    NamedTuple,
-    Self,
-    cast,
-)
+import typing as t
 
 from croniter import croniter
 from sqlalchemy import (
@@ -48,6 +40,7 @@ from sqlalchemy.exc import (
     NoSuchModuleError,
 )
 from sqlalchemy.sql.elements import TextClause
+import structlog
 
 #: Timeout for a query
 QueryTimeout = int | float
@@ -78,11 +71,6 @@ class DataBaseQueryError(DataBaseError):
 
 class QueryTimeoutExpired(Exception):
     """Query execution timeout expired."""
-
-    def __init__(self, query_name: str, timeout: QueryTimeout) -> None:
-        super().__init__(
-            f'Execution for query "{query_name}" expired after {timeout} seconds'
-        )
 
 
 class InvalidResultCount(Exception):
@@ -150,7 +138,7 @@ class DataBaseConfig:
         create_db_engine(self.dsn)
 
 
-def create_db_engine(dsn: str, **kwargs: Any) -> Engine:
+def create_db_engine(dsn: str, **kwargs: t.Any) -> Engine:
     """Create the database engine, validating the DSN"""
     try:
         return create_engine(dsn, **kwargs)
@@ -160,42 +148,42 @@ def create_db_engine(dsn: str, **kwargs: Any) -> Engine:
         raise DataBaseError(f'Invalid database DSN: "{dsn}"')
 
 
-class QueryMetric(NamedTuple):
+class QueryMetric(t.NamedTuple):
     """Metric details for a Query."""
 
     name: str
     labels: Iterable[str]
 
 
-class QueryResults(NamedTuple):
+class QueryResults(t.NamedTuple):
     """Results of a database query."""
 
     keys: list[str]
-    rows: Sequence[Row[Any]]
+    rows: Sequence[Row[t.Any]]
     timestamp: float | None = None
     latency: float | None = None
 
     @classmethod
-    def from_result(cls, result: CursorResult[Any]) -> Self:
+    def from_result(cls, result: CursorResult[t.Any]) -> t.Self:
         """Return a QueryResults from results for a query."""
         timestamp = time()
         keys: list[str] = []
-        rows: Sequence[Row[Any]] = []
+        rows: Sequence[Row[t.Any]] = []
         if result.returns_rows:
             keys, rows = list(result.keys()), result.all()
         latency = result.connection.info.get("query_latency", None)
         return cls(keys, rows, timestamp=timestamp, latency=latency)
 
 
-class MetricResult(NamedTuple):
+class MetricResult(t.NamedTuple):
     """A result for a metric from a query."""
 
     metric: str
-    value: Any
+    value: t.Any
     labels: dict[str, str]
 
 
-class MetricResults(NamedTuple):
+class MetricResults(t.NamedTuple):
     """Collection of metric results for a query."""
 
     results: list[MetricResult]
@@ -212,7 +200,7 @@ class Query:
         databases: list[str],
         metrics: list[QueryMetric],
         sql: str,
-        parameters: dict[str, Any] | None = None,
+        parameters: dict[str, t.Any] | None = None,
         timeout: QueryTimeout | None = None,
         interval: int | None = None,
         schedule: str | None = None,
@@ -288,7 +276,7 @@ class WorkerAction:
     """An action to be called in the worker thread."""
 
     def __init__(
-        self, func: Callable[..., Any], *args: Any, **kwargs: Any
+        self, func: Callable[..., t.Any], *args: t.Any, **kwargs: t.Any
     ) -> None:
         self._func = partial(func, *args, **kwargs)
         self._loop = asyncio.get_event_loop()
@@ -296,6 +284,8 @@ class WorkerAction:
 
     def __str__(self) -> str:
         return self._func.func.__name__
+
+    __repr__ = __str__
 
     def __call__(self) -> None:
         """Call the action asynchronously in a thread-safe way."""
@@ -306,11 +296,13 @@ class WorkerAction:
         else:
             self._call_threadsafe(self._future.set_result, result)
 
-    async def result(self) -> Any:
+    async def result(self) -> t.Any:
         """Wait for completion and return the action result."""
         return await self._future
 
-    def _call_threadsafe(self, call: Callable[..., Any], *args: Any) -> None:
+    def _call_threadsafe(
+        self, call: Callable[..., t.Any], *args: t.Any
+    ) -> None:
         self._loop.call_soon_threadsafe(partial(call, *args))
 
 
@@ -324,11 +316,11 @@ class DataBaseConnection:
         self,
         dbname: str,
         engine: Engine,
-        logger: logging.Logger = logging.getLogger(),
+        logger: structlog.stdlib.BoundLogger | None = None,
     ) -> None:
         self.dbname = dbname
         self.engine = engine
-        self.logger = logger
+        self.logger = logger or structlog.get_logger()
         self._loop = asyncio.get_event_loop()
         self._queue: asyncio.Queue[WorkerAction] = asyncio.Queue()
 
@@ -356,7 +348,7 @@ class DataBaseConnection:
     async def execute(
         self,
         sql: TextClause,
-        parameters: dict[str, Any] | None = None,
+        parameters: dict[str, t.Any] | None = None,
     ) -> QueryResults:
         """Execute a query, returning results."""
         if parameters is None:
@@ -383,8 +375,8 @@ class DataBaseConnection:
         self._conn = self.engine.connect()
 
     def _execute(
-        self, sql: TextClause, parameters: dict[str, Any]
-    ) -> CursorResult[Any]:
+        self, sql: TextClause, parameters: dict[str, t.Any]
+    ) -> CursorResult[t.Any]:
         assert self._conn
         return self._conn.execute(sql, parameters)
 
@@ -396,27 +388,24 @@ class DataBaseConnection:
 
     def _run(self) -> None:
         """The worker thread function."""
-
-        def debug(message: str) -> None:
-            self.logger.debug(f'worker "{current_thread().name}": {message}')
-
-        debug(f"started with ID {current_thread().native_id}")
+        logger = self.logger.bind(worker_id=current_thread().native_id)
+        logger.debug("start")
         while True:
             future = asyncio.run_coroutine_threadsafe(
                 self._queue.get(), self._loop
             )
             action = future.result()
-            debug(f'received action "{action}"')
+            logger.debug("action received", action=str(action))
             action()
             self._loop.call_soon_threadsafe(self._queue.task_done)
             if self._conn is None:
                 # the connection has been closed, exit the thread
-                debug("shutting down")
+                logger.debug("shutdown")
                 return
 
     async def _call_in_thread(
-        self, func: Callable[..., Any], *args: Any, **kwargs: Any
-    ) -> Any:
+        self, func: Callable[..., t.Any], *args: t.Any, **kwargs: t.Any
+    ) -> t.Any:
         """Call a sync action in the worker thread."""
         call = WorkerAction(func, *args, **kwargs)
         await self._queue.put(call)
@@ -432,10 +421,12 @@ class DataBase:
     def __init__(
         self,
         config: DataBaseConfig,
-        logger: logging.Logger = logging.getLogger(),
+        logger: structlog.stdlib.BoundLogger | None = None,
     ) -> None:
         self.config = config
-        self.logger = logger
+        if logger is None:
+            logger = structlog.get_logger()
+        self.logger = logger.bind(database=self.config.name)
         self._connect_lock = asyncio.Lock()
         execution_options = {}
         if self.config.autocommit:
@@ -447,7 +438,7 @@ class DataBase:
         self._conn = DataBaseConnection(self.config.name, engine, self.logger)
         self._setup_query_latency_tracking(engine)
 
-    async def __aenter__(self) -> Self:
+    async def __aenter__(self) -> t.Self:
         await self.connect()
         return self
 
@@ -475,7 +466,7 @@ class DataBase:
             except Exception as error:
                 raise self._db_error(error, exc_class=DataBaseConnectError)
 
-            self.logger.debug(f'connected to database "{self.config.name}"')
+            self.logger.debug("connected")
             for sql in self.config.connect_sql:
                 try:
                     await self.execute_sql(sql)
@@ -496,9 +487,7 @@ class DataBase:
     async def execute(self, query: Query) -> MetricResults:
         """Execute a query."""
         await self.connect()
-        self.logger.debug(
-            f'running query "{query.name}" on database "{self.config.name}"'
-        )
+        self.logger.debug("run query", query=query.name)
         self._pending_queries += 1
         try:
             query_results = await self.execute_sql(
@@ -506,9 +495,8 @@ class DataBase:
             )
             return query.results(query_results)
         except TimeoutError:
-            raise self._query_timeout_error(
-                query.name, cast(QueryTimeout, query.timeout)
-            )
+            self.logger.warning("query timeout", query=query.name)
+            raise QueryTimeoutExpired()
         except Exception as error:
             raise self._query_db_error(
                 query.name, error, fatal=isinstance(error, FATAL_ERRORS)
@@ -522,7 +510,7 @@ class DataBase:
     async def execute_sql(
         self,
         sql: str,
-        parameters: dict[str, Any] | None = None,
+        parameters: dict[str, t.Any] | None = None,
         timeout: QueryTimeout | None = None,
     ) -> QueryResults:
         """Execute a raw SQL query."""
@@ -534,7 +522,7 @@ class DataBase:
     async def _close(self) -> None:
         # ensure the connection with the DB is actually closed
         await self._conn.close()
-        self.logger.debug(f'disconnected from database "{self.config.name}"')
+        self.logger.debug("disconnected")
 
     def _setup_query_latency_tracking(self, engine: Engine) -> None:
         @event.listens_for(engine, "before_cursor_execute")  # type: ignore
@@ -559,20 +547,10 @@ class DataBase:
     ) -> DataBaseError:
         """Create and log a DataBaseError for a failed query."""
         message = self._error_message(error)
-        self.logger.error(
-            f'query "{query_name}" on database "{self.config.name}" failed: '
-            + message
+        self.logger.exception(
+            "query failed", query=query_name, error=message, exception=error
         )
-        _, _, traceback = sys.exc_info()
-        self.logger.debug("".join(format_tb(traceback)))
         return DataBaseQueryError(message, fatal=fatal)
-
-    def _query_timeout_error(
-        self, query_name: str, timeout: QueryTimeout
-    ) -> QueryTimeoutExpired:
-        error = QueryTimeoutExpired(query_name, timeout)
-        self.logger.warning(str(error))
-        raise error
 
     def _db_error(
         self,
@@ -582,9 +560,7 @@ class DataBase:
     ) -> DataBaseError:
         """Create and log a DataBaseError."""
         message = self._error_message(error)
-        self.logger.error(
-            f'error from database "{self.config.name}": {message}'
-        )
+        self.logger.exception("database error", exception=error)
         return exc_class(message, fatal=fatal)
 
     def _error_message(self, error: str | Exception) -> str:

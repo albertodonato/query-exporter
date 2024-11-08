@@ -41,20 +41,21 @@ dynamic = [
 ]
 dependencies = [
   "aiohttp",
-  "argcomplete",
   "croniter",
   "jsonschema",
-  "prometheus-aioexporter>=2,<3",
+  "prometheus-aioexporter>=3",
   "prometheus-client",
   "python-dateutil",
   "pyyaml",
   "sqlalchemy>=2",
+  "structlog",
   "toolrack>=4",
 ]
 optional-dependencies.testing = [
   "pytest",
   "pytest-asyncio",
   "pytest-mock",
+  "pytest-structlog",
 ]
 urls.changelog = "https://github.com/albertodonato/query-exporter/blob/main/CHANGES.rst"
 urls.homepage = "https://github.com/albertodonato/query-exporter"

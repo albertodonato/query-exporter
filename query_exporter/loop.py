@@ -5,12 +5,8 @@ from collections import defaultdict
 from collections.abc import Iterator, Mapping
 from datetime import datetime
 from decimal import Decimal
-from logging import Logger
 import time
-from typing import (
-    Any,
-    cast,
-)
+import typing as t
 
 from croniter import croniter
 from dateutil.tz import gettz
@@ -20,6 +16,7 @@ from prometheus_aioexporter import (
 )
 from prometheus_client import Counter
 from prometheus_client.metrics import MetricWrapperBase
+import structlog
 from toolrack.aio import (
     PeriodicCall,
     TimedCall,
@@ -82,7 +79,7 @@ class MetricsLastSeen:
         """
         expired = {}
         for name, metric_last_seen in self._last_seen.items():
-            expiration = cast(int, self._expirations[name])
+            expiration = t.cast(int, self._expirations[name])
             expired_labels = [
                 label_values
                 for label_values, last_seen in metric_last_seen.items()
@@ -107,11 +104,11 @@ class QueryLoop:
         self,
         config: Config,
         registry: MetricsRegistry,
-        logger: Logger,
+        logger: structlog.stdlib.BoundLogger | None = None,
     ):
         self._config = config
         self._registry = registry
-        self._logger = logger
+        self._logger = logger or structlog.get_logger()
         self._timed_queries: list[Query] = []
         self._aperiodic_queries: list[Query] = []
         # map query names to their TimedCalls
@@ -203,8 +200,9 @@ class QueryLoop:
             self._increment_queries_count(db, query, "error")
             if error.fatal:
                 self._logger.debug(
-                    f'removing failed query "{query.name}" '
-                    f'for database "{dbname}"'
+                    "removing failed query",
+                    query=query.name,
+                    database=dbname,
                 )
                 self._doomed_queries[query.name].add(dbname)
         else:
@@ -246,7 +244,7 @@ class QueryLoop:
         self,
         database: DataBase,
         name: str,
-        value: Any,
+        value: t.Any,
         labels: Mapping[str, str] | None = None,
     ) -> None:
         """Update value for a metric."""
@@ -260,12 +258,13 @@ class QueryLoop:
         all_labels.update(database.config.labels)
         if labels:
             all_labels.update(labels)
-        labels_string = ",".join(
-            f'{label}="{value}"' for label, value in sorted(all_labels.items())
-        )
         method = self._get_metric_method(metric_config)
         self._logger.debug(
-            f'updating metric "{name}" {method} {value} {{{labels_string}}}'
+            "updating metric",
+            metric=name,
+            method=method,
+            value=value,
+            labels=all_labels,
         )
         metric = self._registry.get_metric(name, labels=all_labels)
         self._update_metric_value(metric, method, value)
@@ -287,11 +286,11 @@ class QueryLoop:
         return method
 
     def _update_metric_value(
-        self, metric: MetricWrapperBase, method: str, value: Any
+        self, metric: MetricWrapperBase, method: str, value: t.Any
     ) -> None:
         if metric._type == "counter" and method == "set":
             # counters can only be incremented, directly set the underlying value
-            cast(Counter, metric)._value.set(value)
+            t.cast(Counter, metric)._value.set(value)
         else:
             getattr(metric, method)(value)
 

@@ -1,14 +1,20 @@
 import asyncio
 from collections.abc import AsyncIterator, Iterator
-import re
 
 import pytest
 from pytest_mock import MockerFixture
+from pytest_structlog import StructuredLogCapture
 from toolrack.testing.fixtures import advance_time
 
 from query_exporter.db import DataBase, MetricResults, Query
 
 __all__ = ["advance_time", "query_tracker"]
+
+
+@pytest.fixture(autouse=True)
+def _autouse(log: StructuredLogCapture) -> Iterator[None]:
+    """Autouse dependent fixtures."""
+    yield None
 
 
 class QueryTracker:
@@ -57,22 +63,3 @@ async def query_tracker(
 
     mocker.patch.object(DataBase, "execute", execute)
     yield tracker
-
-
-class AssertRegexpMatch:
-    """Assert that comparison matches the specified regexp."""
-
-    def __init__(self, pattern: str, flags: int = 0) -> None:
-        self._re = re.compile(pattern, flags)
-
-    def __eq__(self, string: object) -> bool:
-        return bool(self._re.match(str(string)))
-
-    def __repr__(self) -> str:
-        return self._re.pattern  # pragma: nocover
-
-
-@pytest.fixture
-def re_match() -> Iterator[type[AssertRegexpMatch]]:
-    """Matcher for asserting that a string matches a regexp."""
-    yield AssertRegexpMatch

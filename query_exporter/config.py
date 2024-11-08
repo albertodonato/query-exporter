@@ -1,19 +1,15 @@
 """Configuration management functions."""
 
 from collections import defaultdict
-from collections.abc import Iterable, Mapping
+from collections.abc import Mapping
 from dataclasses import dataclass
 from functools import reduce
 from importlib import resources
 import itertools
-from logging import Logger
 import os
 from pathlib import Path
 import re
-from typing import (
-    IO,
-    Any,
-)
+import typing as t
 from urllib.parse import (
     quote_plus,
     urlencode,
@@ -21,6 +17,7 @@ from urllib.parse import (
 
 import jsonschema
 from prometheus_aioexporter import MetricConfig
+import structlog
 import yaml
 
 from .db import (
@@ -94,14 +91,20 @@ class Config:
 Environ = Mapping[str, str]
 
 # Content for the "parameters" config option
-ParametersConfig = list[dict[str, Any]] | dict[str, list[dict[str, Any]]]
+ParametersConfig = list[dict[str, t.Any]] | dict[str, list[dict[str, t.Any]]]
 
 
 def load_config(
-    config_fd: IO[str], logger: Logger, env: Environ = os.environ
+    config_path: Path,
+    logger: structlog.stdlib.BoundLogger | None = None,
+    env: Environ = os.environ,
 ) -> Config:
     """Load YAML config from file."""
-    data = defaultdict(dict, yaml.safe_load(config_fd))
+    if logger is None:
+        logger = structlog.get_logger()
+
+    with config_path.open() as fd:
+        data = defaultdict(dict, yaml.safe_load(fd))
     _validate_config(data)
     databases, database_labels = _get_databases(data["databases"], env)
     extra_labels = frozenset([DATABASE_LABEL]) | database_labels
@@ -115,7 +118,7 @@ def load_config(
 
 
 def _get_databases(
-    configs: dict[str, dict[str, Any]], env: Environ
+    configs: dict[str, dict[str, t.Any]], env: Environ
 ) -> tuple[dict[str, DataBaseConfig], frozenset[str]]:
     """Return a dict mapping names to database configs, and a set of database labels."""
     databases = {}
@@ -147,7 +150,7 @@ def _get_databases(
 
 
 def _get_metrics(
-    metrics: dict[str, dict[str, Any]], extra_labels: frozenset[str]
+    metrics: dict[str, dict[str, t.Any]], extra_labels: frozenset[str]
 ) -> dict[str, MetricConfig]:
     """Return a dict mapping metric names to their configuration."""
     configs = {}
@@ -179,7 +182,7 @@ def _get_metrics(
 
 
 def _validate_metric_config(
-    name: str, config: dict[str, Any], extra_labels: frozenset[str]
+    name: str, config: dict[str, t.Any], extra_labels: frozenset[str]
 ) -> None:
     """Validate a metric configuration stanza."""
     if name in GLOBAL_METRICS:
@@ -194,7 +197,7 @@ def _validate_metric_config(
 
 
 def _get_queries(
-    configs: dict[str, dict[str, Any]],
+    configs: dict[str, dict[str, t.Any]],
     database_names: frozenset[str],
     metrics: dict[str, MetricConfig],
     extra_labels: frozenset[str],
@@ -239,13 +242,13 @@ def _get_queries(
 
 
 def _get_query_metrics(
-    config: dict[str, Any],
+    config: dict[str, t.Any],
     metrics: dict[str, MetricConfig],
     extra_labels: frozenset[str],
 ) -> list[QueryMetric]:
     """Return QueryMetrics for a query."""
 
-    def _metric_labels(labels: Iterable[str]) -> list[str]:
+    def _metric_labels(labels: t.Iterable[str]) -> list[str]:
         return sorted(set(labels) - extra_labels)
 
     return [
@@ -256,7 +259,7 @@ def _get_query_metrics(
 
 def _validate_query_config(
     name: str,
-    config: dict[str, Any],
+    config: dict[str, t.Any],
     database_names: frozenset[str],
     metric_names: frozenset[str],
 ) -> None:
@@ -313,7 +316,7 @@ def _convert_interval(interval: int | str | None) -> int | None:
     return int(interval) * multiplier
 
 
-def _resolve_dsn(dsn: str | dict[str, Any], env: Environ) -> str:
+def _resolve_dsn(dsn: str | dict[str, t.Any], env: Environ) -> str:
     """Build and resolve the database DSN string from the right source."""
 
     def from_env(varname: str) -> str:
@@ -347,7 +350,7 @@ def _resolve_dsn(dsn: str | dict[str, Any], env: Environ) -> str:
     return dsn
 
 
-def _build_dsn(details: dict[str, Any]) -> str:
+def _build_dsn(details: dict[str, t.Any]) -> str:
     """Build a DSN string from details."""
     url = f"{details['dialect']}://"
     user = details.get("user")
@@ -375,7 +378,7 @@ def _build_dsn(details: dict[str, Any]) -> str:
     return url
 
 
-def _validate_config(config: dict[str, Any]) -> None:
+def _validate_config(config: dict[str, t.Any]) -> None:
     schema_file = resources.files("query_exporter") / "schemas" / "config.yaml"
     schema = yaml.safe_load(schema_file.read_bytes())
     try:
@@ -385,7 +388,9 @@ def _validate_config(config: dict[str, Any]) -> None:
         raise ConfigError(f"Invalid config at {path}: {e.message}")
 
 
-def _warn_if_unused(config: Config, logger: Logger) -> None:
+def _warn_if_unused(
+    config: Config, logger: structlog.stdlib.BoundLogger
+) -> None:
     """Warn if there are unused databases or metrics defined."""
     used_dbs: set[str] = set()
     used_metrics: set[str] = set()
@@ -393,21 +398,25 @@ def _warn_if_unused(config: Config, logger: Logger) -> None:
         used_dbs.update(query.databases)
         used_metrics.update(metric.name for metric in query.metrics)
 
-    unused_dbs = sorted(set(config.databases) - used_dbs)
-    if unused_dbs:
+    if unused_dbs := sorted(set(config.databases) - used_dbs):
         logger.warning(
-            f"unused entries in \"databases\" section: {', '.join(unused_dbs)}"
+            "unused config entries",
+            section="databases",
+            entries=unused_dbs,
         )
-    unused_metrics = sorted(
+    if unused_metrics := sorted(
         set(config.metrics) - GLOBAL_METRICS - used_metrics
-    )
-    if unused_metrics:
+    ):
         logger.warning(
-            f"unused entries in \"metrics\" section: {', '.join(unused_metrics)}"
+            "unused config entries",
+            section="metrics",
+            entries=unused_metrics,
         )
 
 
-def _get_parameters_sets(parameters: ParametersConfig) -> list[dict[str, Any]]:
+def _get_parameters_sets(
+    parameters: ParametersConfig,
+) -> list[dict[str, t.Any]]:
     """Return an sequence of set of paramters with their values."""
     if isinstance(parameters, dict):
         return _get_parameters_matrix(parameters)
@@ -415,8 +424,8 @@ def _get_parameters_sets(parameters: ParametersConfig) -> list[dict[str, Any]]:
 
 
 def _get_parameters_matrix(
-    parameters: dict[str, list[dict[str, Any]]],
-) -> list[dict[str, Any]]:
+    parameters: dict[str, list[dict[str, t.Any]]],
+) -> list[dict[str, t.Any]]:
     """Return parameters combinations from a matrix."""
     # first, flatten dict like
     #
