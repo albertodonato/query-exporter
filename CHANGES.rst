@@ -203,6 +203,11 @@ v2.0.0 - 2020-02-02
    longer supported. Queries can be updated adding ``AS
    <metric_name|label_name>`` expressions.
 
+v1.9.4 - 2024-11-16
+===================
+
+- Add ability to override default port using ``PORT`` environment variable.
+
 
 v1.9.3 - 2019-12-29
 ===================

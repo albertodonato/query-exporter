@@ -2,6 +2,7 @@
 
 import argparse
 from functools import partial
+import os
 from typing import IO
 
 from aiohttp.web import Application
@@ -28,6 +29,13 @@ class QueryExporterScript(PrometheusExporterScript):  # type: ignore
     name = "query-exporter"
     description = __doc__
     default_port = 9560
+
+    ### Next five lines are are to accept PORT env var for cloudfoundry compatability - Ardavan Hashemzadeh
+    port_str = os.getenv('PORT')
+    if port_str and port_str.isdigit():
+        port = int(port_str)
+        if 1 <= port <= 65535:
+            default_port = port
 
     def configure_argument_parser(
         self, parser: argparse.ArgumentParser
