@@ -354,7 +354,7 @@ Metrics endpoint
 ----------------
 
 The exporter listens on port ``9560`` by default providing the standard ``/metrics``
-endpoint. Defining an environment variable named ``port`` will override the default.
+endpoint. Defining an environment variable named ``PORT`` will override the default.
 
 By default, the port is bound on ``localhost``. Note that if the name resolves
 both IPv4 and IPv6 addressses, the exporter will bind on both.
