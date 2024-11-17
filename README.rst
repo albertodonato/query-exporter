@@ -353,8 +353,8 @@ Each query definition can have the following keys:
 Metrics endpoint
 ----------------
 
-The exporter listens on port ``9560`` providing the standard ``/metrics``
-endpoint.
+The exporter listens on port ``9560`` by default providing the standard ``/metrics``
+endpoint. Defining an environment variable named ``PORT`` will override the default.
 
 By default, the port is bound on ``localhost``. Note that if the name resolves
 both IPv4 and IPv6 addressses, the exporter will bind on both.
@@ -557,11 +557,11 @@ Run in Docker
 ``query-exporter`` can be run inside Docker_ containers, and is available from
 the `Docker Hub`_::
 
-  docker run --rm -it -p 9560:9560/tcp -v "$CONFIG_DIR:/config" adonato/query-exporter:latest
+  docker run --rm -it -p $PORT:$PORT/tcp -v "$CONFIG_DIR:/config" adonato/query-exporter:latest
 
 where ``$CONFIG_DIR`` is the absolute path of a directory containing a
 ``config.yaml`` file, the configuration file to use. Alternatively, a volume
-name can be specified.
+name can be specified. ``$PORT`` may be used to override the default of 9560.
 
 
 A different ODBC driver version to use can be specified during image building,
