@@ -1,3 +1,9 @@
+v2.11.1 - 2024-11-19
+====================
+
+- Update ``prometheus-aioexporter`` dependency range.
+
+
 v2.11.0 - 2024-11-19
 ====================
 
@@ -6,7 +12,7 @@ v2.11.0 - 2024-11-19
 - [docker] Use Python 3.13 on Debian Bookwork as base image.
 - [snap] Rebase on core24.
 
-  
+
 v2.10.0 - 2024-01-28
 ====================
 
