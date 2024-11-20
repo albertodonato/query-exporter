@@ -1,10 +1,3 @@
-v2.10.1 - 2024-11-17
-====================
-
-- Add ability to override default port using ``PORT`` environment variable.
-- Add workflow to publish to github container repository.
-
-
 v2.10.0 - 2024-01-28
 ====================
 
