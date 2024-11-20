@@ -29,7 +29,7 @@ class QueryExporterScript(PrometheusExporterScript):  # type: ignore
     name = "query-exporter"
     description = __doc__
     default_port = 9560
-    ### Next five lines are are to accept PORT env var for cloudfoundry compatability - Ardavan Hashemzadeh
+    ### Next five lines along with the 'import os' up top are are to accept PORT env var for cloudfoundry compatability - Ardavan Hashemzadeh
     port_str = os.getenv('PORT')
     if port_str and port_str.isdigit():
         port = int(port_str)
