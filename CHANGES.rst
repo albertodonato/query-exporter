@@ -1,8 +1,9 @@
-v2.11.2 - 2024-11-19
+v2.11.2 - 2024-11-29
 ====================
 
 - Add ability to override default port using ``PORT`` environment variable.
-- Add workflow to publish to github container repository.
+- Add .vscode to .gitignore.
+- Update documentation with example of using the ```PORT``` environment variable.
 
 
 v2.11.1 - 2024-11-19
