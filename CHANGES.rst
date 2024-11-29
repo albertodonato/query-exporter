@@ -4,6 +4,7 @@ v2.11.2 - 2024-11-29
 - Add ability to override default port using ``PORT`` environment variable.
 - Add .vscode to .gitignore.
 - Update documentation with example of using the ```PORT``` environment variable.
+- Update patch version in __init__.py and changelog.
 
 
 v2.11.1 - 2024-11-19
