@@ -4,4 +4,5 @@
 /.coverage
 /.mypy_cache
 /.tox
+/.vscode
 /build
