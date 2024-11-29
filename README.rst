@@ -557,7 +557,11 @@ Run in Docker
 ``query-exporter`` can be run inside Docker_ containers, and is available from
 the `Docker Hub`_::
 
-  docker run --rm -it -p $PORT:$PORT/tcp -v "$CONFIG_DIR:/config" adonato/query-exporter:latest
+# Listening on default port:
+  docker run --rm -it -p 9560:9560/tcp -v "$CONFIG_DIR:/config" adonato/query-exporter:latest
+
+# Listening on a custom port:
+  docker run --rm -it -e PORT=$PORT-p $PORT:$PORT/tcp -v "$CONFIG_DIR:/config" adonato/query-exporter:latest
 
 where ``$CONFIG_DIR`` is the absolute path of a directory containing a
 ``config.yaml`` file, the configuration file to use. Alternatively, a volume
