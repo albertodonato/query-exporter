@@ -15,10 +15,13 @@ Each query can be run on multiple databases, and update multiple metrics.
 
 The application is simply run as::
 
-  query-exporter config.yaml
+  query-exporter
 
-where the passed configuration file contains the definitions of the databases
-to connect and queries to perform to update metrics.
+which will look for a ``config.yaml`` configuration file in the current
+directory, containing the definitions of the databases to connect and queries
+to perform to update metrics.  The configuration file can be overridden by
+passing the ``--config`` option, or setting the ``QE_CONFIG`` environment
+variable.
 
 
 Configuration file format
@@ -502,8 +505,9 @@ included by passing ``--process-stats`` in the command line.
 Debugging / Logs
 ----------------
 
-You can enable extended logging using the ``-L`` commandline switch. Possible
-log levels are ``CRITICAL``, ``ERROR``, ``WARNING``, ``INFO``, ``DEBUG``.
+You can enable extended logging using the ``-L`` (or ``-log-level``) command
+line switch. Possible log levels are ``critical``, ``error``, ``warning``,
+``info``, ``debug``.
 
 
 Database engines
@@ -537,6 +541,8 @@ To configure the daemon:
 
 - create or edit ``/var/snap/query-exporter/current/config.yaml`` with the
   configuration
+- optionally, create a ``/var/snap/query-exporter/current/.env`` file with
+  environment variables definitions for additional config options
 - run ``sudo snap restart query-exporter``
 
 The snap has support for connecting the following databases:
@@ -561,12 +567,10 @@ where ``$CONFIG_DIR`` is the absolute path of a directory containing a
 ``config.yaml`` file, the configuration file to use. Alternatively, a volume
 name can be specified.
 
-
-A different ODBC driver version to use can be specified during image building,
-by passing ``--build-arg ODBC_bVERSION_NUMBER``, e.g.::
-
-  docker build . --build-arg ODBC_DRIVER_VERSION=17
-
+If, a ``.env`` file is present in the specified volume for ``/config``, its
+content is loaded and applied to the environment for the exporter. The location
+of the dotenv file can be customized by setting the ``QE_DOTENV`` environment
+variable.
 
 The image has support for connecting the following databases:
 
@@ -579,6 +583,14 @@ The image has support for connecting the following databases:
 - ClickHouse (``clickhouse+native://``)
 
 A `Helm chart`_ to run the container in Kubernetes is also available.
+
+ODBC driver version
+~~~~~~~~~~~~~~~~~~~
+
+A different ODBC driver version to use can be specified during image building,
+by passing ``--build-arg ODBC_bVERSION_NUMBER``, e.g.::
+
+  docker build . --build-arg ODBC_DRIVER_VERSION=17
 
 
 .. _Prometheus: https://prometheus.io/
