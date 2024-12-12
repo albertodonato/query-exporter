@@ -1,7 +1,5 @@
 #!/bin/sh -e
 
-CONFIG_FILE="$SNAP_DATA/config.yaml"
+[ -r "$SNAP_DATA/config.yaml" ] || snapctl stop "$SNAP_INSTANCE_NAME"
 
-[ -r "$CONFIG_FILE" ] || snapctl stop "$SNAP_INSTANCE_NAME"
-
-exec "$SNAP/bin/query-exporter" -H 0.0.0.0 :: -- "$CONFIG_FILE"
+exec env -C "$SNAP_DATA" "$SNAP/bin/query-exporter" --
