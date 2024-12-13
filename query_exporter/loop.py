@@ -255,7 +255,7 @@ class QueryLoop:
             value = 0.0
         elif isinstance(value, Decimal):
             value = float(value)
-        metric = self._config.metrics[name]
+        metric_config = self._config.metrics[name]
         all_labels = {DATABASE_LABEL: database.config.name}
         all_labels.update(database.config.labels)
         if labels:
@@ -263,7 +263,7 @@ class QueryLoop:
         labels_string = ",".join(
             f'{label}="{value}"' for label, value in sorted(all_labels.items())
         )
-        method = self._get_metric_method(metric)
+        method = self._get_metric_method(metric_config)
         self._logger.debug(
             f'updating metric "{name}" {method} {value} {{{labels_string}}}'
         )

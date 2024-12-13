@@ -1,7 +1,7 @@
 """Configuration management functions."""
 
 from collections import defaultdict
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from functools import reduce
 from importlib import resources
@@ -245,7 +245,7 @@ def _get_query_metrics(
 ) -> list[QueryMetric]:
     """Return QueryMetrics for a query."""
 
-    def _metric_labels(labels: list[str]) -> list[str]:
+    def _metric_labels(labels: Iterable[str]) -> list[str]:
         return sorted(set(labels) - extra_labels)
 
     return [

@@ -22,7 +22,7 @@ from .config import (
 from .loop import QueryLoop
 
 
-class QueryExporterScript(PrometheusExporterScript):  # type: ignore
+class QueryExporterScript(PrometheusExporterScript):
     """Periodically run database queries and export results to Prometheus."""
 
     name = "query-exporter"
