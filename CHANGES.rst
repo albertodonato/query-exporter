@@ -1,3 +1,31 @@
+v3.0.0 - XXXX-XX-XX
+===================
+
+- Convert all logging to structured (#199).
+- Look for ``config.yaml`` configuration file by default, configuration file
+  can be optionally specified with ``--config``.
+- Support passing configuration options via environment variables.
+- Support loading ``.env`` file with environment variables for configuration.
+- [docker] Run exporter from the ``/config`` directory, supporting having
+  ``.env`` file there.
+- [snap] Run exporter from the ``$SNAP_DATA`` directory, supporting having
+  ``.env`` file there.
+
+**NOTE**:
+  This release introduces a few breaking changes from the 2.x series,
+  specificially:
+
+  - The ``--log-level`` option now takes lowercase names for levels.
+  - The configuration file is no longer a required option, since
+    ``config.yaml`` in the current directory is looked up automatically. If a
+    different file is specified, it should be done as an optional parameter
+    with ``--config``.
+  - Metrics of type ``counter`` are now set by default to values returned by
+    queries. To preserve the old default behavior of incrementing it by the
+    returned value, ``increment`` should be set to ``true`` in the metric
+    configuration.
+
+
 v2.11.1 - 2024-11-19
 ====================
 
