@@ -17,6 +17,7 @@ COPY . /srcdir
 RUN python3 -m venv /virtualenv
 ENV PATH="/virtualenv/bin:$PATH"
 RUN pip install \
+    -r /srcdir/requirements.txt \
     /srcdir \
     cx-Oracle \
     clickhouse-sqlalchemy \

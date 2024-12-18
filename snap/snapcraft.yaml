@@ -61,6 +61,8 @@ parts:
     plugin: python
     source: .
     source-type: git
+    python-requirements:
+      - requirements.txt
     python-packages:
       - .
       - clickhouse-sqlalchemy

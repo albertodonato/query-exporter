@@ -97,3 +97,7 @@ ignore_missing_imports = true
 install_types = true
 non_interactive = true
 strict = true
+
+[tool.pip-tools]
+upgrade = true
+quiet = true
