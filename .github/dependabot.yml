@@ -6,13 +6,13 @@ updates:
       interval: weekly
     groups:
       minor:
-        update-types: minor
+        update-types: [minor]
       major:
-        update-types: major
+        update-types: [major]
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
     groups:
       all:
-        update-types: major
+        update-types: [major, minor]
