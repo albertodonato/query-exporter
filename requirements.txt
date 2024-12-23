@@ -43,7 +43,7 @@ packaging==24.2
     # via pytest
 pluggy==1.5.0
     # via pytest
-prometheus-aioexporter==2.1.0
+prometheus-aioexporter==3.0.1
     # via query-exporter (pyproject.toml)
 prometheus-client==0.21.1
     # via

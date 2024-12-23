@@ -44,7 +44,7 @@ dependencies = [
   "argcomplete",
   "croniter",
   "jsonschema",
-  "prometheus-aioexporter>=2,<3",
+  "prometheus-aioexporter>=2,<4",
   "prometheus-client",
   "python-dateutil",
   "pyyaml",
