@@ -14,6 +14,8 @@ description: |
 
     - create or edit `/var/snap/query-exporter/current/config.yaml` with the
       configuration
+    - optionally, create a `/var/snap/query-exporter/current/.env` file with
+      environment variables definitions for additional config options
     - run `sudo snap restart query-exporter`
 
   Currently supported databases are:
@@ -83,12 +85,16 @@ parts:
       - libodbc2
       - libpq5
       - libxml2
+    override-build: |
+      craftctl default
+      _QUERY_EXPORTER_COMPLETE=bash_source query-exporter > "$CRAFT_PART_INSTALL/query-exporter.completion"
     prime:
       - bin/python3
       - bin/query-exporter
       - etc
       - lib
       - pyvenv.cfg
+      - query-exporter.completion
       - usr/lib
 
   wrappers:
