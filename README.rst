@@ -123,7 +123,7 @@ Each database definitions can have the following keys:
 
   All entries are optional, except ``dialect``.
 
-  Note that in the string form, username, password and options need to be
+  **Note**: in the string form, username, password and options need to be
   URL-encoded, whereas this is done automatically for the key/value form.
 
   See `database-specific options`_ page for some extra details on database
@@ -215,12 +215,10 @@ Each metric definition can have the following keys:
   for ``counter`` metrics, whether to increment the value by the query result,
   or set the value to it.
 
-  By default, counters are incremented by the value returned by the query. If
-  this is set to ``false``, instead, the metric value will be set to the result
+  By default, counters are set to the value returned by the query. If this is
+  set to ``true``, instead, the metric value will be incremented by the result
   of the query.
 
-  **NOTE**: The default will be reversed in the 3.0 release, and ``increment``
-  will be set to ``false`` by default.
 
 ``queries`` section
 ~~~~~~~~~~~~~~~~~~~

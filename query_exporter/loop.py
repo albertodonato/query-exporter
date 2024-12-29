@@ -272,7 +272,7 @@ class QueryLoop:
 
     def _get_metric_method(self, metric: MetricConfig) -> str:
         if metric.type == "counter" and not metric.config.get(
-            "increment", True
+            "increment", False
         ):
             method = "set"
         else:

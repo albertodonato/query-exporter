@@ -195,15 +195,11 @@ definitions:
       increment:
         title: For counter metrics, whether to increment by query result
         description: >
-          If set to false, the counter value is set to the result of the query.
+          If set to true, the counter value is incremented by the result of the query.
 
-          By default, counters are incremented by the value returned by the
-          query.
-
-          NOTE: This behavior will be reversed in the 3.0 release, and
-          increment will be set to false by default.
+          By default, counters are set to the value returned by the query.
         type: boolean
-        default: true
+        default: false
 
   query:
     title: Definition for a SQL query to run

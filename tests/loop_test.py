@@ -233,12 +233,25 @@ class TestQueryLoop:
         metric = registry.get_metric("m")
         assert metric_values(metric) == [0]
 
-    async def test_run_query_counter_no_increment(
-        self, query_tracker, registry, config_data, make_query_loop
+    @pytest.mark.parametrize(
+        "increment,value",
+        [
+            (True, 30.0),
+            (False, 20.0),
+        ],
+    )
+    async def test_run_query_counter(
+        self,
+        query_tracker,
+        registry,
+        config_data,
+        make_query_loop,
+        increment: bool,
+        value: float,
     ) -> None:
         config_data["metrics"]["m"]["type"] = "counter"
-        config_data["metrics"]["m"]["increment"] = False
         config_data["queries"]["q"]["sql"] = "SELECT :param AS m"
+        config_data["metrics"]["m"]["increment"] = increment
         config_data["queries"]["q"]["parameters"] = [
             {"param": 10.0},
             {"param": 20.0},
@@ -248,7 +261,7 @@ class TestQueryLoop:
         await query_tracker.wait_results()
         # the metric is updated
         metric = registry.get_metric("m")
-        assert metric_values(metric) == [20.0]
+        assert metric_values(metric) == [value]
 
     async def test_run_query_metrics_with_database_labels(
         self, query_tracker, registry, config_data, make_query_loop

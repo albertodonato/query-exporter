@@ -35,6 +35,7 @@ _DB_ERRORS_METRIC_CONFIG = MetricConfig(
     name=DB_ERRORS_METRIC_NAME,
     description="Number of database errors",
     type="counter",
+    config={"increment": True},
 )
 
 # metric for counting performed queries
@@ -44,6 +45,7 @@ _QUERIES_METRIC_CONFIG = MetricConfig(
     description="Number of database queries",
     type="counter",
     labels=("query", "status"),
+    config={"increment": True},
 )
 # metric for tracking last query execution timestamp
 QUERY_TIMESTAMP_METRIC_NAME = "query_timestamp"
