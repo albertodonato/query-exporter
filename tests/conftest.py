@@ -8,7 +8,7 @@ from toolrack.testing.fixtures import advance_time
 
 from query_exporter.db import DataBase, MetricResults, Query
 
-__all__ = ["advance_time", "query_tracker"]
+__all__ = ["QueryTracker", "advance_time", "query_tracker"]
 
 
 @pytest.fixture(autouse=True)
