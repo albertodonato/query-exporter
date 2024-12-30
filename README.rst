@@ -567,7 +567,7 @@ where ``$CONFIG_DIR`` is the absolute path of a directory containing a
 ``config.yaml`` file, the configuration file to use. Alternatively, a volume
 name can be specified.
 
-If, a ``.env`` file is present in the specified volume for ``/config``, its
+If a ``.env`` file is present in the specified volume for ``/config``, its
 content is loaded and applied to the environment for the exporter. The location
 of the dotenv file can be customized by setting the ``QE_DOTENV`` environment
 variable.
