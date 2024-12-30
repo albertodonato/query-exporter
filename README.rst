@@ -584,6 +584,11 @@ The image has support for connecting the following databases:
 
 A `Helm chart`_ to run the container in Kubernetes is also available.
 
+Automated builds from the ``main`` branch are available on the `GitHub container registry`_ via::
+
+  docker pull ghcr.io/albertodonato/query-exporter:sha256-28058bd8c5acc97d57c1ad95f1a7395d9d43c30687459cd4adacc3e19d009996
+
+
 ODBC driver version
 ~~~~~~~~~~~~~~~~~~~
 
@@ -604,6 +609,7 @@ by passing ``--build-arg ODBC_bVERSION_NUMBER``, e.g.::
 .. _`Docker Hub`: https://hub.docker.com/r/adonato/query-exporter
 .. _`database-specific options`: databases.rst
 .. _`Helm chart`: https://github.com/makezbs/helm-charts/tree/main/charts/query-exporter
+.. _`GitHub container registry`: https://github.com/albertodonato/query-exporter/pkgs/container/query-exporter
 
 .. |query-exporter logo| image:: https://raw.githubusercontent.com/albertodonato/query-exporter/main/logo.svg
    :alt: query-exporter logo
