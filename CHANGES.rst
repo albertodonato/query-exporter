@@ -1,4 +1,4 @@
-v3.0.0 - XXXX-XX-XX
+v3.0.0 - 2024-12-30
 ===================
 
 - Convert all logging to structured (#199).
