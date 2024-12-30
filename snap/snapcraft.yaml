@@ -12,7 +12,7 @@ description: |
   the command, managed via a Systemd service.
   To run the latter:
 
-    - create or edit `/var/snap/query-exporter/current/config.yaml` with the
+    - create `/var/snap/query-exporter/current/config.yaml` with the desired
       configuration
     - optionally, create a `/var/snap/query-exporter/current/.env` file with
       environment variables definitions for additional config options
