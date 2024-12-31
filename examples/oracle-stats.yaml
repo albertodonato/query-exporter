@@ -7,7 +7,7 @@
 
 databases:
   oracle:
-    dsn: env:ORACLE_DATABASE_DSN
+    dsn: !env ORACLE_DATABASE_DSN
 
 metrics:
   oracle_sessions:

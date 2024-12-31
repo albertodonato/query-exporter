@@ -28,6 +28,7 @@ from .db import (
     Query,
     QueryMetric,
 )
+from .yaml import load_yaml_config
 
 # metric for counting database errors
 DB_ERRORS_METRIC_NAME = "database_errors"
@@ -105,8 +106,10 @@ def load_config(
     if logger is None:
         logger = structlog.get_logger()
 
-    with config_path.open() as fd:
-        data = defaultdict(dict, yaml.safe_load(fd))
+    try:
+        data = defaultdict(dict, load_yaml_config(config_path))
+    except yaml.scanner.ScannerError as e:
+        raise ConfigError(str(e))
     _validate_config(data)
     databases, database_labels = _get_databases(data["databases"], env)
     extra_labels = frozenset([DATABASE_LABEL]) | database_labels
@@ -347,6 +350,12 @@ def _resolve_dsn(dsn: str | dict[str, t.Any], env: Environ) -> str:
         source, value = dsn.split(":", 1)
         handler = origins.get(source)
         if handler is not None:
+            logger = structlog.get_logger()
+            logger.warn(
+                f"deprecated DSN source '{dsn}', use '!{source} {value}' instead",
+                source=source,
+                value=value,
+            )
             return handler(value)
 
     return dsn

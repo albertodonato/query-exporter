@@ -11,7 +11,7 @@
 
 databases:
   pg:
-    dsn: env:PG_DATABASE_DSN
+    dsn: !env PG_DATABASE_DSN
 
 metrics:
   pg_process:
