@@ -54,7 +54,7 @@ async def make_query_loop(
     def make_loop() -> loop.QueryLoop:
         config_file = tmp_path / "config.yaml"
         config_file.write_text(yaml.dump(config_data), "utf-8")
-        config = load_config(config_file)
+        config = load_config([config_file])
         registry.create_metrics(config.metrics.values())
         query_loop = loop.QueryLoop(config, registry)
         query_loops.append(query_loop)

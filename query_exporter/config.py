@@ -2,7 +2,7 @@
 
 from collections import defaultdict
 from collections.abc import Mapping
-from dataclasses import dataclass
+import dataclasses
 from functools import reduce
 from importlib import resources
 import itertools
@@ -81,7 +81,7 @@ class ConfigError(Exception):
     """Configuration is invalid."""
 
 
-@dataclass(frozen=True)
+@dataclasses.dataclass(frozen=True)
 class Config:
     """Top-level configuration."""
 
@@ -98,7 +98,7 @@ ParametersConfig = list[dict[str, t.Any]] | dict[str, list[dict[str, t.Any]]]
 
 
 def load_config(
-    config_path: Path,
+    paths: list[Path],
     logger: structlog.stdlib.BoundLogger | None = None,
     env: Environ = os.environ,
 ) -> Config:
@@ -107,7 +107,7 @@ def load_config(
         logger = structlog.get_logger()
 
     try:
-        data = defaultdict(dict, load_yaml_config(config_path))
+        data = _load_config(paths)
     except yaml.scanner.ScannerError as e:
         raise ConfigError(str(e))
     _validate_config(data)
@@ -120,6 +120,34 @@ def load_config(
     config = Config(databases, metrics, queries)
     _warn_if_unused(config, logger)
     return config
+
+
+def _load_config(paths: list[Path]) -> dict[str, t.Any]:
+    """Return the combined configuration from provided files."""
+    config: dict[str, t.Any] = defaultdict(dict)
+    for path in paths:
+        data = defaultdict(dict, load_yaml_config(path))
+        for key in (field.name for field in dataclasses.fields(Config)):
+            entries = data.pop(key, None)
+            if entries is not None:
+                if overlap_entries := set(config[key]) & set(entries):
+                    overlap_list = ", ".join(sorted(overlap_entries))
+                    raise ConfigError(
+                        f'Duplicated entries in the "{key}" section: {overlap_list}'
+                    )
+                config[key].update(entries)
+        config.update(data)
+    return config
+
+
+def _validate_config(config: dict[str, t.Any]) -> None:
+    schema_file = resources.files("query_exporter") / "schemas" / "config.yaml"
+    schema = yaml.safe_load(schema_file.read_bytes())
+    try:
+        jsonschema.validate(config, schema)
+    except jsonschema.ValidationError as e:
+        path = "/".join(str(item) for item in e.absolute_path)
+        raise ConfigError(f"Invalid config at {path}: {e.message}")
 
 
 def _get_databases(
@@ -387,16 +415,6 @@ def _build_dsn(details: dict[str, t.Any]) -> str:
     if query:
         url += f"?{urlencode(query, doseq=True)}"
     return url
-
-
-def _validate_config(config: dict[str, t.Any]) -> None:
-    schema_file = resources.files("query_exporter") / "schemas" / "config.yaml"
-    schema = yaml.safe_load(schema_file.read_bytes())
-    try:
-        jsonschema.validate(config, schema)
-    except jsonschema.ValidationError as e:
-        path = "/".join(str(item) for item in e.absolute_path)
-        raise ConfigError(f"Invalid config at {path}: {e.message}")
 
 
 def _warn_if_unused(

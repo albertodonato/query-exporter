@@ -48,7 +48,8 @@ class QueryExporterScript(PrometheusExporterScript):
                     path_type=Path,
                 ),
                 help="configuration file",
-                default=Path("config.yaml"),
+                multiple=True,
+                default=[Path("config.yaml")],
                 show_default=True,
                 show_envvar=True,
             ),
@@ -78,10 +79,10 @@ class QueryExporterScript(PrometheusExporterScript):
         await query_loop.run_aperiodic_queries()
         query_loop.clear_expired_series()
 
-    def _load_config(self, config_file: Path) -> Config:
+    def _load_config(self, paths: list[Path]) -> Config:
         """Load the application configuration."""
         try:
-            return load_config(config_file, self.logger)
+            return load_config(paths, self.logger)
         except (InvalidMetricType, ConfigError) as error:
             self.logger.error("invalid config", error=str(error))
             raise SystemExit(1)
