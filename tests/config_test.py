@@ -128,6 +128,13 @@ CONFIG_INVALID_METRICS_PARAMS_MATRIX_DIFFERENT_KEYS = {
 
 
 class TestLoadConfig:
+    def test_load_invalid_format(self, tmp_path: Path) -> None:
+        config_file = tmp_path / "config"
+        config_file.write_text("foo: !env UNSET")
+        with pytest.raises(ConfigError) as err:
+            load_config(config_file)
+        assert "variable UNSET undefined" in str(err.value)
+
     def test_load_databases_section(self, write_config: ConfigWriter) -> None:
         cfg = {
             "databases": {
@@ -156,7 +163,9 @@ class TestLoadConfig:
         assert not database2.autocommit
 
     def test_load_databases_dsn_from_env(
-        self, write_config: ConfigWriter
+        self,
+        log: StructuredLogCapture,
+        write_config: ConfigWriter,
     ) -> None:
         cfg = {
             "databases": {"db1": {"dsn": "env:FOO"}},
@@ -166,6 +175,9 @@ class TestLoadConfig:
         config_file = write_config(cfg)
         config = load_config(config_file, env={"FOO": "sqlite://"})
         assert config.databases["db1"].dsn == "sqlite://"
+        assert log.has(
+            "deprecated DSN source 'env:FOO', use '!env FOO' instead"
+        )
 
     def test_load_databases_missing_dsn(
         self, write_config: ConfigWriter
@@ -262,6 +274,7 @@ class TestLoadConfig:
     def test_load_databases_dsn_from_file(
         self,
         tmp_path: Path,
+        log: StructuredLogCapture,
         write_config: ConfigWriter,
     ) -> None:
         dsn = "sqlite:///foo"
@@ -275,6 +288,9 @@ class TestLoadConfig:
         config_file = write_config(cfg)
         config = load_config(config_file)
         assert config.databases["db1"].dsn == dsn
+        assert log.has(
+            f"deprecated DSN source 'file:{dsn_path}', use '!file {dsn_path}' instead"
+        )
 
     def test_load_databases_dsn_from_file_not_found(
         self, write_config: ConfigWriter

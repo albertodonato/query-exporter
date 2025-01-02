@@ -4,6 +4,29 @@ Configuration file format
 Configuration is provided as a YAML file, composed by a few sections, as
 described in the following sections.
 
+The following tags are supported in the configuration file:
+
+``!include <filename>``:
+  include the content of another YAML file.  This allows modularizing
+  configuration.
+
+  If the specified path is not absolute, it's considered relative to the
+  including file.
+
+``!file <filename>``:
+  include the text content of a file as a string.
+
+  If the specified path is not absolute, it's considered relative to the
+  including file.
+
+``!env <variable>``:
+  expand to the value of the specified environment variable.
+
+  Note that the value of the variable is interpreted as YAML (and thus JSON),
+  allowing for specifying values other than strings (e.g. integers/floats).
+
+  The specified variable must be set.
+
 
 ``databases`` section
 ---------------------
@@ -43,17 +66,9 @@ Each database definitions can have the following keys:
   **Note**: in the string form, username, password and options need to be
   URL-encoded, whereas this is done automatically for the key/value form.
 
-  It's also possible to get the connection string indirectly from other sources:
-
-  - from an environment variable (e.g. ``$CONNECTION_STRING``) by setting ``dsn`` to::
-
-      env:CONNECTION_STRING
-
-  - from a file, containing only the DSN value, by setting ``dsn`` to::
-
-      file:/path/to/file
-
-  These forms only support specifying the actual DNS in the string form.
+  **Note**: use of the ``env:`` and ``file:`` prefixes in the string form is
+  deprecated, and will be dropped in the 4.0 release. Use ``!env`` and
+  ``!file`` YAML tags instead.
 
 ``connect-sql``:
   An optional list of queries to run right after database connection. This can
