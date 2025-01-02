@@ -20,8 +20,8 @@ The application is simply run as::
 which will look for a ``config.yaml`` configuration file in the current
 directory, containing the definitions of the databases to connect and queries
 to perform to update metrics.  The configuration file can be overridden by
-passing the ``--config`` option, or setting the ``QE_CONFIG`` environment
-variable.
+passing the ``--config`` option (or setting the ``QE_CONFIG`` environment
+variable).
 
 A sample configuration file for the application looks like this:
 
@@ -94,6 +94,36 @@ A sample configuration file for the application looks like this:
 See the `configuration file format`_ documentation for complete details on
 availble configuration options.
 
+
+Exporter options
+----------------
+
+The exporter provides the following options, that can be set via command-line
+switches, environment variables or through the ``.env`` file:
+
+.. table::
+   :widths: auto
+
+   ======================   ======================  ===================  ==============================================================
+   Command-line option      Environment variable    Default              Description
+   ======================   ======================  ===================  ==============================================================
+   ``-H``, ``--host``       ``QE_HOST``             ``localhost``        host addresses to bind. Multiple values can be provided.
+   ``-p``, ``--port``       ``QE_PORT``             ``9560``             Port to run the webserver on.
+   ``--metrics-path``       ``QE_METRICS_PATH``     ``/metrics``         Path under which metrics are exposed.
+   ``-L``, ``--log-level``  ``QE_LOG_LEVEL``        ``info``             Minimum level for log messages level.
+                                                                         One of ``critical``, ``error``, ``warning``, ``info``, ``debug``.
+   ``--log-format``         ``QE_LOG_FORMAT``       ``plain``            Log output format. One of ``plain``, ``json``.
+   ``--process-stats``      ``QE_PROCESS_STATS``    ``false``            Include process stats in metrics.
+   ``--ssl-private-key``    ``QE_SSL_PRIVATE_KEY``                       Full path to the SSL private key.
+   ``--ssl-public-key``     ``QE_SSL_PUBLIC_KEY``                        Full path to the SSL public key.
+   ``--ssl-ca``             ``QE_SSL_CA``                                Full path to the SSL certificate authority (CA).
+   ``--check-only``         ``QE_CHECK_ONLY``       ``false``            Only check configuration, don't run the exporter.
+   ``--config``             ``QE_CONFIG``           ``config.yaml``      Configuration file.
+                            ``QE_DOTENV``           ``$PWD/.env``        Path for the dotenv file where environment variables can be
+                                                                         provided.
+   ======================   ======================  ===================  ==============================================================
+
+
           
 Metrics endpoint
 ----------------
@@ -103,9 +133,6 @@ endpoint.
 
 By default, the port is bound on ``localhost``. Note that if the name resolves
 both IPv4 and IPv6 addressses, the exporter will bind on both.
-
-Both port and host can be overridden via command-line parameters and
-environment variables.
 
 
 Builtin metrics
@@ -129,14 +156,6 @@ In addition, metrics for resources usage for the exporter process can be
 included by passing ``--process-stats`` in the command line.
 
 
-Debugging / Logs
-----------------
-
-You can enable extended logging using the ``-L`` (or ``--log-level``) command
-line switch. Possible log levels are ``critical``, ``error``, ``warning``,
-``info``, ``debug``.
-
-
 Database engines
 ----------------
 
@@ -149,37 +168,6 @@ engines in use. These can be installed as follows::
 based on which database engines are needed.
 
 See `supported databases`_ for details.
-
-
-Install from Snap
------------------
-
-|Get it from the Snap Store|
-
-``query-exporter`` can be installed from `Snap Store`_ on systems where Snaps
-are supported, via::
-
-  sudo snap install query-exporter
-
-The snap provides both the ``query-exporter`` command and a daemon instance of
-the command, managed via a Systemd service.
-
-To configure the daemon:
-
-- create or edit ``/var/snap/query-exporter/current/config.yaml`` with the
-  configuration
-- optionally, create a ``/var/snap/query-exporter/current/.env`` file with
-  environment variables definitions for additional config options
-- run ``sudo snap restart query-exporter``
-
-The snap has support for connecting the following databases:
-
-- PostgreSQL (``postgresql://``)
-- MySQL (``mysql://``)
-- SQLite (``sqlite://``)
-- Microsoft SQL Server (``mssql://``)
-- IBM DB2 (``db2://``) on supported architectures (x86_64, ppc64le and
-  s390x)
 
 
 Run in Docker
@@ -223,6 +211,37 @@ A different ODBC driver version to use can be specified during image building,
 by passing ``--build-arg ODBC_bVERSION_NUMBER``, e.g.::
 
   docker build . --build-arg ODBC_DRIVER_VERSION=17
+
+
+Install from Snap
+-----------------
+
+|Get it from the Snap Store|
+
+``query-exporter`` can be installed from `Snap Store`_ on systems where Snaps
+are supported, via::
+
+  sudo snap install query-exporter
+
+The snap provides both the ``query-exporter`` command and a daemon instance of
+the command, managed via a Systemd service.
+
+To configure the daemon:
+
+- create or edit ``/var/snap/query-exporter/current/config.yaml`` with the
+  configuration
+- optionally, create a ``/var/snap/query-exporter/current/.env`` file with
+  environment variables definitions for additional config options
+- run ``sudo snap restart query-exporter``
+
+The snap has support for connecting the following databases:
+
+- PostgreSQL (``postgresql://``)
+- MySQL (``mysql://``)
+- SQLite (``sqlite://``)
+- Microsoft SQL Server (``mssql://``)
+- IBM DB2 (``db2://``) on supported architectures (x86_64, ppc64le and
+  s390x)
 
 
 .. _Prometheus: https://prometheus.io/
