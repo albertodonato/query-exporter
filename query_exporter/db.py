@@ -33,7 +33,6 @@ from sqlalchemy.engine import (
     Connection,
     CursorResult,
     Engine,
-    Row,
 )
 from sqlalchemy.exc import (
     ArgumentError,
@@ -159,7 +158,7 @@ class QueryResults(t.NamedTuple):
     """Results of a database query."""
 
     keys: list[str]
-    rows: Sequence[Row[t.Any]]
+    rows: Sequence[Sequence[t.Any]]
     timestamp: float | None = None
     latency: float | None = None
 
@@ -168,7 +167,7 @@ class QueryResults(t.NamedTuple):
         """Return a QueryResults from results for a query."""
         timestamp = time()
         keys: list[str] = []
-        rows: Sequence[Row[t.Any]] = []
+        rows: Sequence[Sequence[t.Any]] = []
         if result.returns_rows:
             keys, rows = list(result.keys()), result.all()
         latency = result.connection.info.get("query_latency", None)
