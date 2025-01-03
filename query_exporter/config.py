@@ -126,7 +126,10 @@ def _load_config(paths: list[Path]) -> dict[str, t.Any]:
     """Return the combined configuration from provided files."""
     config: dict[str, t.Any] = defaultdict(dict)
     for path in paths:
-        data = defaultdict(dict, load_yaml_config(path))
+        conf = load_yaml_config(path)
+        if not isinstance(conf, dict):
+            raise ConfigError(f"File content is not a mapping: {path}")
+        data = defaultdict(dict, conf)
         for key in (field.name for field in dataclasses.fields(Config)):
             entries = data.pop(key, None)
             if entries is not None:

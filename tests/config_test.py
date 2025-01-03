@@ -128,12 +128,22 @@ CONFIG_INVALID_METRICS_PARAMS_MATRIX_DIFFERENT_KEYS = {
 
 
 class TestLoadConfig:
-    def test_load_invalid_format(self, tmp_path: Path) -> None:
+    def test_load_invalid(self, tmp_path: Path) -> None:
         config_file = tmp_path / "invalid.yaml"
         config_file.write_text("foo: !env UNSET")
         with pytest.raises(ConfigError) as err:
             load_config([config_file])
         assert "variable UNSET undefined" in str(err.value)
+
+    def test_load_not_mapping(
+        self, tmp_path: Path, write_config: ConfigWriter
+    ) -> None:
+        config_file = write_config(["a", "b", "c"])
+        with pytest.raises(ConfigError) as err:
+            load_config([config_file])
+        assert (
+            str(err.value) == f"File content is not a mapping: {config_file}"
+        )
 
     def test_load_databases_section(self, write_config: ConfigWriter) -> None:
         cfg = {
