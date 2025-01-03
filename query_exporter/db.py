@@ -190,30 +190,23 @@ class MetricResults(t.NamedTuple):
     latency: float | None = None
 
 
+@dataclass
 class Query:
     """Query definition and configuration."""
 
-    def __init__(
-        self,
-        name: str,
-        databases: list[str],
-        metrics: list[QueryMetric],
-        sql: str,
-        parameters: dict[str, t.Any] | None = None,
-        timeout: QueryTimeout | None = None,
-        interval: int | None = None,
-        schedule: str | None = None,
-        config_name: str | None = None,
-    ) -> None:
-        self.name = name
-        self.databases = databases
-        self.metrics = metrics
-        self.sql = sql
-        self.parameters = parameters or {}
-        self.timeout = timeout
-        self.interval = interval
-        self.schedule = schedule
-        self.config_name = config_name or name
+    name: str
+    databases: list[str]
+    metrics: list[QueryMetric]
+    sql: str
+    parameters: dict[str, t.Any] = field(default_factory=dict)
+    timeout: QueryTimeout | None = None
+    interval: int | None = None
+    schedule: str | None = None
+    config_name: str = ""
+
+    def __post_init__(self) -> None:
+        if not self.config_name:
+            self.config_name = self.name
         self._check_schedule()
         self._check_query_parameters()
 

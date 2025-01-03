@@ -1,6 +1,7 @@
 from collections.abc import Callable, Iterator
 from pathlib import Path
 import typing as t
+import uuid
 
 import pytest
 from pytest_structlog import StructuredLogCapture
@@ -28,7 +29,7 @@ def config_full() -> Iterator[dict[str, t.Any]]:
                 "interval": 10,
                 "databases": ["db"],
                 "metrics": ["m"],
-                "sql": "SELECT 1 as m",
+                "sql": "SELECT 1 AS m",
             }
         },
     }
@@ -39,9 +40,8 @@ ConfigWriter = Callable[[dict[str, t.Any]], Path]
 
 @pytest.fixture
 def write_config(tmp_path: Path) -> Iterator[ConfigWriter]:
-    path = tmp_path / "config"
-
     def write(data: dict[str, t.Any]) -> Path:
+        path = tmp_path / f"{uuid.uuid4()}.yaml"
         path.write_text(yaml.dump(data), "utf-8")
         return path
 
@@ -129,10 +129,10 @@ CONFIG_INVALID_METRICS_PARAMS_MATRIX_DIFFERENT_KEYS = {
 
 class TestLoadConfig:
     def test_load_invalid_format(self, tmp_path: Path) -> None:
-        config_file = tmp_path / "config"
+        config_file = tmp_path / "invalid.yaml"
         config_file.write_text("foo: !env UNSET")
         with pytest.raises(ConfigError) as err:
-            load_config(config_file)
+            load_config([config_file])
         assert "variable UNSET undefined" in str(err.value)
 
     def test_load_databases_section(self, write_config: ConfigWriter) -> None:
@@ -149,7 +149,7 @@ class TestLoadConfig:
             "queries": {},
         }
         config_file = write_config(cfg)
-        config = load_config(config_file)
+        config = load_config([config_file])
         assert {"db1", "db2"} == set(config.databases)
         database1 = config.databases["db1"]
         database2 = config.databases["db2"]
@@ -173,7 +173,7 @@ class TestLoadConfig:
             "queries": {},
         }
         config_file = write_config(cfg)
-        config = load_config(config_file, env={"FOO": "sqlite://"})
+        config = load_config([config_file], env={"FOO": "sqlite://"})
         assert config.databases["db1"].dsn == "sqlite://"
         assert log.has(
             "deprecated DSN source 'env:FOO', use '!env FOO' instead"
@@ -189,7 +189,7 @@ class TestLoadConfig:
         }
         config_file = write_config(cfg)
         with pytest.raises(ConfigError) as err:
-            load_config(config_file)
+            load_config([config_file])
         assert (
             str(err.value)
             == "Invalid config at databases/db1: 'dsn' is a required property"
@@ -205,7 +205,7 @@ class TestLoadConfig:
         }
         config_file = write_config(cfg)
         with pytest.raises(ConfigError) as err:
-            load_config(config_file)
+            load_config([config_file])
         assert str(err.value) == 'Invalid database DSN: "invalid"'
 
     def test_load_databases_dsn_details(
@@ -224,7 +224,7 @@ class TestLoadConfig:
             "queries": {},
         }
         config_file = write_config(cfg)
-        config = load_config(config_file)
+        config = load_config([config_file])
         assert config.databases["db1"].dsn == "sqlite:///path/to/file"
 
     def test_load_databases_dsn_details_only_dialect(
@@ -242,7 +242,7 @@ class TestLoadConfig:
             "queries": {},
         }
         config_file = write_config(cfg)
-        config = load_config(config_file)
+        config = load_config([config_file])
         assert config.databases["db1"].dsn == "sqlite://"
 
     def test_load_databases_dsn_invalid_env(
@@ -255,7 +255,7 @@ class TestLoadConfig:
         }
         config_file = write_config(cfg)
         with pytest.raises(ConfigError) as err:
-            load_config(config_file)
+            load_config([config_file])
         assert str(err.value) == 'Invalid variable name: "NOT-VALID"'
 
     def test_load_databases_dsn_undefined_env(
@@ -268,7 +268,7 @@ class TestLoadConfig:
         }
         config_file = write_config(cfg)
         with pytest.raises(ConfigError) as err:
-            load_config(config_file, env={})
+            load_config([config_file], env={})
         assert str(err.value) == 'Undefined variable: "FOO"'
 
     def test_load_databases_dsn_from_file(
@@ -286,7 +286,7 @@ class TestLoadConfig:
             "queries": {},
         }
         config_file = write_config(cfg)
-        config = load_config(config_file)
+        config = load_config([config_file])
         assert config.databases["db1"].dsn == dsn
         assert log.has(
             f"deprecated DSN source 'file:{dsn_path}', use '!file {dsn_path}' instead"
@@ -302,7 +302,7 @@ class TestLoadConfig:
         }
         config_file = write_config(cfg)
         with pytest.raises(ConfigError) as err:
-            load_config(config_file)
+            load_config([config_file])
         assert (
             str(err.value)
             == 'Unable to read dsn file : "/not/found": No such file or directory'
@@ -321,7 +321,7 @@ class TestLoadConfig:
             "queries": {},
         }
         config_file = write_config(cfg)
-        result = load_config(config_file)
+        result = load_config([config_file])
         db = result.databases["db"]
         assert db.labels == {}
 
@@ -337,7 +337,7 @@ class TestLoadConfig:
             "queries": {},
         }
         config_file = write_config(cfg)
-        result = load_config(config_file)
+        result = load_config([config_file])
         db = result.databases["db"]
         assert db.labels == {"label1": "value1", "label2": "value2"}
 
@@ -360,7 +360,7 @@ class TestLoadConfig:
         }
         config_file = write_config(cfg)
         with pytest.raises(ConfigError) as err:
-            load_config(config_file, env={})
+            load_config([config_file], env={})
         assert str(err.value) == "Not all databases define the same labels"
 
     def test_load_databases_connect_sql(
@@ -377,7 +377,7 @@ class TestLoadConfig:
             "queries": {},
         }
         config_file = write_config(cfg)
-        result = load_config(config_file, env={})
+        result = load_config([config_file], env={})
         assert result.databases["db"].connect_sql == ["SELECT 1", "SELECT 2"]
 
     def test_load_metrics_section(self, write_config: ConfigWriter) -> None:
@@ -405,7 +405,7 @@ class TestLoadConfig:
             "queries": {},
         }
         config_file = write_config(cfg)
-        result = load_config(config_file)
+        result = load_config([config_file])
         metric1 = result.metrics["metric1"]
         assert metric1.type == "summary"
         assert metric1.description == "metric one"
@@ -441,7 +441,7 @@ class TestLoadConfig:
         }
         config_file = write_config(cfg)
         with pytest.raises(ConfigError) as err:
-            load_config(config_file)
+            load_config([config_file])
         assert (
             str(err.value)
             == 'Labels for metric "m" overlap with reserved/database ones: database'
@@ -457,7 +457,7 @@ class TestLoadConfig:
         }
         config_file = write_config(cfg)
         with pytest.raises(ConfigError) as err:
-            load_config(config_file)
+            load_config([config_file])
         assert (
             str(err.value)
             == 'Labels for metric "m" overlap with reserved/database ones: l1'
@@ -473,7 +473,7 @@ class TestLoadConfig:
         config_full["metrics"][global_name] = {"type": "counter"}
         config_file = write_config(config_full)
         with pytest.raises(ConfigError) as err:
-            load_config(config_file)
+            load_config([config_file])
         assert (
             str(err.value)
             == f'Label name "{global_name} is reserved for builtin metric'
@@ -491,7 +491,7 @@ class TestLoadConfig:
         }
         config_file = write_config(cfg)
         with pytest.raises(ConfigError) as err:
-            load_config(config_file)
+            load_config([config_file])
         assert str(err.value) == (
             "Invalid config at metrics/metric1/type: 'info' is not one of "
             "['counter', 'enum', 'gauge', 'histogram', 'summary']"
@@ -523,7 +523,7 @@ class TestLoadConfig:
             },
         }
         config_file = write_config(cfg)
-        result = load_config(config_file)
+        result = load_config([config_file])
         query1 = result.queries["q1"]
         assert query1.name == "q1"
         assert query1.databases == ["db1"]
@@ -557,7 +557,7 @@ class TestLoadConfig:
             },
         }
         config_file = write_config(cfg)
-        result = load_config(config_file)
+        result = load_config([config_file])
         query1 = result.queries["q[params0]"]
         assert query1.name == "q[params0]"
         assert query1.databases == ["db"]
@@ -597,7 +597,7 @@ class TestLoadConfig:
             },
         }
         config_file = write_config(cfg)
-        result = load_config(config_file)
+        result = load_config([config_file])
 
         assert len(result.queries) == 4
 
@@ -660,7 +660,7 @@ class TestLoadConfig:
         }
         config_file = write_config(cfg)
         with pytest.raises(ConfigError) as err:
-            load_config(config_file)
+            load_config([config_file])
         assert (
             str(err.value)
             == 'Parameters for query "q[params0]" don\'t match those from SQL'
@@ -684,7 +684,7 @@ class TestLoadConfig:
         }
         config_file = write_config(cfg)
         with pytest.raises(ConfigError) as err:
-            load_config(config_file)
+            load_config([config_file])
         assert (
             str(err.value)
             == 'Invalid schedule for query "q": both interval and schedule specified'
@@ -707,7 +707,7 @@ class TestLoadConfig:
         }
         config_file = write_config(cfg)
         with pytest.raises(ConfigError) as err:
-            load_config(config_file)
+            load_config([config_file])
         assert (
             str(err.value)
             == 'Invalid schedule for query "q": invalid schedule format'
@@ -720,7 +720,7 @@ class TestLoadConfig:
     ) -> None:
         config_full["queries"]["q"]["timeout"] = 2.0
         config_file = write_config(config_full)
-        result = load_config(config_file)
+        result = load_config([config_file])
         query1 = result.queries["q"]
         assert query1.timeout == 2.0
 
@@ -751,7 +751,7 @@ class TestLoadConfig:
         config_full["queries"]["q"]["timeout"] = timeout
         config_file = write_config(config_full)
         with pytest.raises(ConfigError) as err:
-            load_config(config_file)
+            load_config([config_file])
         assert str(err.value) == error_message
 
     @pytest.mark.parametrize(
@@ -797,7 +797,7 @@ class TestLoadConfig:
     ) -> None:
         config_file = write_config(config)
         with pytest.raises(ConfigError) as err:
-            load_config(config_file)
+            load_config([config_file])
         assert str(err.value) == error_message
 
     def test_configuration_warning_unused(
@@ -811,7 +811,7 @@ class TestLoadConfig:
         config_full["metrics"]["m2"] = {"type": "gauge"}
         config_full["metrics"]["m3"] = {"type": "gauge"}
         config_file = write_config(config_full)
-        load_config(config_file)
+        load_config([config_file])
         assert log.has(
             "unused config entries",
             section="databases",
@@ -832,7 +832,7 @@ class TestLoadConfig:
             },
         }
         config_file = write_config(cfg)
-        config = load_config(config_file)
+        config = load_config([config_file])
         assert config.queries["q"].interval is None
 
     @pytest.mark.parametrize(
@@ -856,7 +856,7 @@ class TestLoadConfig:
     ) -> None:
         config_full["queries"]["q"]["interval"] = interval
         config_file = write_config(config_full)
-        config = load_config(config_file)
+        config = load_config([config_file])
         assert config.queries["q"].interval == value
 
     def test_load_queries_interval_not_specified(
@@ -866,7 +866,7 @@ class TestLoadConfig:
     ) -> None:
         del config_full["queries"]["q"]["interval"]
         config_file = write_config(config_full)
-        config = load_config(config_file)
+        config = load_config([config_file])
         assert config.queries["q"].interval is None
 
     @pytest.mark.parametrize("interval", ["1x", "wrong", "1.5m"])
@@ -879,7 +879,7 @@ class TestLoadConfig:
         config_full["queries"]["q"]["interval"] = interval
         config_file = write_config(config_full)
         with pytest.raises(ConfigError) as err:
-            load_config(config_file)
+            load_config([config_file])
         assert str(err.value) == (
             "Invalid config at queries/q/interval: "
             f"'{interval}' does not match '^[0-9]+[smhd]?$'"
@@ -895,7 +895,7 @@ class TestLoadConfig:
         config_full["queries"]["q"]["interval"] = interval
         config_file = write_config(config_full)
         with pytest.raises(ConfigError) as err:
-            load_config(config_file)
+            load_config([config_file])
         assert (
             str(err.value)
             == f"Invalid config at queries/q/interval: {interval} is less than the minimum of 1"
@@ -909,7 +909,7 @@ class TestLoadConfig:
         config_full["queries"]["q"]["metrics"] = []
         config_file = write_config(config_full)
         with pytest.raises(ConfigError) as err:
-            load_config(config_file)
+            load_config([config_file])
         assert (
             str(err.value)
             == "Invalid config at queries/q/metrics: [] should be non-empty"
@@ -923,7 +923,7 @@ class TestLoadConfig:
         config_full["queries"]["q"]["databases"] = []
         config_file = write_config(config_full)
         with pytest.raises(ConfigError) as err:
-            load_config(config_file)
+            load_config([config_file])
         assert (
             str(err.value)
             == "Invalid config at queries/q/databases: [] should be non-empty"
@@ -950,8 +950,94 @@ class TestLoadConfig:
     ) -> None:
         config_full["metrics"]["m"]["expiration"] = expiration
         config_file = write_config(config_full)
-        config = load_config(config_file)
+        config = load_config([config_file])
         assert config.metrics["m"].config["expiration"] == value
+
+    def test_load_multiple_files(
+        self,
+        config_full: dict[str, t.Any],
+        write_config: ConfigWriter,
+    ) -> None:
+        file_full = write_config(config_full)
+        file1 = write_config({"databases": config_full["databases"]})
+        file2 = write_config({"metrics": config_full["metrics"]})
+        file3 = write_config({"queries": config_full["queries"]})
+        assert load_config([file1, file2, file3]) == load_config([file_full])
+
+    def test_load_multiple_files_combine(
+        self,
+        write_config: ConfigWriter,
+    ) -> None:
+        file1 = write_config(
+            {
+                "databases": {"db1": {"dsn": "sqlite://"}},
+                "metrics": {"m1": {"type": "gauge"}},
+                "queries": {
+                    "q1": {
+                        "databases": ["db1"],
+                        "metrics": ["m1"],
+                        "sql": "SELECT 1 AS m1",
+                    }
+                },
+            }
+        )
+        file2 = write_config(
+            {
+                "databases": {"db2": {"dsn": "sqlite://"}},
+                "metrics": {"m2": {"type": "gauge"}},
+                "queries": {
+                    "q2": {
+                        "databases": ["db2"],
+                        "metrics": ["m2"],
+                        "sql": "SELECT 2 AS m2",
+                    }
+                },
+            }
+        )
+        config = load_config([file1, file2])
+        assert set(config.databases) == {"db1", "db2"}
+        assert set(config.metrics) == {"m1", "m2"} | GLOBAL_METRICS
+        assert set(config.queries) == {"q1", "q2"}
+
+    def test_load_multiple_files_duplicated_database(
+        self,
+        config_full: dict[str, t.Any],
+        write_config: ConfigWriter,
+    ) -> None:
+        file1 = write_config(config_full)
+        file2 = write_config({"databases": config_full["databases"]})
+        with pytest.raises(ConfigError) as err:
+            load_config([file1, file2])
+        assert (
+            str(err.value)
+            == 'Duplicated entries in the "databases" section: db'
+        )
+
+    def test_load_multiple_files_duplicated_metric(
+        self,
+        config_full: dict[str, t.Any],
+        write_config: ConfigWriter,
+    ) -> None:
+        file1 = write_config(config_full)
+        file2 = write_config({"metrics": config_full["metrics"]})
+        with pytest.raises(ConfigError) as err:
+            load_config([file1, file2])
+        assert (
+            str(err.value) == 'Duplicated entries in the "metrics" section: m'
+        )
+
+    def test_load_multiple_files_duplicated_query(
+        self,
+        config_full: dict[str, t.Any],
+        write_config: ConfigWriter,
+    ) -> None:
+        file1 = write_config(config_full)
+        file2 = write_config({"queries": config_full["queries"]})
+        with pytest.raises(ConfigError) as err:
+            load_config([file1, file2])
+        assert (
+            str(err.value) == 'Duplicated entries in the "queries" section: q'
+        )
 
 
 class TestResolveDSN:
