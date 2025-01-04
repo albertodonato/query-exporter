@@ -106,24 +106,35 @@ switches, environment variables or through the ``.env`` file:
 .. table::
    :widths: auto
 
-   ======================   ======================  ===================  ==============================================================
-   Command-line option      Environment variable    Default              Description
-   ======================   ======================  ===================  ==============================================================
-   ``-H``, ``--host``       ``QE_HOST``             ``localhost``        host addresses to bind. Multiple values can be provided.
-   ``-p``, ``--port``       ``QE_PORT``             ``9560``             Port to run the webserver on.
-   ``--metrics-path``       ``QE_METRICS_PATH``     ``/metrics``         Path under which metrics are exposed.
-   ``-L``, ``--log-level``  ``QE_LOG_LEVEL``        ``info``             Minimum level for log messages level.
-                                                                         One of ``critical``, ``error``, ``warning``, ``info``, ``debug``.
-   ``--log-format``         ``QE_LOG_FORMAT``       ``plain``            Log output format. One of ``plain``, ``json``.
-   ``--process-stats``      ``QE_PROCESS_STATS``    ``false``            Include process stats in metrics.
-   ``--ssl-private-key``    ``QE_SSL_PRIVATE_KEY``                       Full path to the SSL private key.
-   ``--ssl-public-key``     ``QE_SSL_PUBLIC_KEY``                        Full path to the SSL public key.
-   ``--ssl-ca``             ``QE_SSL_CA``                                Full path to the SSL certificate authority (CA).
-   ``--check-only``         ``QE_CHECK_ONLY``       ``false``            Only check configuration, don't run the exporter.
-   ``--config``             ``QE_CONFIG``           ``config.yaml``      Configuration files. Multiple values can be provided.
-                            ``QE_DOTENV``           ``$PWD/.env``        Path for the dotenv file where environment variables can be
-                                                                         provided.
-   ======================   ======================  ===================  ==============================================================
+  +-------------------------+------------------------+-----------------+-------------------------------------------------------------------+
+  | Command-line option     | Environment variable   | Default         | Description                                                       |
+  +=========================+========================+=================+===================================================================+
+  | ``-H``, ``--host``      | ``QE_HOST``            | ``localhost``   | Host addresses to bind. Multiple values can be provided.          |
+  +-------------------------+------------------------+-----------------+-------------------------------------------------------------------+
+  |  ``-p``, ``--port``     | ``QE_PORT``            | ``9560``        | Port to run the webserver on.                                     |
+  +-------------------------+------------------------+-----------------+-------------------------------------------------------------------+
+  | ``--metrics-path``      | ``QE_METRICS_PATH``    | ``/metrics``    | Path under which metrics are exposed.                             |
+  +-------------------------+------------------------+-----------------+-------------------------------------------------------------------+
+  | ``-L``, ``--log-level`` | ``QE_LOG_LEVEL``       | ``info``        | Minimum level for log messages level.                             |
+  |                         |                        |                 | One of ``critical``, ``error``, ``wanring``, ``info``, ``debug``. |
+  +-------------------------+------------------------+-----------------+-------------------------------------------------------------------+
+  | ``--log-format``        | ``QE_LOG_FORMAT``      | ``plain``       | Log output format. One of ``plain``, ``json``.                    |
+  +-------------------------+------------------------+-----------------+-------------------------------------------------------------------+
+  | ``--process-stats``     | ``QE_PROCESS_STATS``   | ``false``       | Include process stats in metrics.                                 |
+  +-------------------------+------------------------+-----------------+-------------------------------------------------------------------+
+  | ``--ssl-private-key``   | ``QE_SSL_PRIVATE_KEY`` |                 | Full path to the SSL private key.                                 |
+  +-------------------------+------------------------+-----------------+-------------------------------------------------------------------+
+  | ``--ssl-public-key``    | ``QE_SSL_PUBLIC_KEY``  |                 | Full path to the SSL public key.                                  |
+  +-------------------------+------------------------+-----------------+-------------------------------------------------------------------+
+  | ``--ssl-ca``            | ``QE_SSL_CA``          |                 | Full path to the SSL certificate authority (CA).                  |
+  +-------------------------+------------------------+-----------------+-------------------------------------------------------------------+
+  | ``--check-only``        | ``QE_CHECK_ONLY``      | ``false``       | Only check configuration, don't run the exporter.                 |
+  +-------------------------+------------------------+-----------------+-------------------------------------------------------------------+
+  | ``--config``            | ``QE_CONFIG``          | ``config.yaml`` | Configuration files. Multiple values can be provided.             |
+  +-------------------------+------------------------+-----------------+-------------------------------------------------------------------+
+  |                         | ``QE_DOTENV``          | ``$PWD/.env``   | Path for the dotenv file where environment variables can be       | 
+  |                         |                        |                 | provided.                                                         |
+  +-------------------------+------------------------+-----------------+-------------------------------------------------------------------+
 
 
           
