@@ -21,7 +21,9 @@ which will look for a ``config.yaml`` configuration file in the current
 directory, containing the definitions of the databases to connect and queries
 to perform to update metrics.  The configuration file can be overridden by
 passing the ``--config`` option (or setting the ``QE_CONFIG`` environment
-variable).
+variable).  The option can be provided multiple times to pass partial
+configuration files, the resulting configuration will be the merge of the
+content of each top-level section (``databases``, ``metrics``, ``queries``).
 
 A sample configuration file for the application looks like this:
 
@@ -118,7 +120,7 @@ switches, environment variables or through the ``.env`` file:
    ``--ssl-public-key``     ``QE_SSL_PUBLIC_KEY``                        Full path to the SSL public key.
    ``--ssl-ca``             ``QE_SSL_CA``                                Full path to the SSL certificate authority (CA).
    ``--check-only``         ``QE_CHECK_ONLY``       ``false``            Only check configuration, don't run the exporter.
-   ``--config``             ``QE_CONFIG``           ``config.yaml``      Configuration file.
+   ``--config``             ``QE_CONFIG``           ``config.yaml``      Configuration files. Multiple values can be provided.
                             ``QE_DOTENV``           ``$PWD/.env``        Path for the dotenv file where environment variables can be
                                                                          provided.
    ======================   ======================  ===================  ==============================================================
