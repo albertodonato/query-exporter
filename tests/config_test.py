@@ -35,12 +35,12 @@ def config_full() -> Iterator[dict[str, t.Any]]:
     }
 
 
-ConfigWriter = Callable[[dict[str, t.Any]], Path]
+ConfigWriter = Callable[[t.Any], Path]
 
 
 @pytest.fixture
 def write_config(tmp_path: Path) -> Iterator[ConfigWriter]:
-    def write(data: dict[str, t.Any]) -> Path:
+    def write(data: t.Any) -> Path:
         path = tmp_path / f"{uuid.uuid4()}.yaml"
         path.write_text(yaml.dump(data), "utf-8")
         return path

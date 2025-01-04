@@ -1,5 +1,6 @@
 import asyncio
-from collections.abc import Iterator
+from collections.abc import AsyncIterator, Iterator
+from threading import Thread
 import time
 import typing as t
 from unittest.mock import ANY
@@ -298,7 +299,7 @@ class TestQueryResults:
         assert query_results.keys == ["a", "b"]
         assert query_results.rows == [(1, 2)]
         assert query_results.latency is None
-        assert query_results.timestamp < time.time()
+        assert t.cast(float, query_results.timestamp) < time.time()
 
     def test_from_empty(self) -> None:
         engine = create_engine("sqlite://")
@@ -319,11 +320,11 @@ class TestQueryResults:
         assert query_results.keys == ["a", "b"]
         assert query_results.rows == [(1, 2)]
         assert query_results.latency == 1.2
-        assert query_results.timestamp < time.time()
+        assert t.cast(float, query_results.timestamp) < time.time()
 
 
 @pytest.fixture
-async def conn() -> Iterator[DataBaseConnection]:
+async def conn() -> AsyncIterator[DataBaseConnection]:
     engine = create_engine("sqlite://")
     connection = DataBaseConnection("db", engine)
     yield connection
@@ -358,7 +359,7 @@ class TestDataBaseConnection:
         await conn.open()
         assert conn.connected
         assert conn._conn is not None
-        assert conn._worker.is_alive()
+        assert t.cast(Thread, conn._worker).is_alive()
 
     async def test_open_noop(self, conn: DataBaseConnection) -> None:
         await conn.open()
@@ -401,7 +402,7 @@ def db_config() -> Iterator[DataBaseConfig]:
 
 
 @pytest.fixture
-async def db(db_config: DataBaseConfig) -> Iterator[DataBase]:
+async def db(db_config: DataBaseConfig) -> AsyncIterator[DataBase]:
     db = DataBase(db_config)
     yield db
     await db.close()
@@ -446,7 +447,7 @@ class TestDataBase:
             await db.connect()
         assert "unable to open database file" in str(error.value)
 
-    async def test_connect_sql(self) -> None:
+    async def test_connect_sql(self, mocker: MockerFixture) -> None:
         config = DataBaseConfig(
             name="db",
             dsn="sqlite://",
@@ -456,10 +457,10 @@ class TestDataBase:
 
         queries = []
 
-        async def execute_sql(sql):
+        async def execute_sql(sql: str) -> None:
             queries.append(sql)
 
-        db.execute_sql = execute_sql
+        mocker.patch.object(db, "execute_sql", execute_sql)
         await db.connect()
         assert queries == ["SELECT 1", "SELECT 2"]
         await db.close()
@@ -608,7 +609,7 @@ class TestDataBase:
         ]
 
     async def test_execute_fail(self, db: DataBase) -> None:
-        query = Query("query", 10, [QueryMetric("metric", [])], "WRONG")
+        query = Query("query", ["db"], [QueryMetric("metric", [])], "WRONG")
         await db.connect()
         with pytest.raises(DataBaseQueryError) as error:
             await db.execute(query)
@@ -619,7 +620,7 @@ class TestDataBase:
     ) -> None:
         query = Query(
             "query",
-            20,
+            ["db"],
             [QueryMetric("metric", [])],
             "SELECT 1 AS metric, 2 AS other",
         )
@@ -686,7 +687,7 @@ class TestDataBase:
         )
         await db.connect()
         exception = Exception("boom!")
-        mocker.patch.object(db, "execute_sql").side_effect = exception
+        mocker.patch.object(db, "execute_sql", side_effect=exception)
 
         with pytest.raises(DataBaseQueryError) as error:
             await db.execute(query)
@@ -701,7 +702,7 @@ class TestDataBase:
         )
 
     async def test_execute_timeout(
-        self, log: StructuredLogCapture, db: DataBase
+        self, mocker: MockerFixture, log: StructuredLogCapture, db: DataBase
     ) -> None:
         query = Query(
             "query",
@@ -715,10 +716,10 @@ class TestDataBase:
         async def execute(
             sql: TextClause,
             parameters: dict[str, t.Any] | None = None,
-        ) -> QueryResults:
+        ) -> None:
             await asyncio.sleep(1)  # longer than timeout
 
-        db._conn.execute = execute
+        mocker.patch.object(db._conn, "execute", execute)
 
         with pytest.raises(QueryTimeoutExpired):
             await db.execute(query)
