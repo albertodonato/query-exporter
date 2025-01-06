@@ -1,3 +1,14 @@
+v3.1.0 - 2025-01-08
+===================
+
+- Support passing multiple configuration files (#108).
+- Support YAML tags for ``env``, ``file``, and ``include`` (#188).
+
+**NOTE**:
+  The ``env:`` and ``file:`` prefixes for DSNs string form is now deprecated in
+  favor of the corresponding tags, and will be dropped in the next major release.
+
+
 v3.0.0 - 2024-12-30
 ===================
 
