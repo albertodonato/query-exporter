@@ -57,7 +57,7 @@ propcache==0.2.1
     # via
     #   aiohttp
     #   yarl
-pygments==2.18.0
+pygments==2.19.0
     # via rich
 pytest==8.3.4
     # via toolrack
