@@ -25,7 +25,7 @@ variable).  The option can be provided multiple times to pass partial
 configuration files, the resulting configuration will be the merge of the
 content of each top-level section (``databases``, ``metrics``, ``queries``).
 
-A sample configuration file for the application looks like this:
+A sample configuration file for the applicatifon looks like this:
 
 .. code:: yaml
 
@@ -116,7 +116,7 @@ switches, environment variables or through the ``.env`` file:
   | ``--metrics-path``      | ``QE_METRICS_PATH``    | ``/metrics``    | Path under which metrics are exposed.                             |
   +-------------------------+------------------------+-----------------+-------------------------------------------------------------------+
   | ``-L``, ``--log-level`` | ``QE_LOG_LEVEL``       | ``info``        | Minimum level for log messages level.                             |
-  |                         |                        |                 | One of ``critical``, ``error``, ``wanring``, ``info``, ``debug``. |
+  |                         |                        |                 | One of ``critical``, ``error``, ``warning``, ``info``, ``debug``. |
   +-------------------------+------------------------+-----------------+-------------------------------------------------------------------+
   | ``--log-format``        | ``QE_LOG_FORMAT``      | ``plain``       | Log output format. One of ``plain``, ``json``.                    |
   +-------------------------+------------------------+-----------------+-------------------------------------------------------------------+
