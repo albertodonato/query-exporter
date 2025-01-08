@@ -25,7 +25,7 @@ variable).  The option can be provided multiple times to pass partial
 configuration files, the resulting configuration will be the merge of the
 content of each top-level section (``databases``, ``metrics``, ``queries``).
 
-A sample configuration file for the applicatifon looks like this:
+A sample configuration file for the application looks like this:
 
 .. code:: yaml
 
