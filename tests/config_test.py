@@ -1009,6 +1009,31 @@ class TestLoadConfig:
             str(err.value) == 'Duplicated entries in the "queries" section: q'
         )
 
+    def test_load_builtin_metrics_query_latency_default_buckets(
+        self,
+        sample_config: dict[str, t.Any],
+        write_config: ConfigWriter,
+    ) -> None:
+        config_file = write_config(sample_config)
+        config = load_config([config_file])
+        assert config.metrics["query_latency"].config == {}
+
+    def test_load_builtin_metrics_query_latency_custom_buckets(
+        self,
+        sample_config: dict[str, t.Any],
+        write_config: ConfigWriter,
+    ) -> None:
+        sample_config["builtin-metrics"] = {
+            "query_latency": {
+                "buckets": [0.1, 0.5, 1.0, 5.0],
+            },
+        }
+        config_file = write_config(sample_config)
+        config = load_config([config_file])
+        assert config.metrics["query_latency"].config == {
+            "buckets": [0.1, 0.5, 1.0, 5.0],
+        }
+
 
 class TestResolveDSN:
     def test_all_details(self) -> None:

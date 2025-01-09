@@ -73,7 +73,10 @@ def load_config(
     _validate_config(data)
     databases, database_labels = _get_databases(data["databases"], env)
     extra_labels = frozenset([DATABASE_LABEL]) | database_labels
-    metrics = _get_metrics(data["metrics"], extra_labels)
+    builtin_metrics_config = data.get("builtin-metrics", {})
+    metrics = _get_metrics(
+        data["metrics"], builtin_metrics_config, extra_labels
+    )
     queries = _get_queries(
         data["queries"], frozenset(databases), metrics, extra_labels
     )
@@ -153,10 +156,12 @@ def _get_databases(
 
 
 def _get_metrics(
-    metrics: dict[str, dict[str, t.Any]], extra_labels: frozenset[str]
+    metrics: dict[str, dict[str, t.Any]],
+    builtin_metrics_config: dict[str, dict[str, t.Any]],
+    extra_labels: frozenset[str],
 ) -> dict[str, MetricConfig]:
     """Return a dict mapping metric names to their configuration."""
-    configs = get_builtin_metric_configs(extra_labels)
+    configs = get_builtin_metric_configs(extra_labels, builtin_metrics_config)
     for name, config in metrics.items():
         _validate_metric_config(name, config, extra_labels)
         metric_type = config.pop("type")
