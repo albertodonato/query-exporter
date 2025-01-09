@@ -285,6 +285,6 @@ The snap has support for connecting the following databases:
 .. |Docker Pulls| image:: https://img.shields.io/docker/pulls/adonato/query-exporter
    :alt: Docker Pulls
    :target: https://hub.docker.com/r/adonato/query-exporter
-.. |PyPI Downloads|
+.. |PyPI Downloads| image:: https://static.pepy.tech/badge/query-exporter/month
    :alt: PyPI Downloads
-   :target: https://static.pepy.tech/badge/query-exporter/month
+   :target: https://pepy.tech/projects/query-exporter
