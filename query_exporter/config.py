@@ -28,50 +28,8 @@ from .db import (
     Query,
     QueryMetric,
 )
+from .metrics import BUILTIN_METRICS, get_builtin_metric_configs
 from .yaml import load_yaml_config
-
-# metric for counting database errors
-DB_ERRORS_METRIC_NAME = "database_errors"
-_DB_ERRORS_METRIC_CONFIG = MetricConfig(
-    name=DB_ERRORS_METRIC_NAME,
-    description="Number of database errors",
-    type="counter",
-    config={"increment": True},
-)
-
-# metric for counting performed queries
-QUERIES_METRIC_NAME = "queries"
-_QUERIES_METRIC_CONFIG = MetricConfig(
-    name=QUERIES_METRIC_NAME,
-    description="Number of database queries",
-    type="counter",
-    labels=("query", "status"),
-    config={"increment": True},
-)
-# metric for tracking last query execution timestamp
-QUERY_TIMESTAMP_METRIC_NAME = "query_timestamp"
-_QUERY_TIMESTAMP_METRIC_CONFIG = MetricConfig(
-    name=QUERY_TIMESTAMP_METRIC_NAME,
-    description="Query last execution timestamp",
-    type="gauge",
-    labels=("query",),
-)
-# metric for counting queries execution latency
-QUERY_LATENCY_METRIC_NAME = "query_latency"
-_QUERY_LATENCY_METRIC_CONFIG = MetricConfig(
-    name=QUERY_LATENCY_METRIC_NAME,
-    description="Query execution latency",
-    type="histogram",
-    labels=("query",),
-)
-GLOBAL_METRICS = frozenset(
-    (
-        DB_ERRORS_METRIC_NAME,
-        QUERIES_METRIC_NAME,
-        QUERY_LATENCY_METRIC_NAME,
-        QUERY_TIMESTAMP_METRIC_NAME,
-    )
-)
 
 # regexp for validating environment variables names
 _ENV_VAR_RE = re.compile(r"[a-zA-Z_][a-zA-Z0-9_]*$")
@@ -189,22 +147,7 @@ def _get_metrics(
     metrics: dict[str, dict[str, t.Any]], extra_labels: frozenset[str]
 ) -> dict[str, MetricConfig]:
     """Return a dict mapping metric names to their configuration."""
-    configs = {}
-    # global metrics
-    for metric_config in (
-        _DB_ERRORS_METRIC_CONFIG,
-        _QUERIES_METRIC_CONFIG,
-        _QUERY_LATENCY_METRIC_CONFIG,
-        _QUERY_TIMESTAMP_METRIC_CONFIG,
-    ):
-        configs[metric_config.name] = MetricConfig(
-            metric_config.name,
-            metric_config.description,
-            metric_config.type,
-            labels=set(metric_config.labels) | extra_labels,
-            config=metric_config.config,
-        )
-    # other metrics
+    configs = get_builtin_metric_configs(extra_labels)
     for name, config in metrics.items():
         _validate_metric_config(name, config, extra_labels)
         metric_type = config.pop("type")
@@ -221,7 +164,7 @@ def _validate_metric_config(
     name: str, config: dict[str, t.Any], extra_labels: frozenset[str]
 ) -> None:
     """Validate a metric configuration stanza."""
-    if name in GLOBAL_METRICS:
+    if name in BUILTIN_METRICS:
         raise ConfigError(f'Label name "{name} is reserved for builtin metric')
     labels = set(config.get("labels", ()))
     overlap_labels = labels & extra_labels
@@ -437,7 +380,7 @@ def _warn_if_unused(
             entries=unused_dbs,
         )
     if unused_metrics := sorted(
-        set(config.metrics) - GLOBAL_METRICS - used_metrics
+        set(config.metrics) - BUILTIN_METRICS - used_metrics
     ):
         logger.warning(
             "unused config entries",

@@ -23,10 +23,6 @@ from toolrack.aio import (
 )
 
 from .config import (
-    DB_ERRORS_METRIC_NAME,
-    QUERIES_METRIC_NAME,
-    QUERY_LATENCY_METRIC_NAME,
-    QUERY_TIMESTAMP_METRIC_NAME,
     Config,
 )
 from .db import (
@@ -36,6 +32,12 @@ from .db import (
     DataBaseError,
     Query,
     QueryTimeoutExpired,
+)
+from .metrics import (
+    DB_ERRORS_METRIC_NAME,
+    QUERIES_METRIC_NAME,
+    QUERY_LATENCY_METRIC_NAME,
+    QUERY_TIMESTAMP_METRIC_NAME,
 )
 
 

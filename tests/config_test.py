@@ -8,15 +8,17 @@ from pytest_structlog import StructuredLogCapture
 import yaml
 
 from query_exporter.config import (
-    DB_ERRORS_METRIC_NAME,
-    GLOBAL_METRICS,
-    QUERIES_METRIC_NAME,
     ConfigError,
     _get_parameters_sets,
     _resolve_dsn,
     load_config,
 )
 from query_exporter.db import QueryMetric
+from query_exporter.metrics import (
+    BUILTIN_METRICS,
+    DB_ERRORS_METRIC_NAME,
+    QUERIES_METRIC_NAME,
+)
 
 
 @pytest.fixture
@@ -437,7 +439,7 @@ class TestLoadConfig:
             "states": ["on", "off"],
             "expiration": 100,
         }
-        # global metrics
+        # builtin metrics
         assert result.metrics.get(DB_ERRORS_METRIC_NAME) is not None
         assert result.metrics.get(QUERIES_METRIC_NAME) is not None
 
@@ -473,20 +475,20 @@ class TestLoadConfig:
             == 'Labels for metric "m" overlap with reserved/database ones: l1'
         )
 
-    @pytest.mark.parametrize("global_name", list(GLOBAL_METRICS))
+    @pytest.mark.parametrize("builtin_metric_name", list(BUILTIN_METRICS))
     def test_load_metrics_reserved_name(
         self,
         config_full: dict[str, t.Any],
         write_config: ConfigWriter,
-        global_name: str,
+        builtin_metric_name: str,
     ) -> None:
-        config_full["metrics"][global_name] = {"type": "counter"}
+        config_full["metrics"][builtin_metric_name] = {"type": "counter"}
         config_file = write_config(config_full)
         with pytest.raises(ConfigError) as err:
             load_config([config_file])
         assert (
             str(err.value)
-            == f'Label name "{global_name} is reserved for builtin metric'
+            == f'Label name "{builtin_metric_name} is reserved for builtin metric'
         )
 
     def test_load_metrics_unsupported_type(
@@ -1006,7 +1008,7 @@ class TestLoadConfig:
         )
         config = load_config([file1, file2])
         assert set(config.databases) == {"db1", "db2"}
-        assert set(config.metrics) == {"m1", "m2"} | GLOBAL_METRICS
+        assert set(config.metrics) == {"m1", "m2"} | BUILTIN_METRICS
         assert set(config.queries) == {"q1", "q2"}
 
     def test_load_multiple_files_duplicated_database(
