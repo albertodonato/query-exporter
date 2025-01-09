@@ -116,7 +116,7 @@ switches, environment variables or through the ``.env`` file:
   | ``--metrics-path``      | ``QE_METRICS_PATH``    | ``/metrics``    | Path under which metrics are exposed.                             |
   +-------------------------+------------------------+-----------------+-------------------------------------------------------------------+
   | ``-L``, ``--log-level`` | ``QE_LOG_LEVEL``       | ``info``        | Minimum level for log messages level.                             |
-  |                         |                        |                 | One of ``critical``, ``error``, ``wanring``, ``info``, ``debug``. |
+  |                         |                        |                 | One of ``critical``, ``error``, ``warning``, ``info``, ``debug``. |
   +-------------------------+------------------------+-----------------+-------------------------------------------------------------------+
   | ``--log-format``        | ``QE_LOG_FORMAT``      | ``plain``       | Log output format. One of ``plain``, ``json``.                    |
   +-------------------------+------------------------+-----------------+-------------------------------------------------------------------+
