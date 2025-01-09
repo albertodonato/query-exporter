@@ -3,7 +3,7 @@
 Export Prometheus metrics from SQL queries
 ==========================================
 
-|Latest Version| |Build Status| |Snap Package| |Docker Pulls|
+|Latest Version| |Build Status| |PyPI Downloads| |Docker Pulls| |Snap Package|
 
 ``query-exporter`` is a Prometheus_ exporter which allows collecting metrics
 from database queries, at specified time intervals.
@@ -285,3 +285,6 @@ The snap has support for connecting the following databases:
 .. |Docker Pulls| image:: https://img.shields.io/docker/pulls/adonato/query-exporter
    :alt: Docker Pulls
    :target: https://hub.docker.com/r/adonato/query-exporter
+.. |PyPI Downloads|
+   :alt: PyPI Downloads
+   :target: https://static.pepy.tech/badge/query-exporter/month
