@@ -68,7 +68,6 @@ parts:
       - clickhouse-sqlalchemy
       - ibm-db-sa; platform_machine == 'x86_64'
       - ibm-db-sa; platform_machine == 'ppc64le'
-      - ibm-db-sa; platform_machine == 's390x'
       - mysqlclient
       - psycopg2
       - pyodbc

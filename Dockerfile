@@ -21,7 +21,7 @@ RUN pip install \
     /srcdir \
     cx-Oracle \
     clickhouse-sqlalchemy \
-    "ibm-db-sa; platform_machine == 'x86_64' or platform_machine == 'ppc64le' or platform_machine == 's390x'" \
+    "ibm-db-sa; platform_machine == 'x86_64' or platform_machine == 'ppc64le'" \
     mysqlclient \
     psycopg2 \
     pymssql \
