@@ -51,6 +51,14 @@ dependencies = [
   "structlog",
   "toolrack>=4",
 ]
+optional-dependencies.integration-tests = [
+  "mysqlclient",
+  "psycopg2-binary",
+  "pytest",
+  "pytest-asyncio",
+  "pytest-docker",
+  "requests",
+]
 optional-dependencies.testing = [
   "pytest",
   "pytest-asyncio",
@@ -84,6 +92,13 @@ lint.isort.force-sort-within-sections = true
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
+markers = [
+  "database_only: only run test on specified database(s)",
+  "database_exclude: don't run test on specified database(s)",
+]
+testpaths = [
+  "tests",
+]
 
 [tool.coverage.report]
 fail_under = 100.0

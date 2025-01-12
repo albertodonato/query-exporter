@@ -77,3 +77,23 @@ jobs:
       - name: Test
         run: |
           tox run -e coverage
+
+  integration-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Repository checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.13
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip tox
+
+      - name: Test
+        run: |
+          tox run -e integration-tests -- -v
+
