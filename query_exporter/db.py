@@ -39,6 +39,7 @@ from sqlalchemy.exc import (
     ArgumentError,
     NoSuchModuleError,
 )
+from sqlalchemy.pool import NullPool
 from sqlalchemy.sql.elements import TextClause
 import structlog
 
@@ -134,10 +135,10 @@ class DataBaseConfig:
         create_db_engine(self.dsn)
 
 
-def create_db_engine(dsn: str, **kwargs: t.Any) -> Engine:
-    """Create the database engine, validating the DSN"""
+def create_db_engine(dsn: str) -> Engine:
+    """Create the database engine, validating the DSN."""
     try:
-        return create_engine(dsn, **kwargs)
+        return create_engine(dsn, poolclass=NullPool)
     except ImportError as error:
         raise DataBaseError(f'module "{error.name}" not found')
     except (ArgumentError, ValueError, NoSuchModuleError):
@@ -355,7 +356,7 @@ class DataBaseConnection:
 
     async def execute(
         self,
-        sql: TextClause,
+        statement: TextClause,
         parameters: dict[str, t.Any] | None = None,
     ) -> QueryResults:
         """Execute a query, returning results."""
@@ -363,8 +364,15 @@ class DataBaseConnection:
             parameters = {}
         return t.cast(
             QueryResults,
-            await self._call_in_thread(self._execute, sql, parameters),
+            await self._call_in_thread(self._execute, statement, parameters),
         )
+
+    async def execute_many(
+        self,
+        statements: list[TextClause],
+    ) -> None:
+        """Execute multiple statements."""
+        await self._call_in_thread(self._execute_many, statements)
 
     def _create_worker(self) -> None:
         assert not self._worker
@@ -382,11 +390,18 @@ class DataBaseConnection:
         self._conn = self.engine.connect()
 
     def _execute(
-        self, sql: TextClause, parameters: dict[str, t.Any]
+        self, statement: TextClause, parameters: dict[str, t.Any]
     ) -> QueryResults:
         assert self._conn
-        result = self._conn.execute(sql, parameters)
-        return QueryResults.from_result(result)
+        with self._conn.begin():
+            result = self._conn.execute(statement, parameters)
+            return QueryResults.from_result(result)
+
+    def _execute_many(self, statements: list[TextClause]) -> None:
+        assert self._conn
+        with self._conn.begin():
+            for statement in statements:
+                self._conn.execute(statement)
 
     def _close(self) -> None:
         assert self._conn
@@ -436,13 +451,7 @@ class DataBase:
             logger = structlog.get_logger()
         self.logger = logger.bind(database=self.config.name)
         self._connect_lock = asyncio.Lock()
-        execution_options = {}
-        if self.config.autocommit:
-            execution_options["isolation_level"] = "AUTOCOMMIT"
-        engine = create_db_engine(
-            self.config.dsn,
-            execution_options=execution_options,
-        )
+        engine = create_db_engine(self.config.dsn)
         self._conn = DataBaseConnection(self.config.name, engine, self.logger)
         self._setup_query_latency_tracking(engine)
 
@@ -475,13 +484,15 @@ class DataBase:
                 raise self._db_error(error, exc_class=DataBaseConnectError)
 
             self.logger.debug("connected")
-            for sql in self.config.connect_sql:
+            if self.config.connect_sql:
                 try:
-                    await self.execute_sql(sql)
+                    await self._conn.execute_many(
+                        [text(sql) for sql in self.config.connect_sql]
+                    )
                 except Exception as error:
                     await self._close()
                     raise self._db_error(
-                        f'failed executing query "{sql}": {error}',
+                        f"failed executing connect SQL: {error}",
                         exc_class=DataBaseQueryError,
                     )
 

@@ -85,6 +85,9 @@ Each database definitions can have the following keys:
   defaults to ``true``.  This should only be changed to ``false`` if specific
   queries require it.
 
+  **Note**: this option is deprecated and be removed in the next major
+   release. Explicit transactions are now always used to run each query.
+
 ``labels``:
   an optional mapping of label names and values to tag metrics collected from each database.
   When labels are used, all databases must define the same set of labels.

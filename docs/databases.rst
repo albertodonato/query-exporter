@@ -25,16 +25,6 @@ This can be done via the ``MARS_Connection`` parameter on the database DSN::
   mssql://<username>:<password>@<host>:<port>/<db>?MARS_Connection=yes
 
 
-Connection closed error during query execution
-----------------------------------------------
-
-In some cases an error about ``"The cursor's connection has been closed"`` is
-returned when fetching query results.
-
-If this happens, setting ``autocommit: false`` in database configuration should
-solve it.
-
-
 Oracle [``oracle://``]
 ======================
 

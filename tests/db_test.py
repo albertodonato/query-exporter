@@ -452,12 +452,12 @@ class TestDataBase:
         )
         db = DataBase(config)
 
-        queries = []
+        queries: list[str] = []
 
-        async def execute_sql(sql: str) -> None:
-            queries.append(sql)
+        async def execute_many(statements: list[TextClause]) -> None:
+            queries.extend(statement.text for statement in statements)
 
-        mocker.patch.object(db, "execute_sql", execute_sql)
+        mocker.patch.object(db._conn, "execute_many", execute_many)
         await db.connect()
         assert queries == ["SELECT 1", "SELECT 2"]
         await db.close()
@@ -472,7 +472,7 @@ class TestDataBase:
         with pytest.raises(DataBaseQueryError) as error:
             await db.connect()
         assert not db.connected
-        assert 'failed executing query "WRONG"' in str(error.value)
+        assert "failed executing connect SQL" in str(error.value)
         assert log.has("disconnected", database="db")
 
     async def test_close(
