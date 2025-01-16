@@ -345,11 +345,10 @@ class DataBaseConnection:
         """Execute a query, returning results."""
         if parameters is None:
             parameters = {}
-        result = await self._call_in_thread(self._execute, sql, parameters)
-        query_results: QueryResults = await self._call_in_thread(
-            QueryResults.from_result, result
+        return t.cast(
+            QueryResults,
+            await self._call_in_thread(self._execute, sql, parameters),
         )
-        return query_results
 
     def _create_worker(self) -> None:
         assert not self._worker
@@ -368,9 +367,10 @@ class DataBaseConnection:
 
     def _execute(
         self, sql: TextClause, parameters: dict[str, t.Any]
-    ) -> CursorResult[t.Any]:
+    ) -> QueryResults:
         assert self._conn
-        return self._conn.execute(sql, parameters)
+        result = self._conn.execute(sql, parameters)
+        return QueryResults.from_result(result)
 
     def _close(self) -> None:
         assert self._conn

@@ -502,7 +502,6 @@ class TestDataBase:
         await db.execute(query)
         assert log.has("run query", query="query", database="db")
         assert log.has("action received", worker_id=ANY, action="_execute")
-        assert log.has("action received", worker_id=ANY, action="from_result")
         await db.close()
 
     @pytest.mark.parametrize("connected", [True, False])
