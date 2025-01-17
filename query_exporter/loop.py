@@ -23,10 +23,10 @@ from toolrack.aio import (
 )
 
 from .config import (
+    DATABASE_LABEL,
     Config,
 )
 from .db import (
-    DATABASE_LABEL,
     DataBase,
     DataBaseConnectError,
     DataBaseError,

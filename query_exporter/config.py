@@ -21,7 +21,6 @@ import structlog
 import yaml
 
 from .db import (
-    DATABASE_LABEL,
     DataBaseConfig,
     InvalidQueryParameters,
     InvalidQuerySchedule,
@@ -30,6 +29,9 @@ from .db import (
 )
 from .metrics import BUILTIN_METRICS, get_builtin_metric_configs
 from .yaml import load_yaml_config
+
+# Label used to tag metrics by database
+DATABASE_LABEL = "database"
 
 # regexp for validating environment variables names
 _ENV_VAR_RE = re.compile(r"[a-zA-Z_][a-zA-Z0-9_]*$")

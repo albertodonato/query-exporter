@@ -41,12 +41,8 @@ from sqlalchemy.exc import (
 from sqlalchemy.sql.elements import TextClause
 import structlog
 
-#: Timeout for a query
+# Timeout for a query
 QueryTimeout = int | float
-
-
-#: Label used to tag metrics by database
-DATABASE_LABEL = "database"
 
 
 class DataBaseError(Exception):
