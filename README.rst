@@ -132,12 +132,11 @@ switches, environment variables or through the ``.env`` file:
   +-------------------------+------------------------+-----------------+-------------------------------------------------------------------+
   | ``--config``            | ``QE_CONFIG``          | ``config.yaml`` | Configuration files. Multiple values can be provided.             |
   +-------------------------+------------------------+-----------------+-------------------------------------------------------------------+
-  |                         | ``QE_DOTENV``          | ``$PWD/.env``   | Path for the dotenv file where environment variables can be       | 
+  |                         | ``QE_DOTENV``          | ``$PWD/.env``   | Path for the dotenv file where environment variables can be       |
   |                         |                        |                 | provided.                                                         |
   +-------------------------+------------------------+-----------------+-------------------------------------------------------------------+
 
 
-          
 Metrics endpoint
 ----------------
 
@@ -184,7 +183,7 @@ See `supported databases`_ for details.
 
 
 Run in Docker
--------------
+=============
 
 ``query-exporter`` can be run inside Docker_ containers, and is available from
 the `Docker Hub`_::
@@ -218,7 +217,7 @@ Automated builds from the ``main`` branch are available on the `GitHub container
 
 
 ODBC driver version
-~~~~~~~~~~~~~~~~~~~
+-------------------
 
 A different ODBC driver version to use can be specified during image building,
 by passing ``--build-arg ODBC_bVERSION_NUMBER``, e.g.::
@@ -227,7 +226,7 @@ by passing ``--build-arg ODBC_bVERSION_NUMBER``, e.g.::
 
 
 Install from Snap
------------------
+=================
 
 |Get it from the Snap Store|
 
@@ -257,6 +256,13 @@ The snap has support for connecting the following databases:
   s390x)
 
 
+Contributing
+============
+
+The project welcomes contributions of any form. Please refer to the
+`contribution guide`_ for details on how to contribute.
+
+
 .. _Prometheus: https://prometheus.io/
 .. _SQLAlchemy: https://www.sqlalchemy.org/
 .. _`supported databases`:
@@ -265,6 +271,7 @@ The snap has support for connecting the following databases:
 .. _Docker: http://docker.com/
 .. _`Docker Hub`: https://hub.docker.com/r/adonato/query-exporter
 .. _`configuration file format`: docs/configuration.rst
+.. _`contribution guide`: docs/contributing.rst
 .. _`Helm chart`: https://github.com/makezbs/helm-charts/tree/main/charts/query-exporter
 .. _`GitHub container registry`: https://github.com/albertodonato/query-exporter/pkgs/container/query-exporter
 
