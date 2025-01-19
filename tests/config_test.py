@@ -1,11 +1,8 @@
-from collections.abc import Callable, Iterator
 from pathlib import Path
 import typing as t
-import uuid
 
 import pytest
 from pytest_structlog import StructuredLogCapture
-import yaml
 
 from query_exporter.config import (
     ConfigError,
@@ -20,35 +17,7 @@ from query_exporter.metrics import (
     QUERIES_METRIC_NAME,
 )
 
-
-@pytest.fixture
-def config_full() -> Iterator[dict[str, t.Any]]:
-    yield {
-        "databases": {"db": {"dsn": "sqlite://"}},
-        "metrics": {"m": {"type": "gauge", "labels": ["l1", "l2"]}},
-        "queries": {
-            "q": {
-                "interval": 10,
-                "databases": ["db"],
-                "metrics": ["m"],
-                "sql": "SELECT 1 AS m",
-            }
-        },
-    }
-
-
-ConfigWriter = Callable[[t.Any], Path]
-
-
-@pytest.fixture
-def write_config(tmp_path: Path) -> Iterator[ConfigWriter]:
-    def write(data: t.Any) -> Path:
-        path = tmp_path / f"{uuid.uuid4()}.yaml"
-        path.write_text(yaml.dump(data), "utf-8")
-        return path
-
-    yield write
-
+from .conftest import ConfigWriter
 
 CONFIG_UNKNOWN_DBS = {
     "databases": {},
@@ -478,12 +447,12 @@ class TestLoadConfig:
     @pytest.mark.parametrize("builtin_metric_name", list(BUILTIN_METRICS))
     def test_load_metrics_reserved_name(
         self,
-        config_full: dict[str, t.Any],
+        sample_config: dict[str, t.Any],
         write_config: ConfigWriter,
         builtin_metric_name: str,
     ) -> None:
-        config_full["metrics"][builtin_metric_name] = {"type": "counter"}
-        config_file = write_config(config_full)
+        sample_config["metrics"][builtin_metric_name] = {"type": "counter"}
+        config_file = write_config(sample_config)
         with pytest.raises(ConfigError) as err:
             load_config([config_file])
         assert (
@@ -716,11 +685,11 @@ class TestLoadConfig:
 
     def test_load_queries_section_timeout(
         self,
-        config_full: dict[str, t.Any],
+        sample_config: dict[str, t.Any],
         write_config: ConfigWriter,
     ) -> None:
-        config_full["queries"]["q"]["timeout"] = 2.0
-        config_file = write_config(config_full)
+        sample_config["queries"]["q"]["timeout"] = 2.0
+        config_file = write_config(sample_config)
         result = load_config([config_file])
         query1 = result.queries["q"]
         assert query1.timeout == 2.0
@@ -744,13 +713,13 @@ class TestLoadConfig:
     )
     def test_load_queries_section_invalid_timeout(
         self,
-        config_full: dict[str, t.Any],
+        sample_config: dict[str, t.Any],
         write_config: ConfigWriter,
         timeout: float,
         error_message: str,
     ) -> None:
-        config_full["queries"]["q"]["timeout"] = timeout
-        config_file = write_config(config_full)
+        sample_config["queries"]["q"]["timeout"] = timeout
+        config_file = write_config(sample_config)
         with pytest.raises(ConfigError) as err:
             load_config([config_file])
         assert str(err.value) == error_message
@@ -804,14 +773,14 @@ class TestLoadConfig:
     def test_configuration_warning_unused(
         self,
         log: StructuredLogCapture,
-        config_full: dict[str, t.Any],
+        sample_config: dict[str, t.Any],
         write_config: ConfigWriter,
     ) -> None:
-        config_full["databases"]["db2"] = {"dsn": "sqlite://"}
-        config_full["databases"]["db3"] = {"dsn": "sqlite://"}
-        config_full["metrics"]["m2"] = {"type": "gauge"}
-        config_full["metrics"]["m3"] = {"type": "gauge"}
-        config_file = write_config(config_full)
+        sample_config["databases"]["db2"] = {"dsn": "sqlite://"}
+        sample_config["databases"]["db3"] = {"dsn": "sqlite://"}
+        sample_config["metrics"]["m2"] = {"type": "gauge"}
+        sample_config["metrics"]["m3"] = {"type": "gauge"}
+        config_file = write_config(sample_config)
         load_config([config_file])
         assert log.has(
             "unused config entries",
@@ -850,35 +819,35 @@ class TestLoadConfig:
     )
     def test_load_queries_interval(
         self,
-        config_full: dict[str, t.Any],
+        sample_config: dict[str, t.Any],
         write_config: ConfigWriter,
         interval: str | int | None,
         value: int | None,
     ) -> None:
-        config_full["queries"]["q"]["interval"] = interval
-        config_file = write_config(config_full)
+        sample_config["queries"]["q"]["interval"] = interval
+        config_file = write_config(sample_config)
         config = load_config([config_file])
         assert config.queries["q"].interval == value
 
     def test_load_queries_interval_not_specified(
         self,
-        config_full: dict[str, t.Any],
+        sample_config: dict[str, t.Any],
         write_config: ConfigWriter,
     ) -> None:
-        del config_full["queries"]["q"]["interval"]
-        config_file = write_config(config_full)
+        del sample_config["queries"]["q"]["interval"]
+        config_file = write_config(sample_config)
         config = load_config([config_file])
         assert config.queries["q"].interval is None
 
     @pytest.mark.parametrize("interval", ["1x", "wrong", "1.5m"])
     def test_load_queries_invalid_interval_string(
         self,
-        config_full: dict[str, t.Any],
+        sample_config: dict[str, t.Any],
         write_config: ConfigWriter,
         interval: str,
     ) -> None:
-        config_full["queries"]["q"]["interval"] = interval
-        config_file = write_config(config_full)
+        sample_config["queries"]["q"]["interval"] = interval
+        config_file = write_config(sample_config)
         with pytest.raises(ConfigError) as err:
             load_config([config_file])
         assert str(err.value) == (
@@ -889,12 +858,12 @@ class TestLoadConfig:
     @pytest.mark.parametrize("interval", [0, -20])
     def test_load_queries_invalid_interval_number(
         self,
-        config_full: dict[str, t.Any],
+        sample_config: dict[str, t.Any],
         write_config: ConfigWriter,
         interval: int,
     ) -> None:
-        config_full["queries"]["q"]["interval"] = interval
-        config_file = write_config(config_full)
+        sample_config["queries"]["q"]["interval"] = interval
+        config_file = write_config(sample_config)
         with pytest.raises(ConfigError) as err:
             load_config([config_file])
         assert (
@@ -904,11 +873,11 @@ class TestLoadConfig:
 
     def test_load_queries_no_metrics(
         self,
-        config_full: dict[str, t.Any],
+        sample_config: dict[str, t.Any],
         write_config: ConfigWriter,
     ) -> None:
-        config_full["queries"]["q"]["metrics"] = []
-        config_file = write_config(config_full)
+        sample_config["queries"]["q"]["metrics"] = []
+        config_file = write_config(sample_config)
         with pytest.raises(ConfigError) as err:
             load_config([config_file])
         assert (
@@ -918,11 +887,11 @@ class TestLoadConfig:
 
     def test_load_queries_no_databases(
         self,
-        config_full: dict[str, t.Any],
+        sample_config: dict[str, t.Any],
         write_config: ConfigWriter,
     ) -> None:
-        config_full["queries"]["q"]["databases"] = []
-        config_file = write_config(config_full)
+        sample_config["queries"]["q"]["databases"] = []
+        config_file = write_config(sample_config)
         with pytest.raises(ConfigError) as err:
             load_config([config_file])
         assert (
@@ -944,25 +913,25 @@ class TestLoadConfig:
     )
     def test_load_metrics_expiration(
         self,
-        config_full: dict[str, t.Any],
+        sample_config: dict[str, t.Any],
         write_config: ConfigWriter,
         expiration: str | int | None,
         value: int | None,
     ) -> None:
-        config_full["metrics"]["m"]["expiration"] = expiration
-        config_file = write_config(config_full)
+        sample_config["metrics"]["m"]["expiration"] = expiration
+        config_file = write_config(sample_config)
         config = load_config([config_file])
         assert config.metrics["m"].config["expiration"] == value
 
     def test_load_multiple_files(
         self,
-        config_full: dict[str, t.Any],
+        sample_config: dict[str, t.Any],
         write_config: ConfigWriter,
     ) -> None:
-        file_full = write_config(config_full)
-        file1 = write_config({"databases": config_full["databases"]})
-        file2 = write_config({"metrics": config_full["metrics"]})
-        file3 = write_config({"queries": config_full["queries"]})
+        file_full = write_config(sample_config)
+        file1 = write_config({"databases": sample_config["databases"]})
+        file2 = write_config({"metrics": sample_config["metrics"]})
+        file3 = write_config({"queries": sample_config["queries"]})
         assert load_config([file1, file2, file3]) == load_config([file_full])
 
     def test_load_multiple_files_combine(
@@ -1002,11 +971,11 @@ class TestLoadConfig:
 
     def test_load_multiple_files_duplicated_database(
         self,
-        config_full: dict[str, t.Any],
+        sample_config: dict[str, t.Any],
         write_config: ConfigWriter,
     ) -> None:
-        file1 = write_config(config_full)
-        file2 = write_config({"databases": config_full["databases"]})
+        file1 = write_config(sample_config)
+        file2 = write_config({"databases": sample_config["databases"]})
         with pytest.raises(ConfigError) as err:
             load_config([file1, file2])
         assert (
@@ -1016,11 +985,11 @@ class TestLoadConfig:
 
     def test_load_multiple_files_duplicated_metric(
         self,
-        config_full: dict[str, t.Any],
+        sample_config: dict[str, t.Any],
         write_config: ConfigWriter,
     ) -> None:
-        file1 = write_config(config_full)
-        file2 = write_config({"metrics": config_full["metrics"]})
+        file1 = write_config(sample_config)
+        file2 = write_config({"metrics": sample_config["metrics"]})
         with pytest.raises(ConfigError) as err:
             load_config([file1, file2])
         assert (
@@ -1029,11 +998,11 @@ class TestLoadConfig:
 
     def test_load_multiple_files_duplicated_query(
         self,
-        config_full: dict[str, t.Any],
+        sample_config: dict[str, t.Any],
         write_config: ConfigWriter,
     ) -> None:
-        file1 = write_config(config_full)
-        file2 = write_config({"queries": config_full["queries"]})
+        file1 = write_config(sample_config)
+        file2 = write_config({"queries": sample_config["queries"]})
         with pytest.raises(ConfigError) as err:
             load_config([file1, file2])
         assert (

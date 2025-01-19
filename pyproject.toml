@@ -92,9 +92,6 @@ skip_covered = true
 
 [tool.coverage.run]
 source = [ "query_exporter" ]
-omit = [
-  "query_exporter/main.py",
-]
 
 [tool.mypy]
 ignore_missing_imports = true
