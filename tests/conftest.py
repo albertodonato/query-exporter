@@ -6,7 +6,7 @@ from pytest_mock import MockerFixture
 from pytest_structlog import StructuredLogCapture
 from toolrack.testing.fixtures import advance_time
 
-from query_exporter.db import DataBase, MetricResults, Query
+from query_exporter.db import DataBase, MetricResults, QueryExecution
 
 __all__ = ["QueryTracker", "advance_time", "query_tracker"]
 
@@ -19,7 +19,7 @@ def _autouse(log: StructuredLogCapture) -> Iterator[None]:
 
 class QueryTracker:
     def __init__(self) -> None:
-        self.queries: list[Query] = []
+        self.queries: list[QueryExecution] = []
         self.results: list[MetricResults] = []
         self.failures: list[Exception] = []
         self._loop = asyncio.get_event_loop()
@@ -51,10 +51,12 @@ async def query_tracker(
     tracker = QueryTracker()
     orig_execute = DataBase.execute
 
-    async def execute(db: DataBase, query: Query) -> MetricResults:
-        tracker.queries.append(query)
+    async def execute(
+        db: DataBase, query_execution: QueryExecution
+    ) -> MetricResults:
+        tracker.queries.append(query_execution)
         try:
-            result = await orig_execute(db, query)
+            result = await orig_execute(db, query_execution)
         except Exception as e:
             tracker.failures.append(e)
             raise

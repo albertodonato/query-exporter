@@ -70,26 +70,16 @@ class TestQuery:
             "SELECT 1",
         )
         assert query.name == "query"
-        assert query.config_name == "query"
         assert query.databases == ["db1", "db2"]
         assert query.metrics == [
             QueryMetric("metric1", ["label1", "label2"]),
             QueryMetric("metric2", ["label2"]),
         ]
         assert query.sql == "SELECT 1"
-        assert query.parameters == {}
         assert query.interval is None
         assert query.timeout is None
-
-    def test_instantiate_with_config_name(self) -> None:
-        query = Query(
-            "query",
-            ["db"],
-            [QueryMetric("metric", [])],
-            "SELECT metric1 FROM table",
-            config_name="query_config",
-        )
-        assert query.config_name == "query_config"
+        [query_execution] = query.executions
+        assert query_execution.name == "query"
 
     def test_instantiate_with_parameters(self) -> None:
         query = Query(
@@ -101,9 +91,16 @@ class TestQuery:
             ],
             "SELECT metric1, metric2, label1, label2 FROM table"
             " WHERE x < :param1 AND  y > :param2",
-            parameters={"param1": 1, "param2": 2},
+            parameter_sets=[
+                {"param1": 1, "param2": 2},
+                {"param1": 3, "param2": 4},
+            ],
         )
-        assert query.parameters == {"param1": 1, "param2": 2}
+        qe_exec1, qe_exec2 = query.executions
+        assert qe_exec1.name == "query[params1]"
+        assert qe_exec1.parameters == {"param1": 1, "param2": 2}
+        assert qe_exec2.name == "query[params2]"
+        assert qe_exec2.parameters == {"param1": 3, "param2": 4}
 
     def test_instantiate_parameters_not_matching(self) -> None:
         with pytest.raises(InvalidQueryParameters):
@@ -116,7 +113,7 @@ class TestQuery:
                 ],
                 "SELECT metric1, metric2, label1, label2 FROM table"
                 " WHERE x < :param1 AND  y > :param3",
-                parameters={"param1": 1, "param2": 2},
+                parameter_sets=[{"param1": 1, "param2": 2}],
             )
 
     def test_instantiate_with_interval(self) -> None:
@@ -498,8 +495,9 @@ class TestDataBase:
             [QueryMetric("metric", [])],
             "SELECT 1.0 AS metric",
         )
+        [query_execution] = query.executions
         await db.connect()
-        await db.execute(query)
+        await db.execute(query_execution)
         assert log.has("run query", query="query", database="db")
         assert log.has("action received", worker_id=ANY, action="_execute")
         await db.close()
@@ -518,9 +516,10 @@ class TestDataBase:
             [QueryMetric("metric", [])],
             "SELECT 1.0 AS metric",
         )
+        [query_execution] = query.executions
         await db.connect()
         mock_conn_detach = mocker.patch.object(db._conn._conn, "detach")
-        await db.execute(query)
+        await db.execute(query_execution)
         assert db.connected == connected
         if not connected:
             mock_conn_detach.assert_called_once()
@@ -539,21 +538,26 @@ class TestDataBase:
             [QueryMetric("metric1", [])],
             "SELECT 1.0 AS metric1",
         )
+        [query_execution1] = query1.executions
         query2 = Query(
             "query1",
             ["db"],
             [QueryMetric("metric2", [])],
             "SELECT 1.0 AS metric2",
         )
+        [query_execution2] = query2.executions
         await db.connect()
-        await asyncio.gather(db.execute(query1), db.execute(query2))
+        await asyncio.gather(
+            db.execute(query_execution1), db.execute(query_execution2)
+        )
         assert not db.connected
 
     async def test_execute_not_connected(self, db: DataBase) -> None:
         query = Query(
             "query", ["db"], [QueryMetric("metric", [])], "SELECT 1 AS metric"
         )
-        metric_results = await db.execute(query)
+        [query_execution] = query.executions
+        metric_results = await db.execute(query_execution)
         assert metric_results.results == [MetricResult("metric", 1, {})]
         # the connection is kept for reuse
         assert db.connected
@@ -569,8 +573,9 @@ class TestDataBase:
             [QueryMetric("metric1", []), QueryMetric("metric2", [])],
             sql,
         )
+        [query_execution] = query.executions
         await db.connect()
-        metric_results = await db.execute(query)
+        metric_results = await db.execute(query_execution)
         assert metric_results.results == [
             MetricResult("metric1", 10, {}),
             MetricResult("metric2", 20, {}),
@@ -598,8 +603,9 @@ class TestDataBase:
             ],
             sql,
         )
+        [query_execution] = query.executions
         await db.connect()
-        metric_results = await db.execute(query)
+        metric_results = await db.execute(query_execution)
         assert metric_results.results == [
             MetricResult("metric1", 22, {"label1": "bar", "label2": "foo"}),
             MetricResult("metric2", 11, {"label2": "foo"}),
@@ -609,9 +615,10 @@ class TestDataBase:
 
     async def test_execute_fail(self, db: DataBase) -> None:
         query = Query("query", ["db"], [QueryMetric("metric", [])], "WRONG")
+        [query_execution] = query.executions
         await db.connect()
         with pytest.raises(DataBaseQueryError) as error:
-            await db.execute(query)
+            await db.execute(query_execution)
         assert "syntax error" in str(error.value)
 
     async def test_execute_query_invalid_count(
@@ -623,9 +630,10 @@ class TestDataBase:
             [QueryMetric("metric", [])],
             "SELECT 1 AS metric, 2 AS other",
         )
+        [query_execution] = query.executions
         await db.connect()
         with pytest.raises(DataBaseQueryError) as error:
-            await db.execute(query)
+            await db.execute(query_execution)
         assert (
             str(error.value)
             == "Wrong result count from query: expected 1, got 2"
@@ -648,9 +656,10 @@ class TestDataBase:
             [QueryMetric("metric", ["label"])],
             "SELECT 1 as metric",
         )
+        [query_execution] = query.executions
         await db.connect()
         with pytest.raises(DataBaseQueryError) as error:
-            await db.execute(query)
+            await db.execute(query_execution)
         assert (
             str(error.value)
             == "Wrong result count from query: expected 2, got 1"
@@ -666,9 +675,10 @@ class TestDataBase:
             [QueryMetric("metric", ["label"])],
             'SELECT 1 AS foo, "bar" AS label',
         )
+        [query_execution] = query.executions
         await db.connect()
         with pytest.raises(DataBaseQueryError) as error:
-            await db.execute(query)
+            await db.execute(query_execution)
         assert (
             str(error.value)
             == "Wrong column names from query: expected (label, metric), got (foo, label)"
@@ -684,12 +694,13 @@ class TestDataBase:
             [QueryMetric("metric", [])],
             "SELECT 1 AS metric",
         )
+        [query_execution] = query.executions
         await db.connect()
         exception = Exception("boom!")
         mocker.patch.object(db, "execute_sql", side_effect=exception)
 
         with pytest.raises(DataBaseQueryError) as error:
-            await db.execute(query)
+            await db.execute(query_execution)
         assert str(error.value) == "boom!"
         assert not error.value.fatal
         assert log.has(
@@ -710,6 +721,7 @@ class TestDataBase:
             "SELECT 1 AS metric",
             timeout=0.1,
         )
+        [query_execution] = query.executions
         await db.connect()
 
         async def execute(
@@ -721,7 +733,7 @@ class TestDataBase:
         mocker.patch.object(db._conn, "execute", execute)
 
         with pytest.raises(QueryTimeoutExpired):
-            await db.execute(query)
+            await db.execute(query_execution)
         assert log.has(
             "query timeout",
             query="query",

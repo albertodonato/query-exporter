@@ -9,7 +9,7 @@ import yaml
 
 from query_exporter.config import (
     ConfigError,
-    _get_parameters_sets,
+    _get_parameter_sets,
     _resolve_dsn,
     load_config,
 )
@@ -536,18 +536,19 @@ class TestLoadConfig:
         }
         config_file = write_config(cfg)
         result = load_config([config_file])
+        assert len(result.queries) == 2
         query1 = result.queries["q1"]
         assert query1.name == "q1"
         assert query1.databases == ["db1"]
         assert query1.metrics == [QueryMetric("m1", ["l1", "l2"])]
         assert query1.sql == "SELECT 1"
-        assert query1.parameters == {}
+        assert len(query1.executions) == 1
         query2 = result.queries["q2"]
         assert query2.name == "q2"
         assert query2.databases == ["db2"]
         assert query2.metrics == [QueryMetric("m2", [])]
         assert query2.sql == "SELECT 2"
-        assert query2.parameters == {}
+        assert len(query2.executions) == 1
 
     def test_load_queries_section_with_parameters(
         self, write_config: ConfigWriter
@@ -570,21 +571,20 @@ class TestLoadConfig:
         }
         config_file = write_config(cfg)
         result = load_config([config_file])
-        query1 = result.queries["q[params0]"]
-        assert query1.name == "q[params0]"
-        assert query1.databases == ["db"]
-        assert query1.metrics == [QueryMetric("m", ["l"])]
-        assert query1.sql == "SELECT :param1 AS l, :param2 AS m"
-        assert query1.parameters == {
+        assert len(result.queries) == 1
+        query = result.queries["q"]
+        assert query.name == "q"
+        assert query.databases == ["db"]
+        assert query.metrics == [QueryMetric("m", ["l"])]
+        assert query.sql == "SELECT :param1 AS l, :param2 AS m"
+        query_exec1, query_exec2 = query.executions
+        assert query_exec1.name == "q[params1]"
+        assert query_exec1.parameters == {
             "param1": "label1",
             "param2": 10,
         }
-        query2 = result.queries["q[params1]"]
-        assert query2.name == "q[params1]"
-        assert query2.databases == ["db"]
-        assert query2.metrics == [QueryMetric("m", ["l"])]
-        assert query2.sql == "SELECT :param1 AS l, :param2 AS m"
-        assert query2.parameters == {
+        assert query_exec2.name == "q[params2]"
+        assert query_exec2.parameters == {
             "param1": "label2",
             "param2": 20,
         }
@@ -610,43 +610,32 @@ class TestLoadConfig:
         }
         config_file = write_config(cfg)
         result = load_config([config_file])
+        assert len(result.queries) == 1
+        query = result.queries["q"]
+        assert query.databases == ["db"]
+        assert query.metrics == [QueryMetric("m", ["l"])]
+        assert (
+            query.sql == "SELECT :marketplace__name AS l, :item__status AS m"
+        )
 
-        assert len(result.queries) == 4
-
-        # check common props for each query
-        for query_name, query in result.queries.items():
-            assert query.databases == ["db"]
-            assert query.metrics == [QueryMetric("m", ["l"])]
-            assert (
-                query.sql
-                == "SELECT :marketplace__name AS l, :item__status AS m"
-            )
-
-        # Q1
-        query1 = result.queries["q[params0]"]
-        assert query1.name == "q[params0]"
-        assert query1.parameters == {
+        query_exec1, query_exec2, query_exec3, query_exec4 = query.executions
+        assert query_exec1.name == "q[params1]"
+        assert query_exec1.parameters == {
             "marketplace__name": "amazon",
             "item__status": "active",
         }
-        # Q2
-        query2 = result.queries["q[params1]"]
-        assert query2.name == "q[params1]"
-        assert query2.parameters == {
+        assert query_exec2.name == "q[params2]"
+        assert query_exec2.parameters == {
             "marketplace__name": "ebay",
             "item__status": "active",
         }
-        # Q3
-        query3 = result.queries["q[params2]"]
-        assert query3.name == "q[params2]"
-        assert query3.parameters == {
+        assert query_exec3.name == "q[params3]"
+        assert query_exec3.parameters == {
             "marketplace__name": "amazon",
             "item__status": "inactive",
         }
-        # Q4
-        query4 = result.queries["q[params3]"]
-        assert query4.name == "q[params3]"
-        assert query4.parameters == {
+        assert query_exec4.name == "q[params4]"
+        assert query_exec4.parameters == {
             "marketplace__name": "ebay",
             "item__status": "inactive",
         }
@@ -675,7 +664,7 @@ class TestLoadConfig:
             load_config([config_file])
         assert (
             str(err.value)
-            == 'Parameters for query "q[params0]" don\'t match those from SQL'
+            == 'Parameters for query "q[params1]" don\'t match those from SQL'
         )
 
     def test_load_queries_section_with_schedule_and_interval(
@@ -1103,7 +1092,7 @@ class TestResolveDSN:
         )
 
 
-class TestGetParametersSets:
+class TestGetParameterSets:
     def test_list(self) -> None:
         params: list[dict[str, t.Any]] = [
             {
@@ -1115,7 +1104,7 @@ class TestGetParametersSets:
                 "param2": "bar",
             },
         ]
-        assert list(_get_parameters_sets(params)) == params
+        assert list(_get_parameter_sets(params)) == params
 
     def test_dict(self) -> None:
         params: dict[str, list[dict[str, t.Any]]] = {
@@ -1148,7 +1137,7 @@ class TestGetParametersSets:
                 },
             ],
         }
-        assert list(_get_parameters_sets(params)) == [
+        assert list(_get_parameter_sets(params)) == [
             {
                 "param1__sub1": 100,
                 "param1__sub2": "foo",

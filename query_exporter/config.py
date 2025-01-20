@@ -189,34 +189,17 @@ def _get_queries(
     for name, config in configs.items():
         _validate_query_config(name, config, database_names, metric_names)
         query_metrics = _get_query_metrics(config, metrics, extra_labels)
-        parameters = config.get("parameters")
-
-        query_args = {
-            "databases": config["databases"],
-            "metrics": query_metrics,
-            "sql": config["sql"].strip(),
-            "timeout": config.get("timeout"),
-            "interval": _convert_interval(config.get("interval")),
-            "schedule": config.get("schedule"),
-            "config_name": name,
-        }
-
         try:
-            if parameters:
-                parameters_sets = _get_parameters_sets(parameters)
-                queries.update(
-                    (
-                        f"{name}[params{index}]",
-                        Query(
-                            name=f"{name}[params{index}]",
-                            parameters=params,
-                            **query_args,
-                        ),
-                    )
-                    for index, params in enumerate(parameters_sets)
-                )
-            else:
-                queries[name] = Query(name, **query_args)
+            queries[name] = Query(
+                name=name,
+                databases=config["databases"],
+                metrics=query_metrics,
+                sql=config["sql"].strip(),
+                timeout=config.get("timeout"),
+                interval=_convert_interval(config.get("interval")),
+                schedule=config.get("schedule"),
+                parameter_sets=_get_parameter_sets(config.get("parameters")),
+            )
         except (InvalidQueryParameters, InvalidQuerySchedule) as e:
             raise ConfigError(str(e))
     return queries
@@ -391,10 +374,12 @@ def _warn_if_unused(
         )
 
 
-def _get_parameters_sets(
-    parameters: ParametersConfig,
+def _get_parameter_sets(
+    parameters: ParametersConfig | None,
 ) -> list[dict[str, t.Any]]:
     """Return an sequence of set of paramters with their values."""
+    if not parameters:
+        return []
     if isinstance(parameters, dict):
         return _get_parameters_matrix(parameters)
     return parameters
