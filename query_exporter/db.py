@@ -7,6 +7,7 @@ from collections.abc import (
     Sequence,
 )
 from dataclasses import (
+    InitVar,
     dataclass,
     field,
 )
@@ -194,17 +195,24 @@ class Query:
     databases: list[str]
     metrics: list[QueryMetric]
     sql: str
-    parameters: dict[str, t.Any] = field(default_factory=dict)
     timeout: QueryTimeout | None = None
     interval: int | None = None
     schedule: str | None = None
-    config_name: str = ""
 
-    def __post_init__(self) -> None:
-        if not self.config_name:
-            self.config_name = self.name
+    parameter_sets: InitVar[list[dict[str, t.Any]] | None] = None
+    executions: list["QueryExecution"] = field(init=False, compare=False)
+
+    def __post_init__(
+        self, parameter_sets: list[dict[str, t.Any]] | None
+    ) -> None:
         self._check_schedule()
-        self._check_query_parameters()
+        if not parameter_sets:
+            self.executions = [QueryExecution(self.name, self)]
+        else:
+            self.executions = [
+                QueryExecution(f"{self.name}[params{index}]", self, parameters)
+                for index, parameters in enumerate(parameter_sets, 1)
+            ]
 
     @property
     def timed(self) -> bool:
@@ -253,8 +261,20 @@ class Query:
         if self.schedule and not croniter.is_valid(self.schedule):
             raise InvalidQuerySchedule(self.name, "invalid schedule format")
 
+
+@dataclass(frozen=True)
+class QueryExecution:
+    """A single execution configuration for a query, with parameters."""
+
+    name: str
+    query: Query
+    parameters: dict[str, t.Any] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        self._check_query_parameters()
+
     def _check_query_parameters(self) -> None:
-        expr = text(self.sql)
+        expr = text(self.query.sql)
         query_params = set(expr.compile().params)
         if set(self.parameters) != query_params:
             raise InvalidQueryParameters(self.name)
@@ -472,22 +492,27 @@ class DataBase:
                 return
             await self._close()
 
-    async def execute(self, query: Query) -> MetricResults:
+    async def execute(self, query_execution: QueryExecution) -> MetricResults:
         """Execute a query."""
         await self.connect()
-        self.logger.debug("run query", query=query.name)
+        self.logger.debug("run query", query=query_execution.name)
         self._pending_queries += 1
+        query = query_execution.query
         try:
             query_results = await self.execute_sql(
-                query.sql, parameters=query.parameters, timeout=query.timeout
+                query.sql,
+                parameters=query_execution.parameters,
+                timeout=query.timeout,
             )
             return query.results(query_results)
         except TimeoutError:
-            self.logger.warning("query timeout", query=query.name)
+            self.logger.warning("query timeout", query=query_execution.name)
             raise QueryTimeoutExpired()
         except Exception as error:
             raise self._query_db_error(
-                query.name, error, fatal=isinstance(error, FATAL_ERRORS)
+                query_execution.name,
+                error,
+                fatal=isinstance(error, FATAL_ERRORS),
             )
         finally:
             assert self._pending_queries >= 0, "pending queries is negative"

@@ -5,6 +5,7 @@ from collections import defaultdict
 from collections.abc import Iterator, Mapping
 from datetime import datetime
 from decimal import Decimal
+from itertools import chain
 import time
 import typing as t
 
@@ -31,6 +32,7 @@ from .db import (
     DataBaseConnectError,
     DataBaseError,
     Query,
+    QueryExecution,
     QueryTimeoutExpired,
 )
 from .metrics import (
@@ -111,8 +113,8 @@ class QueryLoop:
         self._config = config
         self._registry = registry
         self._logger = logger or structlog.get_logger()
-        self._timed_queries: list[Query] = []
-        self._aperiodic_queries: list[Query] = []
+        self._timed_query_executions: list[QueryExecution] = []
+        self._aperiodic_query_executions: list[QueryExecution] = []
         # map query names to their TimedCalls
         self._timed_calls: dict[str, TimedCall] = {}
         # map query names to list of database names
@@ -129,23 +131,26 @@ class QueryLoop:
             for db_config in self._config.databases.values()
         }
 
-        for query in self._config.queries.values():
-            if query.timed:
-                self._timed_queries.append(query)
+        for query_execution in chain(
+            *(query.executions for query in self._config.queries.values())
+        ):
+            if query_execution.query.timed:
+                self._timed_query_executions.append(query_execution)
             else:
-                self._aperiodic_queries.append(query)
+                self._aperiodic_query_executions.append(query_execution)
 
     async def start(self) -> None:
         """Start timed queries execution."""
-        for query in self._timed_queries:
+        for query_execution in self._timed_query_executions:
+            query = query_execution.query
             call: TimedCall
             if query.interval:
-                call = PeriodicCall(self._run_query, query)
+                call = PeriodicCall(self._run_query, query_execution)
                 call.start(query.interval, now=True)
             elif query.schedule is not None:
-                call = TimedCall(self._run_query, query)
+                call = TimedCall(self._run_query, query_execution)
                 call.start(self._loop_times_iter(query.schedule))
-            self._timed_calls[query.name] = call
+            self._timed_calls[query_execution.name] = call
 
     async def stop(self) -> None:
         """Stop timed query execution."""
@@ -166,9 +171,9 @@ class QueryLoop:
     async def run_aperiodic_queries(self) -> None:
         """Run queries on request."""
         coros = (
-            self._execute_query(query, dbname)
-            for query in self._aperiodic_queries
-            for dbname in query.databases
+            self._execute_query(query_execution, dbname)
+            for query_execution in self._aperiodic_query_executions
+            for dbname in query_execution.query.databases
         )
         await asyncio.gather(*coros, return_exceptions=True)
 
@@ -181,19 +186,24 @@ class QueryLoop:
             delta = cc - t
             yield self._loop.time() + delta
 
-    def _run_query(self, query: Query) -> None:
+    def _run_query(self, query_execution: QueryExecution) -> None:
         """Periodic task to run a query."""
-        for dbname in query.databases:
-            self._loop.create_task(self._execute_query(query, dbname))
+        for dbname in query_execution.query.databases:
+            self._loop.create_task(
+                self._execute_query(query_execution, dbname)
+            )
 
-    async def _execute_query(self, query: Query, dbname: str) -> None:
+    async def _execute_query(
+        self, query_execution: QueryExecution, dbname: str
+    ) -> None:
         """'Execute a Query on a DataBase."""
-        if await self._remove_if_dooomed(query, dbname):
+        if await self._remove_if_dooomed(query_execution, dbname):
             return
 
         db = self._databases[dbname]
+        query = query_execution.query
         try:
-            metric_results = await db.execute(query)
+            metric_results = await db.execute(query_execution)
         except DataBaseConnectError:
             self._increment_db_error_count(db)
         except QueryTimeoutExpired:
@@ -203,10 +213,10 @@ class QueryLoop:
             if error.fatal:
                 self._logger.debug(
                     "removing failed query",
-                    query=query.name,
+                    query=query_execution.name,
                     database=dbname,
                 )
-                self._doomed_queries[query.name].add(dbname)
+                self._doomed_queries[query_execution.name].add(dbname)
         else:
             for result in metric_results.results:
                 self._update_metric(
@@ -222,24 +232,28 @@ class QueryLoop:
                 )
             self._increment_queries_count(db, query, "success")
 
-    async def _remove_if_dooomed(self, query: Query, dbname: str) -> bool:
-        """Remove a query if it will never work.
+    async def _remove_if_dooomed(
+        self, query_execution: QueryExecution, dbname: str
+    ) -> bool:
+        """Remove a query execution if it will never work.
 
         Return whether the query has been removed for the database.
 
         """
-        if dbname not in self._doomed_queries[query.name]:
+        if dbname not in self._doomed_queries[query_execution.name]:
             return False
 
-        if set(query.databases) == self._doomed_queries[query.name]:
+        query = query_execution.query
+
+        if set(query.databases) == self._doomed_queries[query_execution.name]:
             # the query has failed on all databases
             if query.timed:
-                self._timed_queries.remove(query)
-                call = self._timed_calls.pop(query.name, None)
+                self._timed_query_executions.remove(query_execution)
+                call = self._timed_calls.pop(query_execution.name, None)
                 if call is not None:
                     await call.stop()
             else:
-                self._aperiodic_queries.remove(query)
+                self._aperiodic_query_executions.remove(query_execution)
         return True
 
     def _update_metric(
@@ -304,7 +318,7 @@ class QueryLoop:
             database,
             QUERIES_METRIC_NAME,
             1,
-            labels={"query": query.config_name, "status": status},
+            labels={"query": query.name, "status": status},
         )
 
     def _increment_db_error_count(self, database: DataBase) -> None:
@@ -319,7 +333,7 @@ class QueryLoop:
             database,
             QUERY_LATENCY_METRIC_NAME,
             latency,
-            labels={"query": query.config_name},
+            labels={"query": query.name},
         )
 
     def _update_query_timestamp_metric(
@@ -330,5 +344,5 @@ class QueryLoop:
             database,
             QUERY_TIMESTAMP_METRIC_NAME,
             timestamp,
-            labels={"query": query.config_name},
+            labels={"query": query.name},
         )
