@@ -262,6 +262,8 @@ Contributing
 The project welcomes contributions of any form. Please refer to the
 `contribution guide`_ for details on how to contribute.
 
+For general purpose questions, you can use `Discussions`_ on GitHub.
+
 
 .. _Prometheus: https://prometheus.io/
 .. _SQLAlchemy: https://www.sqlalchemy.org/
@@ -274,6 +276,7 @@ The project welcomes contributions of any form. Please refer to the
 .. _`contribution guide`: docs/contributing.rst
 .. _`Helm chart`: https://github.com/makezbs/helm-charts/tree/main/charts/query-exporter
 .. _`GitHub container registry`: https://github.com/albertodonato/query-exporter/pkgs/container/query-exporter
+.. _`Discussions`: https://github.com/albertodonato/query-exporter/discussions``
 
 .. |query-exporter logo| image:: https://raw.githubusercontent.com/albertodonato/query-exporter/main/logo.svg
    :alt: query-exporter logo
