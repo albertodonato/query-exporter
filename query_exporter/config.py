@@ -131,6 +131,13 @@ def _get_databases(
                 keep_connected=config.get("keep-connected", True),
                 autocommit=config.get("autocommit", True),
             )
+            if "autocommit" in config:
+                logger = structlog.get_logger()
+                logger.warn(
+                    f"deprecated 'autocommit' option for database '{name}'",
+                    database=name,
+                )
+
     except Exception as e:
         raise ConfigError(str(e))
 

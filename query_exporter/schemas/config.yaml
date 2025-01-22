@@ -114,9 +114,10 @@ definitions:
       autocommit:
         title: Whether to enable autocommit for queries
         description: >
-          When set to false, don't autocommit after each query.
+          NOTE: setting autocommit on or off no longer has effect since each
+          query is run in a separate transaction.  This option is deprecated
+          and will be removed in the next major release.
         type: boolean
-        default: true
       keep-connected:
         title: Whether to keep the connection open for the database between queries
         description: >
