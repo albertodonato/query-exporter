@@ -279,7 +279,7 @@ For general purpose questions, you can use `Discussions`_ on GitHub.
 .. _`contribution guide`: docs/contributing.rst
 .. _`Helm chart`: https://github.com/makezbs/helm-charts/tree/main/charts/query-exporter
 .. _`GitHub container registry`: https://github.com/albertodonato/query-exporter/pkgs/container/query-exporter
-.. _`Discussions`: https://github.com/albertodonato/query-exporter/discussions``
+.. _`Discussions`: https://github.com/albertodonato/query-exporter/discussions
 
 .. |query-exporter logo| image:: https://raw.githubusercontent.com/albertodonato/query-exporter/main/logo.svg
    :alt: query-exporter logo
