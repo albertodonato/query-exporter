@@ -1,5 +1,4 @@
 import asyncio
-from collections import defaultdict
 from collections.abc import AsyncIterator, Callable, Iterator
 from decimal import Decimal
 from pathlib import Path
@@ -7,7 +6,6 @@ import typing as t
 from unittest.mock import ANY
 
 from prometheus_aioexporter import MetricsRegistry
-from prometheus_client.metrics import MetricWrapperBase
 import pytest
 from pytest_mock import MockerFixture
 from pytest_structlog import StructuredLogCapture
@@ -18,7 +16,7 @@ from query_exporter.config import load_config
 from query_exporter.db import DataBase, DataBaseConfig
 from query_exporter.loop import MetricsLastSeen, QueryLoop
 
-from .conftest import QueryTracker
+from .conftest import QueryTracker, metric_values
 
 AdvanceTime = Callable[[float], t.Awaitable[None]]
 
@@ -74,31 +72,6 @@ async def query_loop(
     make_query_loop: MakeQueryLoop,
 ) -> AsyncIterator[QueryLoop]:
     yield make_query_loop()
-
-
-MetricValues = list[int | float] | dict[tuple[str, ...], int | float]
-
-
-def metric_values(
-    metric: MetricWrapperBase, by_labels: tuple[str, ...] = ()
-) -> MetricValues:
-    """Return values for the metric."""
-    if metric._type == "gauge":
-        suffix = ""
-    elif metric._type == "counter":
-        suffix = "_total"
-
-    values_by_label: dict[tuple[str, ...], int | float] = {}
-    values_by_suffix: dict[str, list[int | float]] = defaultdict(list)
-    for sample_suffix, labels, value, *_ in metric._samples():
-        if sample_suffix == suffix:
-            if by_labels:
-                label_values = tuple(labels[label] for label in by_labels)
-                values_by_label[label_values] = value
-            else:
-                values_by_suffix[sample_suffix].append(value)
-
-    return values_by_label if by_labels else values_by_suffix[suffix]
 
 
 async def run_queries(db_file: Path, *queries: str) -> None:

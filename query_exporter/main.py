@@ -2,6 +2,7 @@
 
 from functools import partial
 from pathlib import Path
+import typing as t
 
 from aiohttp.web import Application
 import click
@@ -11,6 +12,7 @@ from prometheus_aioexporter import (
     MetricConfig,
     PrometheusExporterScript,
 )
+from prometheus_client.metrics import Gauge
 
 from . import __version__
 from .config import (
@@ -19,6 +21,7 @@ from .config import (
     load_config,
 )
 from .loop import QueryLoop
+from .metrics import QUERY_INTERVAL_METRIC_NAME
 
 
 class QueryExporterScript(PrometheusExporterScript):
@@ -60,8 +63,11 @@ class QueryExporterScript(PrometheusExporterScript):
         if args.check_only:
             raise SystemExit(0)
         self.create_metrics(self.config.metrics.values())
+        self._set_static_metrics()
 
-    async def on_application_startup(self, application: Application) -> None:
+    async def on_application_startup(
+        self, application: Application
+    ) -> None:  # pragma: nocover
         query_loop = QueryLoop(self.config, self.registry, self.logger)
         application["exporter"].set_metric_update_handler(
             partial(self._update_handler, query_loop)
@@ -69,12 +75,14 @@ class QueryExporterScript(PrometheusExporterScript):
         application["query-loop"] = query_loop
         await query_loop.start()
 
-    async def on_application_shutdown(self, application: Application) -> None:
+    async def on_application_shutdown(
+        self, application: Application
+    ) -> None:  # pragma: nocover
         await application["query-loop"].stop()
 
     async def _update_handler(
         self, query_loop: QueryLoop, metrics: list[MetricConfig]
-    ) -> None:
+    ) -> None:  # pragma: nocover
         """Run queries with no specified schedule on each request."""
         await query_loop.run_aperiodic_queries()
         query_loop.clear_expired_series()
@@ -86,6 +94,16 @@ class QueryExporterScript(PrometheusExporterScript):
         except (InvalidMetricType, ConfigError) as error:
             self.logger.error("invalid config", error=str(error))
             raise SystemExit(1)
+
+    def _set_static_metrics(self) -> None:
+        query_interval_metric = t.cast(
+            Gauge, self.registry.get_metric(QUERY_INTERVAL_METRIC_NAME)
+        )
+        for query in self.config.queries.values():
+            if query.interval:
+                query_interval_metric.labels(query=query.name).set(
+                    query.interval
+                )
 
 
 script = QueryExporterScript()

@@ -34,10 +34,21 @@ _QUERY_LATENCY_METRIC_CONFIG = MetricConfig(
     type="histogram",
     labels=("query",),
 )
+# metrics reporting the query interval
+QUERY_INTERVAL_METRIC_NAME = "query_interval"
+_QUERY_INTERVAL_METRIC_CONFIG = MetricConfig(
+    name=QUERY_INTERVAL_METRIC_NAME,
+    description="Query execution interval",
+    type="gauge",
+    labels=("query",),
+)
+
+
 BUILTIN_METRICS = frozenset(
     (
         DB_ERRORS_METRIC_NAME,
         QUERIES_METRIC_NAME,
+        QUERY_INTERVAL_METRIC_NAME,
         QUERY_LATENCY_METRIC_NAME,
         QUERY_TIMESTAMP_METRIC_NAME,
     )
@@ -48,7 +59,7 @@ def get_builtin_metric_configs(
     extra_labels: frozenset[str],
 ) -> dict[str, MetricConfig]:
     """Return configuration for builtin metrics."""
-    return {
+    metric_configs = {
         metric_config.name: MetricConfig(
             metric_config.name,
             metric_config.description,
@@ -63,3 +74,5 @@ def get_builtin_metric_configs(
             _QUERY_TIMESTAMP_METRIC_CONFIG,
         )
     }
+    metric_configs[QUERY_INTERVAL_METRIC_NAME] = _QUERY_INTERVAL_METRIC_CONFIG
+    return metric_configs

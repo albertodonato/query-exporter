@@ -158,6 +158,9 @@ The exporter provides a few builtin metrics which can be useful to track query e
 ``queries{database="db",query="q",status="[success|error|timeout]"}``:
   a counter with number of executed queries, per database, query and status.
 
+``query_interval{query="q"}``:
+  a gauge reporting the configured execution interval in seconds, if set, per query.
+
 ``query_latency{database="db",query="q"}``:
   a histogram with query latencies, per database and query.
 
