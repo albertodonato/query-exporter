@@ -25,7 +25,8 @@ RUN pip install \
     mysqlclient \
     psycopg2 \
     pymssql \
-    pyodbc
+    pyodbc \
+    teradatasqlalchemy
 
 RUN curl \
     https://download.oracle.com/otn_software/linux/instantclient/instantclient-basiclite-linux$(arch | sed -e 's/x86_64/x64/g; s/aarch64/-arm64/g').zip \
