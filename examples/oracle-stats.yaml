@@ -59,38 +59,38 @@ queries:
     databases: [oracle]
     metrics:
       - oracle_sessions
-    sql: !file oracle-session-stats.sql
+    sql: !file oracle-stats/session.sql
   resource_stats:
     databases: [oracle]
     metrics:
       - oracle_resouce_current_utilization
       - oracle_resource_limit
-    sql: !file oracle-resource-stats.sql
+    sql: !file oracle-stats/resource.sql
   asm_diskgroup_stats:
     databases: [oracle]
     metrics:
       - oracle_asm_diskgroup_total
       - oracle_asm_diskgroup_free
-    sql: !file oracle-asm-diskgroup-stats.sql
+    sql: !file oracle-stats/asm-diskgroup.sql
   activity_stats:
     databases: [oracle]
     metrics:
       - oracle_activity
-    sql: !file oracle-activity-stats.sql
+    sql: !file oracle-stats/activity.sql
   process_stats:
     databases: [oracle]
     metrics:
       - oracle_process
-    sql: !file oracle-process-stats.sql
+    sql: !file oracle-stats/process.sql
   wait_time_stats:
     databases: [oracle]
     metrics:
       - oracle_wait_time
-    sql: !file oracle-wait-time-stats.sql
+    sql: !file oracle-stats/wait-time.sql
   tablespace_stats:
     databases: [oracle]
     metrics:
       - oracle_tablespace_bytes
       - oracle_tablespace_max_bytes
       - oracle_tablespace_free
-    sql: !file oracle-tablespace-stats.sql
+    sql: !file oracle-stats/tablespace.sql

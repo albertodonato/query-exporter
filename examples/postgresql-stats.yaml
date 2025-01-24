@@ -234,7 +234,7 @@ queries:
     databases: [pg]
     metrics:
       - pg_process
-    sql: !file postgresql-process-stats.sql
+    sql: !file postgresql-stats/process.sql
   database_stats:
     databases: [pg]
     metrics:
@@ -253,7 +253,7 @@ queries:
       - pg_db_deadlocks
       - pg_db_blk_read_time
       - pg_db_blk_write_time
-    sql: !file postgresql-database-stats.sql
+    sql: !file postgresql-stats/database.sql
   table_stats:
     databases: [pg]
     metrics:
@@ -271,7 +271,7 @@ queries:
       - pg_table_autovacuum
       - pg_table_analyze
       - pg_table_autoanalyze
-    sql: !file postgresql-table-stats.sql
+    sql: !file postgresql-stats/table.sql
   table_io_stats:
     databases: [pg]
     metrics:
@@ -283,43 +283,43 @@ queries:
       - pg_table_io_toast_blks_hit
       - pg_table_io_tidx_blks_read
       - pg_table_io_tidx_blks_hit
-    sql: !file postgresql-table-io-stats.sql
+    sql: !file postgresql-stats/table-io.sql
   idx_stats:
     databases: [pg]
     metrics:
       - pg_idx_scan
       - pg_idx_tup_read
       - pg_idx_tup_fetch
-    sql: !file postgresql-idx-stats.sql
+    sql: !file postgresql-stats/idx.sql
   idx_io_stats:
     databases: [pg]
     metrics:
       - pg_idx_io_blks_read
       - pg_idx_io_blks_hit
-    sql: !file postgresql-idx-io-stats.sql
+    sql: !file postgresql-stats/idx-io.sql
   seq_stats:
     databases: [pg]
     metrics:
       - pg_seq_blks_read
       - pg_seq_blks_hit
-    sql: !file postgresql-seq-stats.sql
+    sql: !file postgresql-stats/seq.sql
   cache_stats:
     databases: [pg]
     metrics:
       - pg_cache_heap_read
       - pg_cache_heap_hit
       - pg_cache_hit_ratio
-    sql: !file postgresql-cache-stats.sql
+    sql: !file postgresql-stats/cache.sql
   idx_usage_stats:
     databases: [pg]
     metrics:
       - pg_idx_usage_percent
       - pg_idx_usage_rows
-    sql: !file postgresql-idx-usage-stats.sql
+    sql: !file postgresql-stats/idx-usage.sql
   idx_cache_stats:
     databases: [pg]
     metrics:
       - pg_idx_cache_read
       - pg_idx_cache_hit
       - pg_idx_cache_hit_ratio
-    sql: !file postgresql-idx-cache-stats.sql
+    sql: !file postgresql-stats/idx-cache.sql
