@@ -234,13 +234,7 @@ queries:
     databases: [pg]
     metrics:
       - pg_process
-    sql: >
-      SELECT
-        state,
-        COUNT(*) AS pg_process
-      FROM pg_stat_activity
-      WHERE state IS NOT NULL
-      GROUP BY state
+    sql: !file postgresql-stats/process.sql
   database_stats:
     databases: [pg]
     metrics:
@@ -259,26 +253,7 @@ queries:
       - pg_db_deadlocks
       - pg_db_blk_read_time
       - pg_db_blk_write_time
-    sql: >
-      SELECT
-        datname AS datname,
-        numbackends AS pg_db_numbackends,
-        xact_commit AS pg_db_xact_commit,
-        xact_rollback AS pg_db_xact_rollback,
-        blks_read AS pg_db_blks_read,
-        blks_hit AS pg_db_blks_hit,
-        tup_returned AS pg_db_tup_returned,
-        tup_fetched AS pg_db_tup_fetched,
-        tup_inserted AS pg_db_tup_inserted,
-        tup_updated AS pg_db_tup_updated,
-        tup_deleted AS pg_db_tup_deleted,
-        conflicts AS pg_db_conflicts,
-        temp_bytes AS pg_db_temp_bytes,
-        deadlocks AS pg_db_deadlocks,
-        blk_read_time AS pg_db_blk_read_time,
-        blk_write_time AS pg_db_blk_write_time
-      FROM pg_stat_database
-
+    sql: !file postgresql-stats/database.sql
   table_stats:
     databases: [pg]
     metrics:
@@ -296,25 +271,8 @@ queries:
       - pg_table_autovacuum
       - pg_table_analyze
       - pg_table_autoanalyze
-    sql: >
-      SELECT
-        relname,
-        seq_scan AS pg_table_seq_scan,
-        seq_tup_read AS pg_table_seq_tup_read,
-        idx_scan AS pg_table_idx_scan,
-        idx_tup_fetch AS pg_table_idx_tup_fetch,
-        n_tup_ins AS pg_table_tup_insert,
-        n_tup_upd AS pg_table_tup_update,
-        n_tup_del AS pg_table_tup_delete,
-        n_tup_hot_upd AS pg_table_tup_hot_update,
-        n_live_tup AS pg_table_live_tup,
-        n_dead_tup AS pg_table_dead_tup,
-        vacuum_count AS pg_table_vacuum,
-        autovacuum_count AS pg_table_autovacuum,
-        analyze_count AS pg_table_analyze,
-        autoanalyze_count AS pg_table_autoanalyze
-      FROM pg_stat_user_tables
-  tables_io_stats:
+    sql: !file postgresql-stats/table.sql
+  table_io_stats:
     databases: [pg]
     metrics:
       - pg_table_io_heap_blks_read
@@ -325,91 +283,43 @@ queries:
       - pg_table_io_toast_blks_hit
       - pg_table_io_tidx_blks_read
       - pg_table_io_tidx_blks_hit
-    sql: >
-      SELECT
-        relname,
-        SUM(heap_blks_read) AS pg_table_io_heap_blks_read,
-        SUM(heap_blks_hit) AS pg_table_io_heap_blks_hit,
-        SUM(idx_blks_read) AS pg_table_io_idx_blks_read,
-        SUM(idx_blks_hit) AS pg_table_io_idx_blks_hit,
-        SUM(toast_blks_read) AS pg_table_io_toast_blks_read,
-        SUM(toast_blks_hit) AS pg_table_io_toast_blks_hit,
-        SUM(tidx_blks_read) AS pg_table_io_tidx_blks_read,
-        SUM(tidx_blks_hit) AS pg_table_io_tidx_blks_hit
-      FROM pg_statio_user_tables
-      GROUP BY relname
+    sql: !file postgresql-stats/table-io.sql
   idx_stats:
     databases: [pg]
     metrics:
       - pg_idx_scan
       - pg_idx_tup_read
       - pg_idx_tup_fetch
-    sql: >
-      SELECT
-        relname,
-        indexrelname,
-        SUM(idx_scan) AS pg_idx_scan,
-        SUM(idx_tup_read) AS pg_idx_tup_read,
-        SUM(idx_tup_fetch) AS pg_idx_tup_fetch
-      FROM pg_stat_user_indexes
-      GROUP BY relname, indexrelname
+    sql: !file postgresql-stats/idx.sql
   idx_io_stats:
     databases: [pg]
     metrics:
       - pg_idx_io_blks_read
       - pg_idx_io_blks_hit
-    sql: >
-      SELECT
-        relname,
-        indexrelname,
-        SUM(idx_blks_read) AS pg_idx_io_blks_read,
-        sum(idx_blks_hit) AS pg_idx_io_blks_hit
-      FROM pg_statio_user_indexes
-      GROUP BY relname, indexrelname
+    sql: !file postgresql-stats/idx-io.sql
   seq_stats:
     databases: [pg]
     metrics:
       - pg_seq_blks_read
       - pg_seq_blks_hit
-    sql: >
-      SELECT
-        relname,
-        blks_read AS pg_seq_blks_read,
-        blks_hit AS pg_seq_blks_hit
-      FROM pg_statio_user_sequences
+    sql: !file postgresql-stats/seq.sql
   cache_stats:
     databases: [pg]
     metrics:
       - pg_cache_heap_read
       - pg_cache_heap_hit
       - pg_cache_hit_ratio
-    sql: >
-      SELECT
-        SUM(heap_blks_read) AS pg_cache_heap_read,
-        SUM(heap_blks_hit) AS pg_cache_heap_hit,
-        (SUM(heap_blks_hit) / (SUM(heap_blks_hit) + SUM(heap_blks_read))) * 100 AS pg_cache_hit_ratio
-      FROM pg_statio_user_tables
+    sql: !file postgresql-stats/cache.sql
   idx_usage_stats:
     databases: [pg]
     metrics:
       - pg_idx_usage_percent
       - pg_idx_usage_rows
-    sql: >
-      SELECT
-        relname,
-        100 * idx_scan / (seq_scan + idx_scan) AS pg_idx_usage_percent,
-        n_live_tup AS pg_idx_usage_rows
-      FROM pg_stat_user_tables
-      WHERE seq_scan + idx_scan > 0
+    sql: !file postgresql-stats/idx-usage.sql
   idx_cache_stats:
     databases: [pg]
     metrics:
       - pg_idx_cache_read
       - pg_idx_cache_hit
       - pg_idx_cache_hit_ratio
-    sql: >
-      SELECT
-        SUM(idx_blks_read) AS pg_idx_cache_read,
-        SUM(idx_blks_hit) AS pg_idx_cache_hit,
-        ((SUM(idx_blks_hit) - SUM(idx_blks_read)) / SUM(idx_blks_hit)) * 100 AS pg_idx_cache_hit_ratio
-      FROM pg_statio_user_indexes
+    sql: !file postgresql-stats/idx-cache.sql
