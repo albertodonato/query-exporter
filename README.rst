@@ -216,7 +216,7 @@ A `Helm chart`_ to run the container in Kubernetes is also available.
 
 Automated builds from the ``main`` branch are available on the `GitHub container registry`_ via::
 
-  docker pull ghcr.io/albertodonato/query-exporter:sha256-28058bd8c5acc97d57c1ad95f1a7395d9d43c30687459cd4adacc3e19d009996
+  docker pull ghcr.io/albertodonato/query-exporter:main
 
 
 ODBC driver version
