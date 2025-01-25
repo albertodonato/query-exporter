@@ -1,3 +1,16 @@
+v3.2.0 - 2025-01-25
+===================
+
+- Run queries in explicit transactions, deprecate ``autocommit`` flag (#232)
+- Add builtin ``query_interval`` metric. (#225)
+
+**NOTE**:
+  The ``autocommit`` flag for ``database`` entries is now deprecated and not
+  used anymore. Queries are always run in a separate transaction with explicit
+  commit/rollback. Queries in the ``connect-sql`` config are all run in a
+  single transaction.
+
+
 v3.1.0 - 2025-01-08
 ===================
 
