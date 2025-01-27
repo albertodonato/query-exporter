@@ -92,6 +92,8 @@ structlog==25.1.0
 toolrack==4.0.1
     # via query-exporter (pyproject.toml)
 typing-extensions==4.12.2
-    # via sqlalchemy
+    # via
+    #   referencing
+    #   sqlalchemy
 yarl==1.18.3
     # via aiohttp
