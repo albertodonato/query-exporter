@@ -1,0 +1,5 @@
+*
+
+!pyproject.toml
+!query_exporter/
+!requirements*.txt
