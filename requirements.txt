@@ -67,7 +67,7 @@ python-dateutil==2.9.0.post0
     #   query-exporter (pyproject.toml)
 python-dotenv==1.0.1
     # via prometheus-aioexporter
-pytz==2024.2
+pytz==2025.1
     # via croniter
 pyyaml==6.0.2
     # via query-exporter (pyproject.toml)
