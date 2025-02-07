@@ -549,15 +549,25 @@ class DataBase:
         self.logger.debug("disconnected")
 
     def _setup_query_latency_tracking(self, engine: Engine) -> None:
-        @event.listens_for(engine, "before_cursor_execute")  # type: ignore
+        @event.listens_for(engine, "before_cursor_execute")
         def before_cursor_execute(
-            conn, cursor, statement, parameters, context, executemany
+            conn: Connection,
+            cursor: t.Any,
+            statement: str,
+            parameters: t.Any,
+            context: t.Any,
+            executemany: bool,
         ) -> None:
             conn.info["query_start_time"] = perf_counter()
 
-        @event.listens_for(engine, "after_cursor_execute")  # type: ignore
+        @event.listens_for(engine, "after_cursor_execute")
         def after_cursor_execute(
-            conn, cursor, statement, parameters, context, executemany
+            conn: Connection,
+            cursor: t.Any,
+            statement: str,
+            parameters: t.Any,
+            context: t.Any,
+            executemany: bool,
         ) -> None:
             conn.info["query_latency"] = perf_counter() - conn.info.pop(
                 "query_start_time"
