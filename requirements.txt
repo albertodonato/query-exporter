@@ -83,7 +83,7 @@ rpds-py==0.22.3
     #   referencing
 six==1.17.0
     # via python-dateutil
-sqlalchemy==2.0.37
+sqlalchemy==2.0.38
     # via query-exporter (pyproject.toml)
 structlog==25.1.0
     # via
