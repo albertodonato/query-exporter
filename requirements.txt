@@ -4,9 +4,9 @@
 #
 #    pip-compile --output-file=requirements.txt pyproject.toml
 #
-aiohappyeyeballs==2.4.4
+aiohappyeyeballs==2.4.6
     # via aiohttp
-aiohttp==3.11.11
+aiohttp==3.11.12
     # via
     #   prometheus-aioexporter
     #   query-exporter (pyproject.toml)
@@ -83,7 +83,7 @@ rpds-py==0.22.3
     #   referencing
 six==1.17.0
     # via python-dateutil
-sqlalchemy==2.0.37
+sqlalchemy==2.0.38
     # via query-exporter (pyproject.toml)
 structlog==25.1.0
     # via
