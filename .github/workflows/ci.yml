@@ -96,4 +96,3 @@ jobs:
       - name: Test
         run: |
           tox run -e integration-tests -- -v
-
