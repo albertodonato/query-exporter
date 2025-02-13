@@ -1,4 +1,4 @@
-FROM python:3.13-slim-bookworm AS build-image
+FROM --platform=$BUILDPLATFORM python:3.13-slim-bookworm AS build-image
 
 RUN apt-get update
 RUN apt-get full-upgrade -y
@@ -36,7 +36,7 @@ RUN mkdir -p /opt/oracle/instantclient
 RUN mv instantclient*/* /opt/oracle/instantclient
 
 
-FROM python:3.13-slim-bookworm
+FROM --platform=$BUILDPLATFORM python:3.13-slim-bookworm
 ARG ODBC_DRIVER_VERSION=18
 ENV ODBC_DRIVER=msodbcsql${ODBC_DRIVER_VERSION}
 
