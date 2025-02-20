@@ -76,3 +76,39 @@ def test_multiple_metrics(
         ("db", "a", "c"): 20.0,
         ("db", "x", "z"): 200.0,
     }
+
+
+def test_update_metrics(
+    db_server: DatabaseServer,
+    exporter: Exporter,
+    service_handler: ServiceHandler,
+) -> None:
+    db_server.make_table("test", ["m"], ["l"])
+    db_server.insert_values("test", [(1, "foo"), (2, "bar")])
+    exporter.configure(
+        {
+            "databases": {
+                "db": {"dsn": db_server.dsn},
+            },
+            "metrics": {
+                "m": {
+                    "type": "gauge",
+                    "labels": ["l"],
+                },
+            },
+            "queries": {
+                "q": {
+                    "databases": ["db"],
+                    "metrics": ["m"],
+                    "sql": "SELECT SUM(m) AS m, l FROM test GROUP BY l",
+                },
+            },
+        }
+    )
+    service_handler.restart(exporter)
+    metrics = exporter.get_metrics()
+    assert metrics["m"] == {("db", "foo"): 1.0, ("db", "bar"): 2.0}
+
+    db_server.insert_values("test", [(2, "foo"), (10, "bar")])
+    updated_metrics = exporter.get_metrics()
+    assert updated_metrics["m"] == {("db", "foo"): 3.0, ("db", "bar"): 12.0}
