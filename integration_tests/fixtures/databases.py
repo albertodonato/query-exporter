@@ -103,13 +103,6 @@ class PostgreSQL(DatabaseServer):
                 "POSTGRES_PASSWORD": self.password,
                 "POSTGRES_DB": self.database,
             },
-            "volumes": [
-                {
-                    "type": "tmpfs",
-                    "target": "/var/lib/postgresql/data",
-                },
-            ],
-            "command": "-F",
         }
 
 
@@ -128,12 +121,6 @@ class MySQL(DatabaseServer):
                 "MYSQL_ROOT_PASSWORD": self.password,
                 "MYSQL_DATABASE": self.database,
             },
-            "volumes": [
-                {
-                    "type": "tmpfs",
-                    "target": "/var/lib/mysql",
-                },
-            ],
         }
 
 

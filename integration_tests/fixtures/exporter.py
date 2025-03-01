@@ -31,6 +31,9 @@ class Exporter(DockerService):
 
     def docker_config(self) -> dict[str, t.Any]:
         return super().docker_config() | {
+            "environment": {
+                "QE_LOG_LEVEL": "debug",
+            },
             "build": str(Path(".").absolute()),
             "volumes": [f"{self.config_dir}:/config"],
         }
