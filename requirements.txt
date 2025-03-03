@@ -6,7 +6,7 @@
 #
 aiohappyeyeballs==2.4.6
     # via aiohttp
-aiohttp==3.11.12
+aiohttp==3.11.13
     # via
     #   prometheus-aioexporter
     #   query-exporter (pyproject.toml)
