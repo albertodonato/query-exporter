@@ -6,7 +6,7 @@
 #
 aiohappyeyeballs==2.4.6
     # via aiohttp
-aiohttp==3.11.12
+aiohttp==3.11.13
     # via
     #   prometheus-aioexporter
     #   query-exporter (pyproject.toml)
@@ -59,7 +59,7 @@ propcache==0.3.0
     #   yarl
 pygments==2.19.1
     # via rich
-pytest==8.3.4
+pytest==8.3.5
     # via toolrack
 python-dateutil==2.9.0.post0
     # via
