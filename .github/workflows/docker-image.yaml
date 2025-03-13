@@ -3,12 +3,9 @@ name: Docker image
 on:
   push:
     branches:
-      - main
+      - "**"
     tags:
       - "[0-9]+.[0-9]+.[0-9]+"
-  pull_request:
-    branches:
-      - main
 
 env:
   REGISTRY: ghcr.io
@@ -45,7 +42,6 @@ jobs:
             type=semver,pattern={{version}}
             type=ref,event=branch
             type=ref,event=tag
-            type=ref,event=pr
             type=sha,prefix=sha-
 
       - name: Log in to the Container registry
