@@ -113,7 +113,6 @@ jobs:
             type=semver,pattern={{version}}
             type=ref,event=branch
             type=ref,event=tag
-            type=ref,event=pr
             type=sha,prefix=sha-
 
       - name: Create manifest list and push
