@@ -1,3 +1,5 @@
+import typing as t
+
 from prometheus_aioexporter import MetricConfig
 
 # metric for counting database errors
@@ -57,6 +59,7 @@ BUILTIN_METRICS = frozenset(
 
 def get_builtin_metric_configs(
     extra_labels: frozenset[str],
+    builtin_metrics_config: dict[str, dict[str, t.Any]],
 ) -> dict[str, MetricConfig]:
     """Return configuration for builtin metrics."""
     metric_configs = {
@@ -65,7 +68,8 @@ def get_builtin_metric_configs(
             metric_config.description,
             metric_config.type,
             labels=set(metric_config.labels) | extra_labels,
-            config=metric_config.config,
+            config=metric_config.config
+            | builtin_metrics_config.get(metric_config.name, {}),
         )
         for metric_config in (
             _DB_ERRORS_METRIC_CONFIG,

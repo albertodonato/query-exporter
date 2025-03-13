@@ -9,6 +9,16 @@ required:
   - metrics
   - queries
 properties:
+  builtin-metrics:
+    title: Configuration for builtin metrics
+    type: object
+    properties:
+      query_latency:
+        type: object
+        additionalProperties: false
+        properties:
+          buckets:
+            $ref: "#/definitions/buckets"
   databases:
     title: Databases to connect to
     type: object
@@ -49,6 +59,13 @@ definitions:
       - type: string
         pattern: ^[0-9]+[smhd]?$
       - type: "null"
+  buckets:
+    title: Buckets configuration for histogram metrics
+    type: array
+    items:
+      type: number
+      minItems: 1
+      uniqueItems: true
 
   database:
     title: A database to run queries on
@@ -172,11 +189,7 @@ definitions:
         uniqueItems: true
       buckets:
         label: For histogram metrics, values for buckets
-        type: array
-        items:
-          type: number
-        minItems: 1
-        uniqueItems: true
+        $ref: "#/definitions/buckets"
       states:
         label: For enum metrics, possible states
         items:

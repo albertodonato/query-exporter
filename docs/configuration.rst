@@ -281,6 +281,21 @@ Each query definition can have the following keys:
   If specified, it must be a multiple of 0.1.
 
 
+``builtin-metrics`` section
+---------------------------
+
+This section contains configuration options for builtin metrics.
+
+Currently, this allows settings custom buckets for the ``query_latency``
+metric:
+
+.. code:: yaml
+
+    builtin-metrics:
+      query_latency:
+        buckets: [0.1, 0.5, 1.0, 5.0]
+
+
 .. _`database-specific options`: databases.rst
 .. _`SQLAlchemy documentation`:
    http://docs.sqlalchemy.org/en/latest/core/engines.html#database-urls
