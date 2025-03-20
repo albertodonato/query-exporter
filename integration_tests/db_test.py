@@ -112,3 +112,46 @@ def test_update_metrics(
     db_server.insert_values("test", [(2, "foo"), (10, "bar")])
     updated_metrics = exporter.get_metrics()
     assert updated_metrics["m"] == {("db", "foo"): 3.0, ("db", "bar"): 12.0}
+
+
+def test_db_connection_error(
+    db_server: DatabaseServer,
+    exporter: Exporter,
+    service_handler: ServiceHandler,
+) -> None:
+    exporter.configure(
+        {
+            "databases": {
+                "db": {"dsn": db_server.dsn},
+            },
+            "metrics": {
+                "m": {
+                    "type": "gauge",
+                },
+            },
+            "queries": {
+                "q": {
+                    "databases": ["db"],
+                    "metrics": ["m"],
+                    "sql": "SELECT EXTRACT(EPOCH FROM NOW()) AS m",
+                },
+            },
+        }
+    )
+    service_handler.restart(exporter)
+    metrics = exporter.get_metrics()
+    metric_value = metrics["m"]["db",]
+    assert metrics["queries"]["db", "q", "success"] == 1.0, metrics
+    # no error is reported
+    assert ("db", "q", "error") not in metrics["queries"]
+    service_handler.stop(db_server)
+    metrics = exporter.get_metrics()
+    assert metrics["queries"]["db", "q", "success"] == 1.0
+    assert metrics["queries"]["db", "q", "error"] == 1.0
+    service_handler.start(db_server)
+    metrics = exporter.get_metrics()
+    # latest execution is a success
+    assert metrics["queries"]["db", "q", "success"] == 2.0
+    assert metrics["queries"]["db", "q", "error"] == 1.0
+    # metric has been updated
+    assert metrics["m"]["db",] > metric_value
