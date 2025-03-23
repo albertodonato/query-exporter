@@ -72,7 +72,7 @@ class ServiceHandler:
         self._executor.execute(f"restart {service.name}")
         self.wait(service)
 
-    def wait(self, service: DockerService, timeout: float = 10.0) -> None:
+    def wait(self, service: DockerService, timeout: float = 20.0) -> None:
         self._services.wait_until_responsive(
             check=service.check_ready, timeout=timeout, pause=0.5
         )
