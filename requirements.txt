@@ -53,7 +53,7 @@ prometheus-client==0.21.1
     # via
     #   prometheus-aioexporter
     #   query-exporter (pyproject.toml)
-propcache==0.3.0
+propcache==0.3.1
     # via
     #   aiohttp
     #   yarl
