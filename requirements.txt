@@ -39,7 +39,7 @@ markdown-it-py==3.0.0
     # via rich
 mdurl==0.1.2
     # via markdown-it-py
-multidict==6.2.0
+multidict==6.3.2
     # via
     #   aiohttp
     #   yarl
@@ -91,9 +91,9 @@ structlog==25.2.0
     #   query-exporter (pyproject.toml)
 toolrack==4.0.1
     # via query-exporter (pyproject.toml)
-typing-extensions==4.12.2
+typing-extensions==4.13.1
     # via
     #   referencing
     #   sqlalchemy
-yarl==1.18.3
+yarl==1.19.0
     # via aiohttp
