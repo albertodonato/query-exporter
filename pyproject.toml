@@ -42,9 +42,9 @@ dynamic = [
 dependencies = [
   "aiohttp",
   "croniter",
-  "jsonschema",
   "prometheus-aioexporter>=3.1",
   "prometheus-client",
+  "pydantic",
   "python-dateutil",
   "pyyaml",
   "sqlalchemy>=2",
@@ -80,7 +80,7 @@ version = { attr = "query_exporter.__version__" }
 include = [ "query_exporter*" ]
 
 [tool.setuptools.package-data]
-query_exporter = [ "py.typed", "schemas/*" ]
+query_exporter = [ "py.typed" ]
 
 [tool.ruff]
 line-length = 79

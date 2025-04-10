@@ -140,7 +140,7 @@ def create_db_engine(dsn: str) -> Engine:
     try:
         return create_engine(dsn, poolclass=NullPool)
     except ImportError as error:
-        raise DataBaseError(f'module "{error.name}" not found')
+        raise DataBaseError(f'Module "{error.name}" not found')
     except (ArgumentError, ValueError, NoSuchModuleError):
         raise DataBaseError(f'Invalid database DSN: "{dsn}"')
 

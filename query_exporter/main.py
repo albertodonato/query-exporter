@@ -62,6 +62,7 @@ class QueryExporterScript(PrometheusExporterScript):
     def configure(self, args: Arguments) -> None:
         self.config = self._load_config(args.config)
         if args.check_only:
+            self.logger.info("configuration valid")
             raise SystemExit(0)
         self.create_metrics(self.config.metrics.values())
         self._set_static_metrics()
@@ -93,7 +94,10 @@ class QueryExporterScript(PrometheusExporterScript):
         try:
             return load_config(paths, self.logger)
         except (InvalidMetricType, ConfigError) as error:
-            self.logger.error("invalid config", error=str(error))
+            self.logger.error("configuration invalid", error=str(error))
+            if isinstance(error, ConfigError):
+                for details in error.details:
+                    self.logger.error("configuration invalid", **details)
             raise SystemExit(1)
 
     def _set_static_metrics(self) -> None:
