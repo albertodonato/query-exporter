@@ -25,7 +25,7 @@ frozenlist==1.5.0
     # via
     #   aiohttp
     #   aiosignal
-greenlet==3.1.1
+greenlet==3.2.0
     # via sqlalchemy
 idna==3.10
     # via yarl
@@ -39,7 +39,7 @@ markdown-it-py==3.0.0
     # via rich
 mdurl==0.1.2
     # via markdown-it-py
-multidict==6.3.2
+multidict==6.4.3
     # via
     #   aiohttp
     #   yarl
