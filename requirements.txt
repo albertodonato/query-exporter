@@ -91,7 +91,7 @@ structlog==25.2.0
     #   query-exporter (pyproject.toml)
 toolrack==4.0.1
     # via query-exporter (pyproject.toml)
-typing-extensions==4.13.1
+typing-extensions==4.13.2
     # via
     #   referencing
     #   sqlalchemy
