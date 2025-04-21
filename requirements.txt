@@ -21,7 +21,7 @@ click==8.1.8
     # via prometheus-aioexporter
 croniter==6.0.0
     # via query-exporter (pyproject.toml)
-frozenlist==1.5.0
+frozenlist==1.6.0
     # via
     #   aiohttp
     #   aiosignal
@@ -95,5 +95,5 @@ typing-extensions==4.13.2
     # via
     #   referencing
     #   sqlalchemy
-yarl==1.19.0
+yarl==1.20.0
     # via aiohttp
