@@ -33,7 +33,7 @@ iniconfig==2.1.0
     # via pytest
 jsonschema==4.23.0
     # via query-exporter (pyproject.toml)
-jsonschema-specifications==2024.10.1
+jsonschema-specifications==2025.4.1
     # via jsonschema
 markdown-it-py==3.0.0
     # via rich
@@ -43,7 +43,7 @@ multidict==6.4.3
     # via
     #   aiohttp
     #   yarl
-packaging==24.2
+packaging==25.0
     # via pytest
 pluggy==1.5.0
     # via pytest
