@@ -85,7 +85,7 @@ six==1.17.0
     # via python-dateutil
 sqlalchemy==2.0.40
     # via query-exporter (pyproject.toml)
-structlog==25.2.0
+structlog==25.3.0
     # via
     #   prometheus-aioexporter
     #   query-exporter (pyproject.toml)
