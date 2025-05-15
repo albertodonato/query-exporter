@@ -25,7 +25,7 @@ frozenlist==1.6.0
     # via
     #   aiohttp
     #   aiosignal
-greenlet==3.2.1
+greenlet==3.2.2
     # via sqlalchemy
 idna==3.10
     # via yarl
