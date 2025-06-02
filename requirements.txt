@@ -6,7 +6,7 @@
 #
 aiohappyeyeballs==2.6.1
     # via aiohttp
-aiohttp==3.11.18
+aiohttp==3.12.6
     # via
     #   prometheus-aioexporter
     #   query-exporter (pyproject.toml)
@@ -31,7 +31,7 @@ idna==3.10
     # via yarl
 iniconfig==2.1.0
     # via pytest
-jsonschema==4.23.0
+jsonschema==4.24.0
     # via query-exporter (pyproject.toml)
 jsonschema-specifications==2025.4.1
     # via jsonschema
