@@ -17,7 +17,7 @@ attrs==25.3.0
     #   aiohttp
     #   jsonschema
     #   referencing
-click==8.1.0
+click==8.2.1
     # via
     #   prometheus-aioexporter
     #   query-exporter (pyproject.toml)
