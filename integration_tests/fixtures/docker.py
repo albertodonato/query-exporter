@@ -73,9 +73,17 @@ class ServiceHandler:
         self.wait(service)
 
     def wait(self, service: DockerService, timeout: float = 20.0) -> None:
-        self._services.wait_until_responsive(
-            check=service.check_ready, timeout=timeout, pause=0.5
-        )
+        try:
+            self._services.wait_until_responsive(
+                check=service.check_ready, timeout=timeout, pause=0.5
+            )
+        except Exception:
+            # on failure, print out logs from the container
+            print(self.logs(service))
+            raise
+
+    def logs(self, service: DockerService) -> str:
+        return str(self._executor.execute(f"logs {service.name}").decode())
 
 
 @pytest.fixture(scope="session")
