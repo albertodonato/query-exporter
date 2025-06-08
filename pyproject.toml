@@ -41,10 +41,9 @@ dynamic = [
 ]
 dependencies = [
   "aiohttp",
-  "click<=8.1",                # XXX temporary pinning due to https://github.com/pallets/click/issues/2970
   "croniter",
   "jsonschema",
-  "prometheus-aioexporter>=3",
+  "prometheus-aioexporter>=3.1",
   "prometheus-client",
   "python-dateutil",
   "pyyaml",

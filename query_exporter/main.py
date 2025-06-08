@@ -7,6 +7,7 @@ import typing as t
 from aiohttp.web import Application
 import click
 from prometheus_aioexporter import (
+    EXPORTER_APP_KEY,
     Arguments,
     InvalidMetricType,
     MetricConfig,
@@ -69,7 +70,7 @@ class QueryExporterScript(PrometheusExporterScript):
         self, application: Application
     ) -> None:  # pragma: nocover
         query_loop = QueryLoop(self.config, self.registry, self.logger)
-        application["exporter"].set_metric_update_handler(
+        application[EXPORTER_APP_KEY].set_metric_update_handler(
             partial(self._update_handler, query_loop)
         )
         application["query-loop"] = query_loop
