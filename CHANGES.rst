@@ -1,3 +1,12 @@
+v3.2.1 - 2025-06-08
+===================
+
+- [docker] Add support for Teradata server.
+- [docker] Add multiarch (``amd64`` and ``arm64``) support.
+- Add docker-based integration tests.
+- Update dependencies.
+
+
 v3.2.0 - 2025-01-25
 ===================
 
