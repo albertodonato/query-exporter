@@ -211,6 +211,7 @@ The image has support for connecting the following databases:
 - IBM DB2 (``db2://``)
 - Oracle (``oracle://``)
 - ClickHouse (``clickhouse+native://``)
+- Teradata (``teradatasql://``)
 
 A `Helm chart`_ to run the container in Kubernetes is also available.
 
