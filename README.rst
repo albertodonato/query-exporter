@@ -82,7 +82,7 @@ A sample configuration file for the application looks like this:
       query3:
         schedule: "*/5 * * * *"
         databases: [db2]
-        metrics: [metric4]
+        metrics: [metric3, metric4]
         sql: |
           SELECT value FROM (
             SELECT "foo" AS metric4 UNION
