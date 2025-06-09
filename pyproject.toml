@@ -7,14 +7,15 @@ requires = [
 [project]
 name = "query-exporter"
 description = "Export Prometheus metrics generated from SQL queries"
-readme = "README.rst"
+readme = { file = "README.txt", content-type = "text/x-rst" }
 keywords = [
   "exporter",
   "metric",
   "prometheus",
   "sql",
 ]
-license = { file = "LICENSE.txt" }
+license = "GPL-3.0-or-later"
+license-files = [ "LICENSE.txt" ]
 maintainers = [
   { name = "Alberto Donato", email = "alberto.donato@gmail.com" },
 ]
@@ -26,7 +27,6 @@ classifiers = [
   "Development Status :: 5 - Production/Stable",
   "Framework :: AsyncIO",
   "Intended Audience :: System Administrators",
-  "License :: OSI Approved :: GNU General Public License (GPL)",
   "Operating System :: OS Independent",
   "Programming Language :: Python :: 3 :: Only",
   "Programming Language :: Python :: 3.11",
