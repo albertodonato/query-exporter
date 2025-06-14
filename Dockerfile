@@ -1,7 +1,6 @@
-FROM --platform=$BUILDPLATFORM python:3.13-slim-bookworm AS build-image
+FROM --platform=$BUILDPLATFORM query-exporter:min-latest AS build-image
 
-RUN apt-get update
-RUN apt-get full-upgrade -y
+RUN apt-get update && apt-get full-upgrade -y
 RUN apt-get install -y --no-install-recommends \
     build-essential \
     curl \
@@ -13,12 +12,8 @@ RUN apt-get install -y --no-install-recommends \
     unixodbc-dev \
     unzip
 
-COPY . /srcdir
-RUN python3 -m venv /virtualenv
 ENV PATH="/virtualenv/bin:$PATH"
 RUN pip install \
-    -r /srcdir/requirements.txt \
-    /srcdir \
     cx-Oracle \
     clickhouse-sqlalchemy \
     "ibm-db-sa; platform_machine == 'x86_64'" \
@@ -36,13 +31,13 @@ RUN mkdir -p /opt/oracle/instantclient
 RUN mv instantclient*/* /opt/oracle/instantclient
 
 
-FROM --platform=$BUILDPLATFORM python:3.13-slim-bookworm
+FROM --platform=$BUILDPLATFORM query-exporter:min-latest
+
 ARG ODBC_DRIVER_VERSION=18
 ENV ODBC_DRIVER=msodbcsql${ODBC_DRIVER_VERSION}
 
-RUN apt-get update && \
-    apt-get full-upgrade -y && \
-    apt-get install -y --no-install-recommends \
+RUN apt-get update && apt-get full-upgrade -y
+RUN apt-get install -y --no-install-recommends \
     curl \
     gnupg2 \
     libaio1 \
@@ -59,15 +54,3 @@ RUN apt-get update && \
 
 COPY --from=build-image /virtualenv /virtualenv
 COPY --from=build-image /opt /opt
-
-ENV PATH="/virtualenv/bin:$PATH"
-ENV VIRTUAL_ENV="/virtualenv"
-ENV LD_LIBRARY_PATH="/opt/oracle/instantclient"
-
-# IPv6 support is not enabled by default, only bind IPv4
-ENV QE_HOST="0.0.0.0"
-
-EXPOSE 9560/tcp
-VOLUME /config
-WORKDIR /config
-ENTRYPOINT ["query-exporter"]
