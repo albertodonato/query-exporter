@@ -1,4 +1,4 @@
-FROM python:3.13-slim-bookworm AS build-image
+FROM --platform=$BUILDPLATFORM python:3.13-slim-bookworm AS build-image
 
 RUN apt-get update
 RUN apt-get full-upgrade -y
@@ -21,7 +21,7 @@ RUN pip install \
     /srcdir \
     cx-Oracle \
     clickhouse-sqlalchemy \
-    "ibm-db-sa; platform_machine == 'x86_64' or platform_machine == 'ppc64le'" \
+    "ibm-db-sa; platform_machine == 'x86_64'" \
     mysqlclient \
     psycopg2 \
     pymssql \
@@ -63,6 +63,7 @@ COPY --from=build-image /opt /opt
 ENV PATH="/virtualenv/bin:$PATH"
 ENV VIRTUAL_ENV="/virtualenv"
 ENV LD_LIBRARY_PATH="/opt/oracle/instantclient"
+
 # IPv6 support is not enabled by default, only bind IPv4
 ENV QE_HOST="0.0.0.0"
 
