@@ -256,8 +256,7 @@ The snap has support for connecting the following databases:
 - MySQL (``mysql://``)
 - SQLite (``sqlite://``)
 - Microsoft SQL Server (``mssql://``)
-- IBM DB2 (``db2://``) on supported architectures (x86_64, ppc64le and
-  s390x)
+- IBM DB2 (``db2://``) (on x86_64 architecture)
 
 
 Contributing
