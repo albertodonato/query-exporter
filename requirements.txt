@@ -21,7 +21,7 @@ click==8.2.1
     # via prometheus-aioexporter
 croniter==6.0.0
     # via query-exporter (pyproject.toml)
-frozenlist==1.6.2
+frozenlist==1.7.0
     # via
     #   aiohttp
     #   aiosignal
