@@ -35,7 +35,7 @@ jsonschema==4.24.0
     # via query-exporter (pyproject.toml)
 jsonschema-specifications==2025.4.1
     # via jsonschema
-multidict==6.4.4
+multidict==6.5.0
     # via
     #   aiohttp
     #   yarl
