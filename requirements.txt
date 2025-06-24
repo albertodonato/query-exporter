@@ -55,7 +55,7 @@ propcache==0.3.2
     #   yarl
 pygments==2.19.1
     # via pytest
-pytest==8.4.0
+pytest==8.4.1
     # via toolrack
 python-dateutil==2.9.0.post0
     # via
