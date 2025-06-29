@@ -49,7 +49,7 @@ class TestCreateDBEngine:
     def test_instantiate_missing_engine_module(self) -> None:
         with pytest.raises(DataBaseError) as error:
             create_db_engine("postgresql:///foo")
-        assert str(error.value) == 'module "psycopg2" not found'
+        assert str(error.value) == 'Module "psycopg2" not found'
 
     @pytest.mark.parametrize("dsn", ["foo-bar", "unknown:///db"])
     def test_instantiate_invalid_dsn(self, dsn: str) -> None:
