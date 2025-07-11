@@ -288,7 +288,7 @@ For general purpose questions, you can use `Discussions`_ on GitHub.
    :target: https://pypi.python.org/pypi/query-exporter
 .. |Build Status| image:: https://github.com/albertodonato/query-exporter/workflows/CI/badge.svg
    :alt: Build Status
-   :target: https://github.com/albertodonato/query-exporter/actions?query=workflow%3ACI
+   :target: https://github.com/albertodonato/query-exporter/actions?query=workflow%3ACI+branch%3Amain
 .. |Snap Package| image:: https://snapcraft.io/query-exporter/badge.svg
    :alt: Snap Package
    :target: https://snapcraft.io/query-exporter
