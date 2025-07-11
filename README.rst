@@ -286,7 +286,7 @@ For general purpose questions, you can use `Discussions`_ on GitHub.
 .. |Latest Version| image:: https://img.shields.io/pypi/v/query-exporter.svg
    :alt: Latest Version
    :target: https://pypi.python.org/pypi/query-exporter
-.. |Build Status| image:: https://github.com/albertodonato/query-exporter/workflows/CI/badge.svg
+.. |Build Status| image:: https://github.com/albertodonato/query-exporter/actions/workflows/ci.yml/badge.svg?branch=main
    :alt: Build Status
    :target: https://github.com/albertodonato/query-exporter/actions?query=workflow%3ACI+branch%3Amain
 .. |Snap Package| image:: https://snapcraft.io/query-exporter/badge.svg
