@@ -101,7 +101,7 @@ class MetricsLastSeen:
         return expired
 
 
-class QueryLoop:
+class QueryExecutor:
     """Run database queries and collect metrics."""
 
     def __init__(

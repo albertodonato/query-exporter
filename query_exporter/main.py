@@ -4,7 +4,7 @@ from functools import partial
 from pathlib import Path
 import typing as t
 
-from aiohttp.web import Application
+from aiohttp.web import AppKey, Application
 import click
 from prometheus_aioexporter import (
     EXPORTER_APP_KEY,
@@ -21,8 +21,11 @@ from .config import (
     ConfigError,
     load_config,
 )
-from .loop import QueryLoop
+from .executor import QueryExecutor
 from .metrics import QUERY_INTERVAL_METRIC_NAME
+
+# The application key to track the QueryExecutor
+QUERY_EXECUTOR_APP_KEY: AppKey[QueryExecutor] = AppKey("query-executor")
 
 
 class QueryExporterScript(PrometheusExporterScript):
@@ -70,24 +73,24 @@ class QueryExporterScript(PrometheusExporterScript):
     async def on_application_startup(
         self, application: Application
     ) -> None:  # pragma: nocover
-        query_loop = QueryLoop(self.config, self.registry, self.logger)
+        query_executor = QueryExecutor(self.config, self.registry, self.logger)
         application[EXPORTER_APP_KEY].set_metric_update_handler(
-            partial(self._update_handler, query_loop)
+            partial(self._update_handler, query_executor)
         )
-        application["query-loop"] = query_loop
-        await query_loop.start()
+        application[QUERY_EXECUTOR_APP_KEY] = query_executor
+        await query_executor.start()
 
     async def on_application_shutdown(
         self, application: Application
     ) -> None:  # pragma: nocover
-        await application["query-loop"].stop()
+        await application[QUERY_EXECUTOR_APP_KEY].stop()
 
     async def _update_handler(
-        self, query_loop: QueryLoop, metrics: list[MetricConfig]
+        self, query_executor: QueryExecutor, metrics: list[MetricConfig]
     ) -> None:  # pragma: nocover
         """Run queries with no specified schedule on each request."""
-        await query_loop.run_aperiodic_queries()
-        query_loop.clear_expired_series()
+        await query_executor.run_aperiodic_queries()
+        query_executor.clear_expired_series()
 
     def _load_config(self, paths: list[Path]) -> Config:
         """Load the application configuration."""
