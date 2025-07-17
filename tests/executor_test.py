@@ -14,7 +14,7 @@ import yaml
 
 from query_exporter.config import load_config
 from query_exporter.db import DataBase, DataBaseConfig
-from query_exporter.loop import MetricsLastSeen, QueryLoop
+from query_exporter.executor import MetricsLastSeen, QueryExecutor
 
 from .conftest import QueryTracker, metric_values
 
@@ -42,36 +42,36 @@ def registry() -> Iterator[MetricsRegistry]:
     yield MetricsRegistry()
 
 
-MakeQueryLoop = Callable[[], QueryLoop]
+MakeQueryExecutor = Callable[[], QueryExecutor]
 
 
 @pytest.fixture
-async def make_query_loop(
+async def make_query_executor(
     tmp_path: Path, config_data: dict[str, t.Any], registry: MetricsRegistry
-) -> AsyncIterator[MakeQueryLoop]:
-    query_loops = []
+) -> AsyncIterator[MakeQueryExecutor]:
+    query_executors = []
 
-    def make_loop() -> QueryLoop:
+    def make_executor() -> QueryExecutor:
         config_file = tmp_path / "config.yaml"
         config_file.write_text(yaml.dump(config_data), "utf-8")
         config = load_config([config_file])
         registry.create_metrics(config.metrics.values())
-        query_loop = QueryLoop(config, registry)
-        query_loops.append(query_loop)
-        return query_loop
+        query_executor = QueryExecutor(config, registry)
+        query_executors.append(query_executor)
+        return query_executor
 
-    yield make_loop
+    yield make_executor
     await asyncio.gather(
-        *(query_loop.stop() for query_loop in query_loops),
+        *(query_executor.stop() for query_executor in query_executors),
         return_exceptions=True,
     )
 
 
 @pytest.fixture
-async def query_loop(
-    make_query_loop: MakeQueryLoop,
-) -> AsyncIterator[QueryLoop]:
-    yield make_query_loop()
+async def query_executor(
+    make_query_executor: MakeQueryExecutor,
+) -> AsyncIterator[QueryExecutor]:
+    yield make_query_executor()
 
 
 async def run_queries(db_file: Path, *queries: str) -> None:
@@ -130,30 +130,30 @@ class TestMetricsLastSeen:
         assert last_seen._last_seen == {}
 
 
-class TestQueryLoop:
+class TestQueryExecutor:
     async def test_start(
         self,
         query_tracker: QueryTracker,
-        query_loop: QueryLoop,
+        query_executor: QueryExecutor,
     ) -> None:
-        await query_loop.start()
-        timed_call = query_loop._timed_calls["q"]
+        await query_executor.start()
+        timed_call = query_executor._timed_calls["q"]
         assert timed_call.running
         await query_tracker.wait_results()
 
-    async def test_stop(self, query_loop: QueryLoop) -> None:
-        await query_loop.start()
-        timed_call = query_loop._timed_calls["q"]
-        await query_loop.stop()
+    async def test_stop(self, query_executor: QueryExecutor) -> None:
+        await query_executor.start()
+        timed_call = query_executor._timed_calls["q"]
+        await query_executor.stop()
         assert not timed_call.running
 
     async def test_run_query(
         self,
         query_tracker: QueryTracker,
-        query_loop: QueryLoop,
+        query_executor: QueryExecutor,
         registry: MetricsRegistry,
     ) -> None:
-        await query_loop.start()
+        await query_executor.start()
         await query_tracker.wait_results()
         # the metric is updated
         metric = registry.get_metric("m")
@@ -171,7 +171,7 @@ class TestQueryLoop:
         query_tracker: QueryTracker,
         registry: MetricsRegistry,
         config_data: dict[str, t.Any],
-        make_query_loop: MakeQueryLoop,
+        make_query_executor: MakeQueryExecutor,
     ) -> None:
         event_loop = asyncio.get_running_loop()
 
@@ -180,18 +180,18 @@ class TestQueryLoop:
                 # sync croniter time with the loop one
                 yield event_loop.time() + 60
 
-        mock_croniter = mocker.patch("query_exporter.loop.croniter")
+        mock_croniter = mocker.patch("query_exporter.executor.croniter")
         mock_croniter.side_effect = croniter
         # ensure that both clocks advance in sync
         mocker.patch(
-            "query_exporter.loop.time.time",
+            "query_exporter.executor.time.time",
             lambda: event_loop.time(),
         )
 
         del config_data["queries"]["q"]["interval"]
         config_data["queries"]["q"]["schedule"] = "*/2 * * * *"
-        query_loop = make_query_loop()
-        await query_loop.start()
+        query_executor = make_query_executor()
+        await query_executor.start()
         mock_croniter.assert_called_once()
 
     async def test_run_query_with_parameters(
@@ -199,7 +199,7 @@ class TestQueryLoop:
         query_tracker: QueryTracker,
         registry: MetricsRegistry,
         config_data: dict[str, t.Any],
-        make_query_loop: MakeQueryLoop,
+        make_query_executor: MakeQueryExecutor,
     ) -> None:
         config_data["metrics"]["m"]["type"] = "counter"
         config_data["metrics"]["m"]["labels"] = ["l"]
@@ -208,8 +208,8 @@ class TestQueryLoop:
             {"param": 10.0, "label": "l1"},
             {"param": 20.0, "label": "l2"},
         ]
-        query_loop = make_query_loop()
-        await query_loop.start()
+        query_executor = make_query_executor()
+        await query_executor.start()
         await query_tracker.wait_results()
         # the metric is updated
         metric = registry.get_metric("m")
@@ -228,11 +228,11 @@ class TestQueryLoop:
         query_tracker: QueryTracker,
         registry: MetricsRegistry,
         config_data: dict[str, t.Any],
-        make_query_loop: MakeQueryLoop,
+        make_query_executor: MakeQueryExecutor,
     ) -> None:
         config_data["queries"]["q"]["sql"] = "SELECT NULL AS m"
-        query_loop = make_query_loop()
-        await query_loop.start()
+        query_executor = make_query_executor()
+        await query_executor.start()
         await query_tracker.wait_results()
         metric = registry.get_metric("m")
         assert metric_values(metric) == [0]
@@ -249,7 +249,7 @@ class TestQueryLoop:
         query_tracker: QueryTracker,
         registry: MetricsRegistry,
         config_data: dict[str, t.Any],
-        make_query_loop: MakeQueryLoop,
+        make_query_executor: MakeQueryExecutor,
         increment: bool,
         value: float,
     ) -> None:
@@ -260,8 +260,8 @@ class TestQueryLoop:
             {"param": 10.0},
             {"param": 20.0},
         ]
-        query_loop = make_query_loop()
-        await query_loop.start()
+        query_executor = make_query_executor()
+        await query_executor.start()
         await query_tracker.wait_results()
         # the metric is updated
         metric = registry.get_metric("m")
@@ -272,15 +272,15 @@ class TestQueryLoop:
         query_tracker: QueryTracker,
         registry: MetricsRegistry,
         config_data: dict[str, t.Any],
-        make_query_loop: MakeQueryLoop,
+        make_query_executor: MakeQueryExecutor,
     ) -> None:
         config_data["databases"] = {
             "db1": {"dsn": "sqlite://", "labels": {"l1": "v1", "l2": "v2"}},
             "db2": {"dsn": "sqlite://", "labels": {"l1": "v3", "l2": "v4"}},
         }
         config_data["queries"]["q"]["databases"] = ["db1", "db2"]
-        query_loop = make_query_loop()
-        await query_loop.start()
+        query_executor = make_query_executor()
+        await query_executor.start()
         await query_tracker.wait_results()
         metric = registry.get_metric("m")
         assert metric_values(metric, by_labels=("database", "l1", "l2")) == {
@@ -291,11 +291,11 @@ class TestQueryLoop:
     async def test_update_metric_decimal_value(
         self,
         registry: MetricsRegistry,
-        make_query_loop: MakeQueryLoop,
+        make_query_executor: MakeQueryExecutor,
     ) -> None:
         db = DataBase(DataBaseConfig(name="db", dsn="sqlite://"))
-        query_loop = make_query_loop()
-        query_loop._update_metric(db, "m", Decimal("100.123"))
+        query_executor = make_query_executor()
+        query_executor._update_metric(db, "m", Decimal("100.123"))
         metric = registry.get_metric("m")
         [value] = metric_values(metric)
         assert value == 100.123
@@ -305,9 +305,9 @@ class TestQueryLoop:
         self,
         log: StructuredLogCapture,
         query_tracker: QueryTracker,
-        query_loop: QueryLoop,
+        query_executor: QueryExecutor,
     ) -> None:
-        await query_loop.start()
+        await query_executor.start()
         await query_tracker.wait_queries()
         assert [
             log.debug(
@@ -338,12 +338,12 @@ class TestQueryLoop:
         log: StructuredLogCapture,
         query_tracker: QueryTracker,
         config_data: dict[str, t.Any],
-        make_query_loop: MakeQueryLoop,
+        make_query_executor: MakeQueryExecutor,
     ) -> None:
         config_data["metrics"]["m"]["labels"] = ["l"]
         config_data["queries"]["q"]["sql"] = 'SELECT 100.0 AS m, "foo" AS l'
-        query_loop = make_query_loop()
-        await query_loop.start()
+        query_executor = make_query_executor()
+        await query_executor.start()
         await query_tracker.wait_queries()
         assert log.has(
             "updating metric",
@@ -358,12 +358,12 @@ class TestQueryLoop:
         self,
         query_tracker: QueryTracker,
         config_data: dict[str, t.Any],
-        make_query_loop: MakeQueryLoop,
+        make_query_executor: MakeQueryExecutor,
         registry: MetricsRegistry,
     ) -> None:
         config_data["databases"]["db"]["dsn"] = "sqlite:////invalid"
-        query_loop = make_query_loop()
-        await query_loop.start()
+        query_executor = make_query_executor()
+        await query_executor.start()
         await query_tracker.wait_failures()
         queries_metric = registry.get_metric("database_errors")
         assert metric_values(queries_metric) == [1.0]
@@ -373,14 +373,14 @@ class TestQueryLoop:
         mocker: MockerFixture,
         query_tracker: QueryTracker,
         config_data: dict[str, t.Any],
-        make_query_loop: MakeQueryLoop,
+        make_query_executor: MakeQueryExecutor,
         registry: MetricsRegistry,
     ) -> None:
-        query_loop = make_query_loop()
-        db = query_loop._databases["db"]
+        query_executor = make_query_executor()
+        db = query_executor._databases["db"]
         mock_connect = mocker.patch.object(db._conn.engine, "connect")
         mock_connect.side_effect = Exception("connection failed")
-        await query_loop.start()
+        await query_executor.start()
         await query_tracker.wait_failures()
         queries_metric = registry.get_metric("database_errors")
         assert metric_values(queries_metric) == [1.0]
@@ -389,12 +389,12 @@ class TestQueryLoop:
         self,
         query_tracker: QueryTracker,
         config_data: dict[str, t.Any],
-        make_query_loop: MakeQueryLoop,
+        make_query_executor: MakeQueryExecutor,
         registry: MetricsRegistry,
     ) -> None:
         config_data["queries"]["q"]["sql"] = "SELECT 100.0 AS a, 200.0 AS b"
-        query_loop = make_query_loop()
-        await query_loop.start()
+        query_executor = make_query_executor()
+        await query_executor.start()
         await query_tracker.wait_failures()
         queries_metric = registry.get_metric("queries")
         assert metric_values(queries_metric, by_labels=("status",)) == {
@@ -406,13 +406,13 @@ class TestQueryLoop:
         mocker: MockerFixture,
         query_tracker: QueryTracker,
         config_data: dict[str, t.Any],
-        make_query_loop: MakeQueryLoop,
+        make_query_executor: MakeQueryExecutor,
         registry: MetricsRegistry,
     ) -> None:
         config_data["queries"]["q"]["timeout"] = 0.1
-        query_loop = make_query_loop()
-        await query_loop.start()
-        db = query_loop._databases["db"]
+        query_executor = make_query_executor()
+        await query_executor.start()
+        db = query_executor._databases["db"]
         await db.connect()
 
         async def execute(
@@ -432,9 +432,9 @@ class TestQueryLoop:
         self,
         advance_time: AdvanceTime,
         query_tracker: QueryTracker,
-        query_loop: QueryLoop,
+        query_executor: QueryExecutor,
     ) -> None:
-        await query_loop.start()
+        await query_executor.start()
         await advance_time(0)  # kick the first run
         # the query has been run once
         assert len(query_tracker.queries) == 1
@@ -449,13 +449,13 @@ class TestQueryLoop:
         self,
         query_tracker: QueryTracker,
         config_data: dict[str, t.Any],
-        make_query_loop: MakeQueryLoop,
+        make_query_executor: MakeQueryExecutor,
     ) -> None:
         config_data["queries"]["q"]["sql"] = "SELECT 100.0 AS a, 200.0 AS b"
         config_data["queries"]["q"]["interval"] = 1.0
-        query_loop = make_query_loop()
-        await query_loop.start()
-        timed_call = query_loop._timed_calls["q"]
+        query_executor = make_query_executor()
+        await query_executor.start()
+        timed_call = query_executor._timed_calls["q"]
         await asyncio.sleep(1.1)
         await query_tracker.wait_failures()
         assert len(query_tracker.failures) == 1
@@ -471,25 +471,25 @@ class TestQueryLoop:
         self,
         query_tracker: QueryTracker,
         config_data: dict[str, t.Any],
-        make_query_loop: MakeQueryLoop,
+        make_query_executor: MakeQueryExecutor,
     ) -> None:
         config_data["queries"]["q"]["sql"] = "SELECT 100.0 AS a, 200.0 AS b"
         config_data["queries"]["q"]["interval"] = 1.0
-        query_loop = make_query_loop()
-        await query_loop.start()
-        timed_call = query_loop._timed_calls["q"]
+        query_executor = make_query_executor()
+        await query_executor.start()
+        timed_call = query_executor._timed_calls["q"]
         await asyncio.sleep(1.1)
         await query_tracker.wait_failures()
         # the query has been stopped and removed
         assert not timed_call.running
-        assert query_loop._timed_calls == {}
+        assert query_executor._timed_calls == {}
 
     async def test_run_timed_queries_not_removed_if_not_failing_on_all_dbs(
         self,
         tmp_path: Path,
         query_tracker: QueryTracker,
         config_data: dict[str, t.Any],
-        make_query_loop: MakeQueryLoop,
+        make_query_executor: MakeQueryExecutor,
     ) -> None:
         db1 = tmp_path / "db1.sqlite"
         db2 = tmp_path / "db2.sqlite"
@@ -515,8 +515,8 @@ class TestQueryLoop:
             "CREATE TABLE test (m INTEGER, other INTERGER)",
             "INSERT INTO test VALUES (10, 20)",
         )
-        query_loop = make_query_loop()
-        await query_loop.start()
+        query_executor = make_query_executor()
+        await query_executor.start()
         await asyncio.sleep(0.1)
         await query_tracker.wait_failures()
         assert len(query_tracker.queries) == 2
@@ -531,28 +531,28 @@ class TestQueryLoop:
         self,
         query_tracker: QueryTracker,
         config_data: dict[str, t.Any],
-        make_query_loop: MakeQueryLoop,
+        make_query_executor: MakeQueryExecutor,
     ) -> None:
         del config_data["queries"]["q"]["interval"]
-        query_loop = make_query_loop()
-        await query_loop.run_aperiodic_queries()
+        query_executor = make_query_executor()
+        await query_executor.run_aperiodic_queries()
         assert len(query_tracker.queries) == 1
-        await query_loop.run_aperiodic_queries()
+        await query_executor.run_aperiodic_queries()
         assert len(query_tracker.queries) == 2
 
     async def test_run_aperiodic_queries_invalid_result_count(
         self,
         query_tracker: QueryTracker,
         config_data: dict[str, t.Any],
-        make_query_loop: MakeQueryLoop,
+        make_query_executor: MakeQueryExecutor,
     ) -> None:
         config_data["queries"]["q"]["sql"] = "SELECT 100.0 AS a, 200.0 AS b"
         del config_data["queries"]["q"]["interval"]
-        query_loop = make_query_loop()
-        await query_loop.run_aperiodic_queries()
+        query_executor = make_query_executor()
+        await query_executor.run_aperiodic_queries()
         assert len(query_tracker.queries) == 1
         # the query is not run again
-        await query_loop.run_aperiodic_queries()
+        await query_executor.run_aperiodic_queries()
         await query_tracker.wait_failures()
         assert len(query_tracker.queries) == 1
 
@@ -561,7 +561,7 @@ class TestQueryLoop:
         tmp_path: Path,
         query_tracker: QueryTracker,
         config_data: dict[str, t.Any],
-        make_query_loop: MakeQueryLoop,
+        make_query_executor: MakeQueryExecutor,
     ) -> None:
         db1 = tmp_path / "db1.sqlite"
         db2 = tmp_path / "db2.sqlite"
@@ -587,13 +587,13 @@ class TestQueryLoop:
             "CREATE TABLE test (m INTEGER, other INTERGER)",
             "INSERT INTO test VALUES (10, 20)",
         )
-        query_loop = make_query_loop()
-        await query_loop.run_aperiodic_queries()
+        query_executor = make_query_executor()
+        await query_executor.run_aperiodic_queries()
         await query_tracker.wait_failures()
         assert len(query_tracker.queries) == 2
         assert len(query_tracker.results) == 1
         assert len(query_tracker.failures) == 1
-        await query_loop.run_aperiodic_queries()
+        await query_executor.run_aperiodic_queries()
         # succeeding query is run again, failing one is not
         assert len(query_tracker.results) == 2
         assert len(query_tracker.failures) == 1
@@ -604,7 +604,7 @@ class TestQueryLoop:
         advance_time: AdvanceTime,
         query_tracker: QueryTracker,
         config_data: dict[str, t.Any],
-        make_query_loop: MakeQueryLoop,
+        make_query_executor: MakeQueryExecutor,
         registry: MetricsRegistry,
     ) -> None:
         db = tmp_path / "db.sqlite"
@@ -624,8 +624,8 @@ class TestQueryLoop:
             'INSERT INTO test VALUES (10, "foo")',
             'INSERT INTO test VALUES (20, "bar")',
         )
-        query_loop = make_query_loop()
-        await query_loop.run_aperiodic_queries()
+        query_executor = make_query_executor()
+        await query_executor.run_aperiodic_queries()
         await query_tracker.wait_results()
         queries_metric = registry.get_metric("m")
         assert metric_values(queries_metric, by_labels=("l",)) == {
@@ -635,9 +635,9 @@ class TestQueryLoop:
         await run_queries(db, "DELETE FROM test WHERE m = 10")
         # go beyond expiration time
         await advance_time(20)
-        await query_loop.run_aperiodic_queries()
+        await query_executor.run_aperiodic_queries()
         await query_tracker.wait_results()
-        query_loop.clear_expired_series()
+        query_executor.clear_expired_series()
         assert metric_values(queries_metric, by_labels=("l",)) == {
             ("bar",): 20.0,
         }
