@@ -50,7 +50,6 @@ dependencies = [
   "pyyaml",
   "sqlalchemy>=2",
   "structlog",
-  "toolrack>=4",
 ]
 optional-dependencies.dbs = [
   "mysqlclient",

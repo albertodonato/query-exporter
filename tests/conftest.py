@@ -1,15 +1,16 @@
 import asyncio
 from collections import defaultdict
 from collections.abc import AsyncIterator, Iterator
+from contextlib import contextmanager
 from pathlib import Path
 import typing as t
+from unittest.mock import MagicMock, patch
 import uuid
 
 from prometheus_client.metrics import MetricWrapperBase
 import pytest
 from pytest_mock import MockerFixture
 from pytest_structlog import StructuredLogCapture
-from toolrack.testing.fixtures import advance_time
 import yaml
 
 from query_exporter.db import Database, MetricResults, QueryExecution
@@ -21,6 +22,65 @@ __all__ = ["MetricValues", "QueryTracker", "advance_time", "metric_values"]
 def _autouse(log: StructuredLogCapture) -> Iterator[None]:
     """Autouse dependent fixtures."""
     yield None
+
+
+class Clocker:
+    """Wrapper to provide a fake asyncio loop clock for tests.
+
+    Code is taken from `asynctest.ClockedTestCase`.
+    """
+
+    time: float = 0.0
+
+    def __init__(self, loop: asyncio.AbstractEventLoop) -> None:
+        self.loop = loop
+
+    @contextmanager
+    def patch_loop_time(self) -> Iterator[MagicMock]:
+        "Patch the loop `time` method, returning the mock."
+        with patch.object(self.loop, "time", lambda: self.time) as mock_time:
+            yield t.cast(MagicMock, mock_time)
+
+    async def advance(self, seconds: float) -> None:
+        await self._drain_loop()
+
+        target_time = self.time + seconds
+        while True:
+            next_time = self._next_scheduled()
+            if next_time is None or next_time > target_time:
+                break
+
+            self.time = next_time
+            await self._drain_loop()
+
+        self.time = target_time
+        await self._drain_loop()
+
+    def _next_scheduled(self) -> int | None:
+        try:
+            return self.loop._scheduled[0]._when  # type: ignore
+        except IndexError:
+            return None
+
+    async def _drain_loop(self) -> None:
+        while True:
+            next_time = self._next_scheduled()
+            if not self.loop._ready and (  # type: ignore
+                next_time is None or next_time > self.time
+            ):
+                break
+            await asyncio.sleep(0)
+
+
+AdvanceTime = t.Callable[[float], t.Awaitable[None]]
+
+
+@pytest.fixture
+async def advance_time() -> AsyncIterator[AdvanceTime]:
+    """Replace the loop clock with a function to manually advance the clock."""
+    clocker = Clocker(asyncio.get_event_loop())
+    with clocker.patch_loop_time():
+        yield clocker.advance
 
 
 class QueryTracker:
