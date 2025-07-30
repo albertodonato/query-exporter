@@ -1,5 +1,6 @@
 from collections.abc import Iterator
 from pathlib import Path
+import shutil
 import typing as t
 
 from prometheus_client.parser import text_string_to_metric_families
@@ -46,8 +47,23 @@ class Exporter(DockerService):
 
     def configure(self, config: dict[str, t.Any]) -> None:
         """Write exporter configuration."""
+        self._clean_config_dir()
         path = self.config_dir / "config.yaml"
         path.write_text(yaml.dump(config), "utf-8")
+
+    def import_config_dir(self, source: Path) -> None:
+        """Import configuration from the specified directory."""
+        self._clean_config_dir()
+        shutil.copytree(source, self.config_dir, dirs_exist_ok=True)
+
+    def write_dotenv(self, env_vars: dict[str, str]) -> None:
+        """Add a .env file to the exporter configuration."""
+        dotenv = self.config_dir / ".env"
+        if not env_vars and dotenv.exists():
+            dotenv.unlink()
+        dotenv.write_text(
+            "\n".join(f"{name}={value}" for name, value in env_vars.items())
+        )
 
     def get_metrics(self) -> dict[str, dict[tuple[str, ...], float]]:
         """Return parsed metrics."""
@@ -67,6 +83,13 @@ class Exporter(DockerService):
         response = requests.get(self.url + path)
         response.raise_for_status()
         return response
+
+    def _clean_config_dir(self) -> None:
+        for path in self.config_dir.iterdir():
+            if path.is_dir():
+                shutil.rmtree(path)
+            else:
+                path.unlink()
 
 
 @pytest.fixture(scope="session")

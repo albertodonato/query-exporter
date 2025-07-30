@@ -5,7 +5,7 @@ import typing as t
 import yaml
 
 
-def load_yaml_config(path: Path) -> t.Any:
+def load_yaml(path: Path) -> t.Any:
     """Load a YAML document from a file."""
 
     with path.open() as fd:

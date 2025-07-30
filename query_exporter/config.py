@@ -19,7 +19,7 @@ from .db import (
     QueryMetric,
 )
 from .metrics import BUILTIN_METRICS, get_builtin_metric_configs
-from .yaml import load_yaml_config
+from .yaml import load_yaml
 
 # Label used to tag metrics by database
 DATABASE_LABEL = "database"
@@ -101,7 +101,7 @@ def _load_config(paths: list[Path]) -> dict[str, t.Any]:
     """Return the combined configuration from provided files."""
     config: dict[str, t.Any] = defaultdict(dict)
     for path in paths:
-        conf = load_yaml_config(path)
+        conf = load_yaml(path)
         if not isinstance(conf, dict):
             raise ConfigError(f"File content is not a mapping: {path}")
         data = defaultdict(dict, conf)
