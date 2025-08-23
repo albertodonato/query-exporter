@@ -223,20 +223,6 @@ class TestQueryExecutor:
             ("success",): 2.0
         }
 
-    async def test_run_query_null_value(
-        self,
-        query_tracker: QueryTracker,
-        registry: MetricsRegistry,
-        config_data: dict[str, t.Any],
-        make_query_executor: MakeQueryExecutor,
-    ) -> None:
-        config_data["queries"]["q"]["sql"] = "SELECT NULL AS m"
-        query_executor = make_query_executor()
-        await query_executor.start()
-        await query_tracker.wait_results()
-        metric = registry.get_metric("m")
-        assert metric_values(metric) == [0]
-
     @pytest.mark.parametrize(
         "increment,value",
         [
@@ -267,6 +253,32 @@ class TestQueryExecutor:
         metric = registry.get_metric("m")
         assert metric_values(metric) == [value]
 
+    @pytest.mark.parametrize(
+        "metric_config,sql",
+        [
+            ({"type": "gauge"}, "SELECT 'invalid' AS m"),
+            ({"type": "enum", "states": ["foo", "bar"]}, "SELECT 'baz' AS m"),
+        ],
+    )
+    async def test_run_query_invalid_result(
+        self,
+        query_tracker: QueryTracker,
+        registry: MetricsRegistry,
+        config_data: dict[str, t.Any],
+        make_query_executor: MakeQueryExecutor,
+        metric_config: dict[str, t.Any],
+        sql: str,
+    ) -> None:
+        config_data["metrics"]["m"] = metric_config
+        config_data["queries"]["q"]["sql"] = sql
+        query_executor = make_query_executor()
+        await query_executor.start()
+        await query_tracker.wait_results()
+        metric = registry.get_metric("queries")
+        assert metric_values(metric, by_labels=("query", "status")) == {
+            ("q", "invalid-value"): 1.0
+        }
+
     async def test_run_query_metrics_with_database_labels(
         self,
         query_tracker: QueryTracker,
@@ -288,17 +300,28 @@ class TestQueryExecutor:
             ("db2", "v3", "v4"): 100.0,
         }
 
-    async def test_update_metric_decimal_value(
+    @pytest.mark.parametrize(
+        "result,metric_value",
+        [
+            (Decimal("100.123"), 100.123),
+            (23, 23.0),
+            ("100.123", 100.123),
+            (None, 0),
+        ],
+    )
+    async def test_update_metric_valid_not_float(
         self,
         registry: MetricsRegistry,
         make_query_executor: MakeQueryExecutor,
+        result: t.Any,
+        metric_value: float,
     ) -> None:
         db = DataBase(DataBaseConfig(name="db", dsn="sqlite://"))
         query_executor = make_query_executor()
-        query_executor._update_metric(db, "m", Decimal("100.123"))
+        query_executor._update_metric(db, "m", result)
         metric = registry.get_metric("m")
         [value] = metric_values(metric)
-        assert value == 100.123
+        assert value == metric_value
         assert isinstance(value, float)
 
     async def test_run_query_log(
@@ -312,17 +335,17 @@ class TestQueryExecutor:
         assert [
             log.debug(
                 "updating metric",
-                metric="m",
-                method="set",
-                value=100.0,
-                labels={"database": "db"},
-            ),
-            log.debug(
-                "updating metric",
                 metric="query_latency",
                 method="observe",
                 value=ANY,
                 labels={"database": "db", "query": "q"},
+            ),
+            log.debug(
+                "updating metric",
+                metric="m",
+                method="set",
+                value=100.0,
+                labels={"database": "db"},
             ),
             log.debug(
                 "updating metric",
