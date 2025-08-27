@@ -20,7 +20,7 @@ jobs:
         with:
           python-version: "3.13"
 
-        name: Build packages
+      - name: Build packages
         run: python -m build
 
       - name: Publish packges to PyPI
