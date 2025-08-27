@@ -109,9 +109,8 @@ def metric_values(
     metric: MetricWrapperBase, by_labels: tuple[str, ...] = ()
 ) -> MetricValues:
     """Return values for the metric."""
-    if metric._type == "gauge":
-        suffix = ""
-    elif metric._type == "counter":
+    suffix = ""
+    if metric._type == "counter":
         suffix = "_total"
 
     values_by_label: dict[tuple[str, ...], int | float] = {}

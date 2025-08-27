@@ -4,7 +4,6 @@ import asyncio
 from collections import defaultdict
 from collections.abc import Iterator, Mapping
 from datetime import datetime
-from decimal import Decimal
 from itertools import chain
 import time
 import typing as t
@@ -31,6 +30,7 @@ from .db import (
     DataBase,
     DataBaseConnectError,
     DataBaseError,
+    MetricResult,
     Query,
     QueryExecution,
     QueryTimeoutExpired,
@@ -41,6 +41,10 @@ from .metrics import (
     QUERY_LATENCY_METRIC_NAME,
     QUERY_TIMESTAMP_METRIC_NAME,
 )
+
+
+class InvalidMetricValue(Exception):
+    """Raised when a query result is an invalid value for the metric."""
 
 
 class MetricsLastSeen:
@@ -204,6 +208,20 @@ class QueryExecutor:
         query = query_execution.query
         try:
             metric_results = await db.execute(query_execution)
+            if metric_results.latency:
+                self._update_query_latency_metric(
+                    db, query, metric_results.latency
+                )
+            if metric_results.timestamp:
+                self._update_query_timestamp_metric(
+                    db, query, metric_results.timestamp
+                )
+            self._update_metrics_from_results(
+                db, query_execution.name, metric_results.results
+            )
+            self._increment_queries_count(db, query, "success")
+        except InvalidMetricValue:
+            self._increment_queries_count(db, query, "invalid-value")
         except DataBaseConnectError:
             self._increment_db_error_count(db)
         except QueryTimeoutExpired:
@@ -217,20 +235,6 @@ class QueryExecutor:
                     database=dbname,
                 )
                 self._doomed_queries[query_execution.name].add(dbname)
-        else:
-            for result in metric_results.results:
-                self._update_metric(
-                    db, result.metric, result.value, labels=result.labels
-                )
-            if metric_results.latency:
-                self._update_query_latency_metric(
-                    db, query, metric_results.latency
-                )
-            if metric_results.timestamp:
-                self._update_query_timestamp_metric(
-                    db, query, metric_results.timestamp
-                )
-            self._increment_queries_count(db, query, "success")
 
     async def _remove_if_dooomed(
         self, query_execution: QueryExecution, dbname: str
@@ -256,6 +260,31 @@ class QueryExecutor:
                 self._aperiodic_query_executions.remove(query_execution)
         return True
 
+    def _update_metrics_from_results(
+        self,
+        database: DataBase,
+        query_execution_name: str,
+        results: list[MetricResult],
+    ) -> None:
+        has_invalid = False
+        for result in results:
+            try:
+                self._update_metric(
+                    database, result.metric, result.value, labels=result.labels
+                )
+            except ValueError as e:
+                self._logger.debug(
+                    "invalid metric result",
+                    error=str(e),
+                    query=query_execution_name,
+                    database=database.config.name,
+                )
+                has_invalid = True
+
+        # only raise the error after processing all values
+        if has_invalid:
+            raise InvalidMetricValue()
+
     def _update_metric(
         self,
         database: DataBase,
@@ -265,10 +294,8 @@ class QueryExecutor:
     ) -> None:
         """Update value for a metric."""
         if value is None:
-            # don't fail is queries that count return NULL
+            # count queries might return NULL, treat it as zero
             value = 0.0
-        elif isinstance(value, Decimal):
-            value = float(value)
         metric_config = self._config.metrics[name]
         all_labels = {DATABASE_LABEL: database.config.name}
         all_labels.update(database.config.labels)
