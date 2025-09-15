@@ -50,7 +50,7 @@ propcache==0.3.2
     #   yarl
 pydantic==2.11.7
     # via query-exporter (pyproject.toml)
-pydantic-core==2.33.2
+pydantic-core==2.39.0
     # via pydantic
 pygments==2.19.2
     # via pytest
@@ -76,7 +76,7 @@ structlog==25.4.0
     #   query-exporter (pyproject.toml)
 toolrack==4.0.1
     # via query-exporter (pyproject.toml)
-typing-extensions==4.14.1
+typing-extensions==4.15.0
     # via
     #   aiosignal
     #   pydantic
