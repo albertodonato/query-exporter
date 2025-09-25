@@ -363,6 +363,21 @@ class TestDataBaseConnection:
         await conn.open()
         assert conn.connected
 
+    async def test_open_fail(
+        self, mocker: MockerFixture, conn: DataBaseConnection
+    ) -> None:
+        error = Exception("failed to connect")
+
+        def connect() -> None:
+            raise error
+
+        mocker.patch.object(conn, "_connect", connect)
+        with pytest.raises(Exception) as e:
+            await conn.open()
+        assert e.value is error
+        assert not conn.connected
+        assert conn._worker is None
+
     async def test_close(self, conn: DataBaseConnection) -> None:
         await conn.open()
         await conn.close()
