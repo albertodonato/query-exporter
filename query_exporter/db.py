@@ -344,7 +344,11 @@ class DataBaseConnection:
             return
 
         self._create_worker()
-        await self._call_in_thread(self._connect)
+        try:
+            await self._call_in_thread(self._connect)
+        except Exception:
+            self._terminate_worker()
+            raise
 
     async def close(self) -> None:
         """Close the connection."""
