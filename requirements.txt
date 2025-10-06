@@ -16,7 +16,7 @@ annotated-types==0.7.0
     # via pydantic
 attrs==25.3.0
     # via aiohttp
-click==8.2.1
+click==8.3.0
     # via prometheus-aioexporter
 croniter==6.0.0
     # via query-exporter (pyproject.toml)
@@ -40,17 +40,17 @@ pluggy==1.6.0
     # via pytest
 prometheus-aioexporter==3.1.0
     # via query-exporter (pyproject.toml)
-prometheus-client==0.22.1
+prometheus-client==0.23.1
     # via
     #   prometheus-aioexporter
     #   query-exporter (pyproject.toml)
-propcache==0.3.2
+propcache==0.4.0
     # via
     #   aiohttp
     #   yarl
 pydantic==2.11.7
     # via query-exporter (pyproject.toml)
-pydantic-core==2.33.2
+pydantic-core==2.40.1
     # via pydantic
 pygments==2.19.2
     # via pytest
@@ -76,7 +76,7 @@ structlog==25.4.0
     #   query-exporter (pyproject.toml)
 toolrack==4.0.1
     # via query-exporter (pyproject.toml)
-typing-extensions==4.14.1
+typing-extensions==4.15.0
     # via
     #   aiosignal
     #   pydantic
@@ -85,5 +85,5 @@ typing-extensions==4.14.1
     #   typing-inspection
 typing-inspection==0.4.1
     # via pydantic
-yarl==1.20.1
+yarl==1.21.0
     # via aiohttp
