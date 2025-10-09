@@ -7,7 +7,7 @@ requires = [
 [project]
 name = "query-exporter"
 description = "Export Prometheus metrics generated from SQL queries"
-readme = { file = "README.txt", content-type = "text/x-rst" }
+readme = { file = "README.rst", content-type = "text/x-rst" }
 keywords = [
   "exporter",
   "metric",
