@@ -18,7 +18,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
-          python-version: "3.14"
+          python-version: "3.13"
 
       - name: Install dependencies
         run: |
@@ -36,7 +36,6 @@ jobs:
           - "3.11"
           - "3.12"
           - "3.13"
-          - "3.14"
     steps:
       - name: Repository checkout
         uses: actions/checkout@v5
@@ -62,7 +61,6 @@ jobs:
           - "3.11"
           - "3.12"
           - "3.13"
-          - "3.14"
     steps:
       - name: Repository checkout
         uses: actions/checkout@v5
@@ -89,7 +87,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
-          python-version: "3.14"
+          python-version: "3.13"
 
       - name: Install dependencies
         run: |
