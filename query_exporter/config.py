@@ -37,12 +37,22 @@ class ConfigError(Exception):
 
 
 @dataclasses.dataclass(frozen=True)
+class ParallelConfig:
+    """Parallel execution configuration."""
+
+    enabled: bool = False
+    pool_size: int = 5
+    max_overflow: int = 10
+
+
+@dataclasses.dataclass(frozen=True)
 class Config:
     """Top-level configuration."""
 
     databases: dict[str, DataBaseConfig]
     metrics: dict[str, MetricConfig]
     queries: dict[str, Query]
+    parallel: ParallelConfig = dataclasses.field(default_factory=ParallelConfig)
 
 
 def load_config(
@@ -92,7 +102,8 @@ def load_config(
     queries = _get_queries(
         configuration.queries, frozenset(databases), metrics, extra_labels
     )
-    config = Config(databases, metrics, queries)
+    parallel = _get_parallel(configuration.parallel)
+    config = Config(databases, metrics, queries, parallel)
     _warn_if_unused(config, logger)
     return config
 
@@ -116,6 +127,17 @@ def _load_config(paths: list[Path]) -> dict[str, t.Any]:
                 config[key].update(entries)
         config.update(data)
     return config
+
+
+def _get_parallel(parallel: schema.Parallel | None) -> ParallelConfig:
+    """Return ParallelConfig from schema.Parallel."""
+    if parallel is None:
+        return ParallelConfig()
+    return ParallelConfig(
+        enabled=parallel.enabled,
+        pool_size=parallel.pool_size,
+        max_overflow=parallel.max_overflow,
+    )
 
 
 def _get_databases(

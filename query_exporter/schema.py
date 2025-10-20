@@ -170,6 +170,14 @@ class BuiltinMetrics(BaseModel):
         return d
 
 
+class Parallel(Model):
+    """Parallel execution configuration."""
+
+    enabled: bool = False
+    pool_size: t.Annotated[int, Field(ge=1)] = 5
+    max_overflow: t.Annotated[int, Field(ge=0)] = 10
+
+
 class Database(Model):
     """Database connection configuration."""
 
@@ -278,6 +286,7 @@ class Configuration(Model):
     """Exporter configuration."""
 
     builtin_metrics: BuiltinMetrics | None = None
+    parallel: Parallel | None = None
     databases: dict[str, Database]
     metrics: dict[Label, Metric]
     queries: dict[str, Query]

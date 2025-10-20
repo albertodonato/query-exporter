@@ -296,6 +296,47 @@ metric:
         buckets: [0.1, 0.5, 1.0, 5.0]
 
 
+``parallel`` section
+--------------------
+
+This section contains configuration for parallel query execution.
+
+When enabled, the exporter will use connection pooling and execute queries in
+parallel across multiple database connections, which can significantly improve
+performance for workloads with many queries or slow queries.
+
+The following keys can be specified:
+
+``enabled``:
+  whether to enable parallel execution mode.
+  
+  If not specified, defaults to ``false`` (parallel execution disabled).
+
+``pool-size``:
+  the number of database connections to maintain in each connection pool.
+  
+  If not specified, defaults to ``5``.
+  
+  This value must be between 1 and 100.
+
+``max-overflow``:
+  the maximum number of additional connections that can be created beyond
+  ``pool-size`` when needed.
+  
+  If not specified, defaults to ``10``.
+  
+  This value must be between 0 and 100.
+
+Example configuration:
+
+.. code:: yaml
+
+    parallel:
+      enabled: true
+      pool-size: 10
+      max-overflow: 20
+
+
 .. _`database-specific options`: databases.rst
 .. _`SQLAlchemy documentation`:
    http://docs.sqlalchemy.org/en/latest/core/engines.html#database-urls
