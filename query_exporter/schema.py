@@ -267,17 +267,37 @@ class Query(Model):
     metrics: t.Annotated[
         list[str], Field(min_length=1), AfterValidator(_validate_unique_items)
     ]
+    alerts: t.Annotated[  
+        list[str], Field(min_length=1), AfterValidator(_validate_unique_items)
+    ] = Field(default_factory=list)
     sql: str
     interval: TimeInterval | None = None
     parameters: QueryParameters | None = None
     schedule: str | None = None
     timeout: Timeout | None = None
 
+class Alert(Model):
+    """Alert rule configuration."""
+
+    severity: str = "P3"
+    for_duration: t.Annotated[str, Field(alias="for")] = "0m"
+    summary: str
+    description: str = ""
+    labels: dict[Label, str] = Field(default_factory=dict)
+    annotations: dict[Label, str] = Field(default_factory=dict)
+
+
+class AlertManagerConfig(Model):
+    """AlertManager configuration."""
+
+    url: str
 
 class Configuration(Model):
     """Exporter configuration."""
 
+    alertmanager: AlertManagerConfig | None = None  # 新增
     builtin_metrics: BuiltinMetrics | None = None
     databases: dict[str, Database]
     metrics: dict[Label, Metric]
+    alerts: dict[str, Alert] = Field(default_factory=dict)  # 新增
     queries: dict[str, Query]
