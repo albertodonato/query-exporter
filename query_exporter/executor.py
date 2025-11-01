@@ -42,6 +42,8 @@ from .metrics import (
     QUERY_TIMESTAMP_METRIC_NAME,
 )
 
+from .alert_manager import AlertManager, AlertGenerator
+
 
 class InvalidMetricValue(Exception):
     """Raised when a query result is an invalid value for the metric."""
@@ -134,6 +136,16 @@ class QueryExecutor:
             db_config.name: DataBase(db_config, logger=self._logger)
             for db_config in self._config.databases.values()
         }
+        # 新增：初始化告警管理器
+        self._alert_manager = AlertManager(
+            config.alertmanager.url if config.alertmanager else "",
+            logger=self._logger
+        )
+        self._alert_generator = AlertGenerator(
+            self._alert_manager,
+            {name: alert.model_dump() for name, alert in config.alerts.items()},
+            logger=self._logger
+        )
 
         for query_execution in chain(
             *(query.executions for query in self._config.queries.values())
@@ -145,6 +157,7 @@ class QueryExecutor:
 
     async def start(self) -> None:
         """Start timed queries execution."""
+        await self._alert_manager.start()  # 新增
         for query_execution in self._timed_query_executions:
             query = query_execution.query
             call: TimedCall
@@ -163,6 +176,7 @@ class QueryExecutor:
         self._timed_calls.clear()
         coros = (db.close() for db in self._databases.values())
         await asyncio.gather(*coros, return_exceptions=True)
+        await self._alert_manager.stop()  # 新增
 
     def clear_expired_series(self) -> None:
         """Clear metric series that have expired."""
@@ -219,6 +233,11 @@ class QueryExecutor:
             self._update_metrics_from_results(
                 db, query_execution.name, metric_results.results
             )
+            # 新增：处理告警
+            if query_execution.query.alerts and metric_results.results:
+                await self._process_alerts(
+                    query_execution, db, metric_results.results
+                )
             self._increment_queries_count(db, query, "success")
         except InvalidMetricValue:
             self._increment_queries_count(db, query, "invalid-value")
@@ -235,6 +254,45 @@ class QueryExecutor:
                     database=dbname,
                 )
                 self._doomed_queries[query_execution.name].add(dbname)
+    async def _process_alerts(
+            self,
+            query_execution: QueryExecution,
+            database: DataBase,
+            results: list[MetricResult],
+        ) -> None:
+            """Process query results and generate alerts."""
+            try:
+                # 将 MetricResult 转换为字典格式
+                result_dicts = []
+                for result in results:
+                    result_dict = {'value': result.value}
+                    result_dict.update(result.labels)
+                    result_dicts.append(result_dict)
+
+                # 生成告警
+                alerts = self._alert_generator.generate_alerts_from_results(
+                    query_execution.name,
+                    query_execution.query.alerts,
+                    result_dicts,
+                    database.config.labels
+                )
+
+                # 发送告警
+                if alerts:
+                    await self._alert_manager.send_alerts(alerts)
+                    self._logger.debug(
+                        "Alerts processed",
+                        query=query_execution.name,
+                        alert_count=len(alerts),
+                        database=database.config.name
+                    )
+
+            except Exception as e:
+                self._logger.error(
+                    "Failed to process alerts",
+                    query=query_execution.name,
+                    error=str(e)
+                )
 
     async def _remove_if_dooomed(
         self, query_execution: QueryExecution, dbname: str

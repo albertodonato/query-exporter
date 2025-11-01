@@ -42,6 +42,7 @@ class Config:
 
     databases: dict[str, DataBaseConfig]
     metrics: dict[str, MetricConfig]
+    alerts: dict[str, schema.Alert]  # 新增
     queries: dict[str, Query]
 
 
@@ -89,10 +90,13 @@ def load_config(
     metrics = _get_metrics(
         configuration.metrics, builtin_metrics_config, extra_labels
     )
+     # 新增：获取告警配置
+    alerts = configuration.alerts or {}
+    
     queries = _get_queries(
-        configuration.queries, frozenset(databases), metrics, extra_labels
+        configuration.queries, frozenset(databases), metrics, alerts, extra_labels
     )
-    config = Config(databases, metrics, queries)
+    config = Config(databases, metrics, alerts, queries)
     _warn_if_unused(config, logger)
     return config
 
@@ -188,13 +192,15 @@ def _get_queries(
     configs: dict[str, schema.Query],
     database_names: frozenset[str],
     metrics: dict[str, MetricConfig],
+    alerts: dict[str, schema.Alert],  # 新增
     extra_labels: frozenset[str],
 ) -> dict[str, Query]:
     """Return a list of Queries from config."""
     metric_names = frozenset(metrics)
+    alert_names = frozenset(alerts)  # 新增
     queries: dict[str, Query] = {}
     for name, config in configs.items():
-        _validate_query_config(name, config, database_names, metric_names)
+        _validate_query_config(name, config, database_names, metric_names, alert_names)
         query_metrics = _get_query_metrics(config, metrics, extra_labels)
         parameter_sets = t.cast(list[dict[str, t.Any]], config.parameters)
         try:
@@ -234,6 +240,7 @@ def _validate_query_config(
     query: schema.Query,
     database_names: frozenset[str],
     metric_names: frozenset[str],
+    alert_names: frozenset[str],  # 新增
 ) -> None:
     """Validate a query configuration stanza."""
     unknown_databases = set(query.databases) - database_names
@@ -247,6 +254,13 @@ def _validate_query_config(
         unknown_list = ", ".join(sorted(unknown_metrics))
         raise ConfigError(
             f'Unknown metrics for query "{name}": {unknown_list}'
+        )
+    # 新增：验证告警规则
+    unknown_alerts = set(query.alerts) - alert_names
+    if unknown_alerts:
+        unknown_list = ", ".join(sorted(unknown_alerts))
+        raise ConfigError(
+            f'Unknown alerts for query "{name}": {unknown_list}'
         )
     if query.parameters:
         params = t.cast(list[dict[str, t.Any]], query.parameters)
