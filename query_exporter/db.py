@@ -150,6 +150,13 @@ class QueryMetric(t.NamedTuple):
 
     name: str
     labels: Iterable[str]
+    
+
+class QueryAlert(t.NamedTuple):
+    """Metric details for a Query."""
+
+    name: str
+    labels: Iterable[str]
 
 
 class QueryResults(t.NamedTuple):
@@ -196,6 +203,7 @@ class Query:
     databases: list[str]
     metrics: list[QueryMetric]
     sql: str
+    alerts: list[QueryAlert]  # 有默认值的字段放在后面
     timeout: QueryTimeout | None = None
     interval: int | None = None
     schedule: str | None = None
@@ -222,8 +230,12 @@ class Query:
 
     def labels(self) -> frozenset[str]:
         """Resturn all labels for metrics in the query."""
-        return frozenset(chain(*(metric.labels for metric in self.metrics)))
-
+        if len(self.metrics) > 0:
+            return frozenset(chain(*(metric.labels for metric in self.metrics)))
+        if len(self.alerts) > 0:
+            return frozenset(chain(*(alert.labels for alert in self.alerts)))
+        return frozenset()
+    
     def results(self, query_results: QueryResults) -> MetricResults:
         """Return MetricResults from a query."""
         if not query_results.rows:
@@ -231,28 +243,58 @@ class Query:
 
         result_keys = sorted(query_results.keys)
         labels = self.labels()
-        metrics = [metric.name for metric in self.metrics]
-        expected_keys = sorted(set(metrics) | labels)
-        if len(expected_keys) != len(result_keys):
-            raise InvalidResultCount(len(expected_keys), len(result_keys))
-        if result_keys != expected_keys:
-            raise InvalidResultColumnNames(expected_keys, result_keys)
-        results = []
-        for row in query_results.rows:
-            values = dict(zip(query_results.keys, row))
-            for metric in self.metrics:
-                metric_result = MetricResult(
-                    metric.name,
-                    values[metric.name],
-                    {label: values[label] for label in metric.labels},
-                )
-                results.append(metric_result)
+        if self.metrics:
+            metrics = [metric.name for metric in self.metrics]
+            expected_keys = sorted(set(metrics) | labels)
+            if len(expected_keys) != len(result_keys):
+                raise InvalidResultCount(len(expected_keys), len(result_keys))
+            if result_keys != expected_keys:
+                raise InvalidResultColumnNames(expected_keys, result_keys)
+            results = []
+            for row in query_results.rows:
+                values = dict(zip(query_results.keys, row))
+                for metric in self.metrics:
+                    metric_result = MetricResult(
+                        metric.name,
+                        values[metric.name],
+                        {label: values[label] for label in metric.labels},
+                    )
+                    results.append(metric_result)
 
-        return MetricResults(
-            results,
-            timestamp=query_results.timestamp,
-            latency=query_results.latency,
-        )
+            return MetricResults(
+                results,
+                timestamp=query_results.timestamp,
+                latency=query_results.latency,
+            )
+        
+        elif self.alerts:
+            alerts = [alert.name for alert in self.alerts]
+            expected_keys = sorted(set(alerts) | labels)
+            if len(expected_keys) != len(result_keys):
+                raise InvalidResultCount(len(expected_keys), len(result_keys))
+            if result_keys != expected_keys:
+                raise InvalidResultColumnNames(expected_keys, result_keys)
+            results = []
+            for row in query_results.rows:
+                values = dict(zip(query_results.keys, row))
+                for alert in self.alerts:
+                    metric_result = MetricResult(
+                        alert.name,
+                        values[alert.name],
+                        {label: values[label] for label in alert.labels},
+                    )
+                    results.append(metric_result)
+
+            return MetricResults(
+                results,
+                timestamp=query_results.timestamp,
+                latency=query_results.latency,
+            )
+        
+        else:
+            # 既没有 metrics 也没有 alerts
+            return MetricResults([])
+
 
     def _check_schedule(self) -> None:
         if self.interval and self.schedule:

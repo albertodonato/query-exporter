@@ -254,45 +254,77 @@ class QueryExecutor:
                     database=dbname,
                 )
                 self._doomed_queries[query_execution.name].add(dbname)
+    
     async def _process_alerts(
-            self,
-            query_execution: QueryExecution,
-            database: DataBase,
-            results: list[MetricResult],
-        ) -> None:
-            """Process query results and generate alerts."""
-            try:
-                # 将 MetricResult 转换为字典格式
-                result_dicts = []
-                for result in results:
-                    result_dict = {'value': result.value}
-                    result_dict.update(result.labels)
-                    result_dicts.append(result_dict)
+        self,
+        query_execution: QueryExecution,
+        database: DataBase,
+        results: list[MetricResult],
+    ) -> None:
+        """Process query results and generate alerts."""
+        try:
+            # 过滤出 alerts 相关的结果
+            alert_results = []
+            for result in results:
+                # 检查结果是否对应某个告警
+                for alert in query_execution.query.alerts:
+                    if result.metric == alert.name:
+                        alert_results.append(result)
+                        break
+            
+            if not alert_results:
+                return
+                
+            # 将 MetricResult 转换为字典格式
+            result_dicts = []
+            for result in alert_results:
+                result_dict = {
+                    'value': result.value,
+                    'metric': result.metric  # 保留 metric 名称
+                }
+                # 添加 labels
+                result_dict.update(result.labels)
+                result_dicts.append(result_dict)
 
-                # 生成告警
-                alerts = self._alert_generator.generate_alerts_from_results(
-                    query_execution.name,
-                    query_execution.query.alerts,
-                    result_dicts,
-                    database.config.labels
+            # 从 QueryAlert 对象中提取告警名称
+            alert_names = [alert.name for alert in query_execution.query.alerts]
+            
+            # 生成告警
+            alerts = self._alert_generator.generate_alerts_from_results(
+                query_execution.name,
+                alert_names,
+                result_dicts,
+                database.config.labels
+            )
+
+            # 发送告警
+            if alerts:
+                self._logger.debug(
+                    "Alerts processed and sent",
+                    query=query_execution.name,
+                    alert_count=len(alerts),
+                    database=database.config.name
                 )
-
-                # 发送告警
-                if alerts:
-                    await self._alert_manager.send_alerts(alerts)
+                success = await self._alert_manager.send_alerts(alerts)
+                if success:
                     self._logger.debug(
-                        "Alerts processed",
+                        "Alerts sent successfully to AlertManager",
                         query=query_execution.name,
-                        alert_count=len(alerts),
-                        database=database.config.name
+                        count=len(alerts)
+                    )
+                else:
+                    self._logger.error(
+                        "Failed to send alerts to AlertManager",
+                        query=query_execution.name,
+                        count=len(alerts)
                     )
 
-            except Exception as e:
-                self._logger.error(
-                    "Failed to process alerts",
-                    query=query_execution.name,
-                    error=str(e)
-                )
+        except Exception as e:
+            self._logger.error(
+                "Failed to process alerts",
+                query=query_execution.name,
+                error=str(e)
+            )
 
     async def _remove_if_dooomed(
         self, query_execution: QueryExecution, dbname: str
@@ -327,6 +359,9 @@ class QueryExecutor:
         has_invalid = False
         for result in results:
             try:
+                # 只更新在 metrics 配置中定义的结果
+                if result.metric not in self._config.metrics:
+                    continue
                 self._update_metric(
                     database, result.metric, result.value, labels=result.labels
                 )

@@ -90,3 +90,100 @@ class TestQureyExporterScript:
             ("q",): 10.0,
             ("q2",): 20.0,
         }
+
+
+    # 新增的测试用例
+    def test_config_with_alerts(
+        self,
+        mock_run_app: mock.MagicMock,
+        sample_config_with_alerts: dict[str, t.Any],
+        write_config: ConfigWriter,
+        invoke_cli: t.Callable[..., Result],
+    ) -> None:
+        """测试包含 alerts 的配置能够正常加载"""
+        config_file = write_config(sample_config_with_alerts)
+        result = invoke_cli("--config", str(config_file), "--check-only")
+        assert result.exit_code == 0
+        mock_run_app.assert_not_called()
+
+    def test_config_with_invalid_alert_reference(
+        self,
+        mock_run_app: mock.MagicMock,
+        sample_config: dict[str, t.Any],
+        write_config: ConfigWriter,
+        invoke_cli: t.Callable[..., Result],
+    ) -> None:
+        """测试引用不存在的 alert 时配置验证失败"""
+        config = deepcopy(sample_config)
+        config["alerts"] = {
+            "existing_alert": {
+                "severity": "P3",
+                "for": "5m",
+                "summary": "测试告警",
+                "description": "测试描述",
+                "labels": ["label1"]
+            }
+        }
+        config["queries"]["invalid_alert_query"] = {
+            "databases": ["db"],
+            "interval": 30,
+            "alerts": ["non_existing_alert"],  # 引用不存在的 alert
+            "sql": "SELECT 'value1' as label1, 100 as value"
+        }
+        
+        config_file = write_config(config)
+        result = invoke_cli("--config", str(config_file), "--check-only")
+        assert result.exit_code == 1  # 应该失败
+        mock_run_app.assert_not_called()
+
+    def test_query_with_both_metrics_and_alerts(
+        self,
+        mock_run_app: mock.MagicMock,
+        sample_config: dict[str, t.Any],
+        write_config: ConfigWriter,
+        invoke_cli: t.Callable[..., Result],
+    ) -> None:
+        """测试同时包含 metrics 和 alerts 的 query 配置"""
+        config = deepcopy(sample_config)
+        config["alerts"] = {
+            "test_alert": {
+                "severity": "P2",
+                "for": "15m",
+                "summary": "组合测试告警",
+                "description": "同时包含 metrics 和 alerts",
+                "labels": ["cluster", "service"]
+            }
+        }
+        config["queries"]["combined_query"] = {
+            "databases": ["db"],
+            "interval": 60,
+            "metrics": ["m"],  # 引用已有的 metric
+            "alerts": ["test_alert"],
+            "sql": "SELECT 'cluster1' as cluster, 'service1' as service, 42 as value"
+        }
+        
+        config_file = write_config(config)
+        result = invoke_cli("--config", str(config_file), "--check-only")
+        assert result.exit_code == 0  # 应该成功
+        mock_run_app.assert_not_called()
+
+    def test_alert_configuration_validation(
+        self,
+        mock_run_app: mock.MagicMock,
+        sample_config: dict[str, t.Any],
+        write_config: ConfigWriter,
+        invoke_cli: t.Callable[..., Result],
+    ) -> None:
+        """测试 alert 配置验证（缺少必需字段）"""
+        config = deepcopy(sample_config)
+        config["alerts"] = {
+            "invalid_alert": {
+                # 缺少 severity, for, summary 等必需字段
+                "description": "不完整的告警配置"
+            }
+        }
+        
+        config_file = write_config(config)
+        result = invoke_cli("--config", str(config_file), "--check-only")
+        assert result.exit_code == 1  # 应该失败
+        mock_run_app.assert_not_called()

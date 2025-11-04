@@ -264,11 +264,14 @@ class Query(Model):
     databases: t.Annotated[
         list[str], Field(min_length=1), AfterValidator(_validate_unique_items)
     ]
+    # metrics: t.Annotated[
+    #     list[str], Field(min_length=1), AfterValidator(_validate_unique_items)
+    # ]
     metrics: t.Annotated[
-        list[str], Field(min_length=1), AfterValidator(_validate_unique_items)
-    ]
+        list[str], AfterValidator(_validate_unique_items)
+    ] = Field(default_factory=list)  # 去掉 min_length=1
     alerts: t.Annotated[  
-        list[str], Field(min_length=1), AfterValidator(_validate_unique_items)
+        list[str], AfterValidator(_validate_unique_items)
     ] = Field(default_factory=list)
     sql: str
     interval: TimeInterval | None = None
@@ -276,28 +279,58 @@ class Query(Model):
     schedule: str | None = None
     timeout: Timeout | None = None
 
+
 class Alert(Model):
     """Alert rule configuration."""
 
     severity: str = "P3"
     for_duration: t.Annotated[str, Field(alias="for")] = "0m"
+    condition: str = "> 0"  # 新增：告警条件
     summary: str
     description: str = ""
-    labels: dict[Label, str] = Field(default_factory=dict)
+    labels: list[Label] = Field(default_factory=list)
     annotations: dict[Label, str] = Field(default_factory=dict)
 
+    @model_validator(mode="after")
+    def validate_condition(self) -> t.Self:
+        """Validate condition format using regex and normalize."""
+        condition = self.condition.strip()
+        
+        # 使用正则表达式匹配条件格式
+        pattern = r'^\s*(>|>=|<|<=|==|!=)\s*([+-]?\d*\.?\d+)\s*$'
+        match = re.match(pattern, condition)
+        
+        if not match:
+            raise ValueError(
+                f"Invalid condition format: '{condition}'. "
+                f"Must be in format: 'operator value' (e.g., '> 100', '<= 50.5')"
+            )
+        
+        operator, value_str = match.groups()
+        
+        # 验证数值部分
+        try:
+            float(value_str)
+        except ValueError:
+            raise ValueError(f"Invalid numeric value in condition: '{value_str}'")
+        
+        # 规范化条件字符串：去除所有多余空格
+        self.condition = f"{operator} {value_str}"
+            
+        return self
 
-class AlertManagerConfig(Model):
+
+class AlertManager(Model):
     """AlertManager configuration."""
 
-    url: str
+    url: str = ""  # 设置默认值为空字符串
 
 class Configuration(Model):
     """Exporter configuration."""
 
-    alertmanager: AlertManagerConfig | None = None  # 新增
+    alertmanager: AlertManager | None = None  # 新增
     builtin_metrics: BuiltinMetrics | None = None
     databases: dict[str, Database]
-    metrics: dict[Label, Metric]
+    metrics: dict[Label, Metric] = Field(default_factory=dict)
     alerts: dict[str, Alert] = Field(default_factory=dict)  # 新增
     queries: dict[str, Query]

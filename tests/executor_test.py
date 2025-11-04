@@ -24,17 +24,40 @@ AdvanceTime = Callable[[float], t.Awaitable[None]]
 @pytest.fixture
 def config_data() -> Iterator[dict[str, t.Any]]:
     yield {
+        "alertmanager": {  # 新增 alertmanager 配置
+            "url": "https://alertmanager.example.com"
+        },
         "databases": {"db": {"dsn": "sqlite://"}},
         "metrics": {"m": {"type": "gauge"}},
+        "alerts": {  # 新增告警配置
+            "HighErrorRate": {
+                "severity": "P3",
+                "for": "10m",
+                "summary": "High Error Rate",
+                "description": "Error count exceeds threshold"
+            }
+        },
         "queries": {
             "q": {
                 "interval": 10,
                 "databases": ["db"],
                 "metrics": ["m"],
+                "alerts": ["HighErrorRate"],  # 新增告警引用
                 "sql": "SELECT 100.0 AS m",
             },
         },
     }
+
+
+@pytest.fixture
+def mock_alert_manager(mocker: MockerFixture) -> t.Any:
+    """Mock AlertManager to avoid actual HTTP requests."""
+    mock = mocker.patch("query_exporter.executor.AlertManager")
+    mock_instance = mock.return_value
+    mock_instance.start = mocker.AsyncMock()
+    mock_instance.stop = mocker.AsyncMock()
+    mock_instance.send_alerts = mocker.AsyncMock()
+    return mock_instance
 
 
 @pytest.fixture
@@ -80,6 +103,50 @@ async def run_queries(db_file: Path, *queries: str) -> None:
         for query in queries:
             await db.execute_sql(query)
 
+
+@pytest.fixture
+def alert_config_data() -> Iterator[dict[str, t.Any]]:
+    """专门用于告警测试的配置"""
+    yield {
+        "alertmanager": {
+            "url": "https://alertmanager.example.com"
+        },
+        "databases": {"db": {"dsn": "sqlite://"}},
+        "metrics": {
+            "error_count": {"type": "gauge", "labels": ["service"]},
+            "latency": {"type": "gauge", "labels": ["endpoint"]}
+        },
+        "alerts": {
+            "HighErrorRate": {
+                "severity": "P1",
+                "for": "5m",
+                "summary": "High Error Rate",
+                "description": "Error count exceeds 100"
+            },
+            "HighLatency": {
+                "severity": "P2",
+                "for": "2m", 
+                "summary": "High Latency",
+                "description": "Latency exceeds 1s"
+            }
+        },
+        "queries": {
+            "error_query": {
+                "databases": ["db"],
+                "interval": 10,
+                "metrics": ["error_count"],
+                "alerts": ["HighErrorRate"],
+                "sql": "SELECT 150 as error_count, 'api' as service"
+            },
+            "latency_query": {
+                "databases": ["db"],
+                "interval": 10,
+                "metrics": ["latency"],
+                "alerts": ["HighLatency"],
+                "sql": "SELECT 2.5 as latency, '/health' as endpoint"
+            }
+        },
+    }
 
 class TestMetricsLastSeen:
     def test_update(self) -> None:
@@ -664,3 +731,159 @@ class TestQueryExecutor:
         assert metric_values(queries_metric, by_labels=("l",)) == {
             ("bar",): 20.0,
         }
+
+
+class TestQueryExecutorWithAlerts:
+    """测试包含告警功能的 QueryExecutor"""
+    
+    @pytest.fixture(autouse=True)
+    def setup_mocks(self, mocker: MockerFixture) -> None:
+        """在每个测试方法前自动设置 Mock"""
+        self.mock_alert_manager = mocker.patch("query_exporter.executor.AlertManager")
+        self.mock_alert_manager_instance = self.mock_alert_manager.return_value
+        self.mock_alert_manager_instance.start = mocker.AsyncMock()
+        self.mock_alert_manager_instance.stop = mocker.AsyncMock()
+        self.mock_alert_manager_instance.send_alerts = mocker.AsyncMock()
+    
+    async def test_alert_manager_initialized(
+        self,
+        make_query_executor: MakeQueryExecutor,
+    ) -> None:
+        """测试 AlertManager 被正确初始化"""
+        query_executor = make_query_executor()
+        # print(f"Mock call count after: {mock_alert_manager.call_count}")
+        print(f"QueryExecutor alert_manager: {query_executor._alert_manager}")
+        print(f"QueryExecutor alert_generator: {query_executor._alert_generator}")
+        
+        # 验证 AlertManager 被创建
+        self.mock_alert_manager.assert_called_once()
+        # 验证 AlertGenerator 被创建
+        assert query_executor._alert_generator is not None
+        
+    async def test_alert_manager_start_stop(
+        self,
+        make_query_executor: MakeQueryExecutor,
+        mock_alert_manager: t.Any,
+    ) -> None:
+        """测试 AlertManager 的启动和停止"""
+        query_executor = make_query_executor()
+        
+        await query_executor.start()
+        # 验证 AlertManager 的 start 方法被调用
+        mock_alert_manager.start.assert_called_once()
+        
+        await query_executor.stop()
+        # 验证 AlertManager 的 stop 方法被调用
+        mock_alert_manager.stop.assert_called_once()
+        
+    async def test_process_alerts_on_query_execution(
+        self,
+        query_tracker: QueryTracker,
+        make_query_executor: MakeQueryExecutor,
+        mock_alert_manager: t.Any,
+        config_data: dict[str, t.Any],
+    ) -> None:
+        """测试查询执行时处理告警"""
+        # 配置查询返回特定的值用于触发告警
+        config_data["queries"]["q"]["sql"] = "SELECT 150.0 AS m"
+        
+        query_executor = make_query_executor()
+        await query_executor.start()
+        await query_tracker.wait_results()
+        
+        # 验证 AlertManager 的 send_alerts 方法被调用
+        mock_alert_manager.send_alerts.assert_called()
+        
+    async def test_no_alerts_when_query_has_no_alerts_field(
+        self,
+        query_tracker: QueryTracker,
+        make_query_executor: MakeQueryExecutor,
+        mock_alert_manager: t.Any,
+        config_data: dict[str, t.Any],
+    ) -> None:
+        """测试没有 alerts 字段的查询不处理告警"""
+        # 移除查询中的 alerts 字段
+        del config_data["queries"]["q"]["alerts"]
+        
+        query_executor = make_query_executor()
+        await query_executor.start()
+        await query_tracker.wait_results()
+        
+        # 验证 AlertManager 的 send_alerts 方法没有被调用
+        mock_alert_manager.send_alerts.assert_not_called()
+        
+    async def test_alert_processing_with_database_labels(
+        self,
+        query_tracker: QueryTracker,
+        make_query_executor: MakeQueryExecutor,
+        mock_alert_manager: t.Any,
+        config_data: dict[str, t.Any],
+    ) -> None:
+        """测试包含数据库标签的告警处理"""
+        config_data["databases"]["db"]["labels"] = {"environment": "test", "region": "us-east-1"}
+        config_data["queries"]["q"]["sql"] = "SELECT 200.0 AS m"
+        
+        query_executor = make_query_executor()
+        await query_executor.start()
+        await query_tracker.wait_results()
+        
+        # 验证 AlertManager 被调用
+        mock_alert_manager.send_alerts.assert_called()
+        
+    async def test_alert_processing_error_handling(
+        self,
+        mocker: MockerFixture,
+        query_tracker: QueryTracker,
+        make_query_executor: MakeQueryExecutor,
+        mock_alert_manager: t.Any,
+        config_data: dict[str, t.Any],
+        log: StructuredLogCapture,
+    ) -> None:
+        """测试告警处理错误处理"""
+        query_executor = make_query_executor()
+        
+        # 模拟 AlertGenerator 的 generate_alerts_from_results 方法抛出异常
+        # 这样会触发 _process_alerts 方法中的错误处理
+        mock_generate_alerts = mocker.patch.object(
+            query_executor._alert_generator,
+            'generate_alerts_from_results'
+        )
+        mock_generate_alerts.side_effect = Exception("Alert generation failed")
+        
+        await query_executor.start()
+        await query_tracker.wait_results()
+        
+        # 验证错误被记录
+        assert log.has(
+            "Failed to process alerts",
+            level="error",
+            query="q",
+            error="Alert generation failed"
+        )
+        
+    async def test_alert_manager_optional(
+        self,
+        query_tracker: QueryTracker,
+        make_query_executor: MakeQueryExecutor,
+        config_data: dict[str, t.Any],
+    ) -> None:
+        """测试没有 AlertManager 配置时的行为"""
+        # 移除 alertmanager 配置
+        if "alertmanager" in config_data:
+            del config_data["alertmanager"]
+            
+        query_executor = make_query_executor()
+        
+        # 应该能正常初始化，alert_manager 为 None 或使用默认配置
+        await query_executor.start()
+        await query_tracker.wait_results()
+        
+        # 查询应该正常执行
+        assert len(query_tracker.results) > 0
+        
+        
+# 运行所有告警相关的测试
+# python3 -m pytest tests/executor_test.py::TestQueryExecutorWithAlerts -v
+
+# 运行特定的告警测试
+# python3 -m pytest tests/executor_test.py::TestQueryExecutorWithAlerts::test_alert_processing_error_handling -v

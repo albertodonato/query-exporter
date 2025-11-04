@@ -17,6 +17,7 @@ from .db import (
     InvalidQuerySchedule,
     Query,
     QueryMetric,
+    QueryAlert,
 )
 from .metrics import BUILTIN_METRICS, get_builtin_metric_configs
 from .yaml import load_yaml
@@ -42,8 +43,9 @@ class Config:
 
     databases: dict[str, DataBaseConfig]
     metrics: dict[str, MetricConfig]
-    alerts: dict[str, schema.Alert]  # 新增
     queries: dict[str, Query]
+    alerts: dict[str, schema.Alert]  # 新增
+    alertmanager: schema.AlertManager | None = None  # 新增
 
 
 def load_config(
@@ -96,8 +98,10 @@ def load_config(
     queries = _get_queries(
         configuration.queries, frozenset(databases), metrics, alerts, extra_labels
     )
-    config = Config(databases, metrics, alerts, queries)
+    # config = Config(databases, metrics, alerts, queries)
+    config = Config(databases, metrics, queries, alerts, configuration.alertmanager)
     _warn_if_unused(config, logger)
+    print(f"config res: {config}")
     return config
 
 
@@ -204,10 +208,19 @@ def _get_queries(
         query_metrics = _get_query_metrics(config, metrics, extra_labels)
         parameter_sets = t.cast(list[dict[str, t.Any]], config.parameters)
         try:
+            # 将字符串告警列表转换为 QueryAlert 对象列表
+            query_alerts = []
+            for alert_name in config.alerts:
+                alert_config = alerts.get(alert_name)
+                if alert_config:
+                    # 使用告警配置中的 labels
+                    alert_labels = alert_config.labels if hasattr(alert_config, 'labels') else []
+                    query_alerts.append(QueryAlert(alert_name, alert_labels))
             queries[name] = Query(
                 name=name,
                 databases=config.databases,
                 metrics=query_metrics,
+                alerts=query_alerts, 
                 sql=config.sql.strip(),
                 timeout=config.timeout,
                 interval=config.interval,
@@ -278,9 +291,13 @@ def _warn_if_unused(
     """Warn if there are unused databases or metrics defined."""
     used_dbs: set[str] = set()
     used_metrics: set[str] = set()
+    used_alerts: set[str] = set()  # 新增
     for query in config.queries.values():
         used_dbs.update(query.databases)
         used_metrics.update(metric.name for metric in query.metrics)
+        # used_alerts.update(query.alerts)  # 新增
+        used_alerts.update(alert.name for alert in query.alerts)  # 新增
+        
 
     if unused_dbs := sorted(set(config.databases) - used_dbs):
         logger.warning(
@@ -295,4 +312,11 @@ def _warn_if_unused(
             "unused config entries",
             section="metrics",
             entries=unused_metrics,
+        )
+    # 新增：检查未使用的告警
+    if unused_alerts := sorted(set(config.alerts) - used_alerts):
+        logger.warning(
+            "unused config entries",
+            section="alerts",
+            entries=unused_alerts,
         )
