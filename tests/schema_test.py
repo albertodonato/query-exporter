@@ -16,6 +16,9 @@ from query_exporter.schema import (
     QueryParameters,
     TimeInterval,
     Timeout,
+    Alert,           # 新增
+    AlertManager,  # 新增
+    Query,           # 确保这个已导入
 )
 
 from .conftest import ConfigWriter
@@ -480,7 +483,7 @@ class TestQueryParameters:
 
 
 class TestConfiguration:
-    @pytest.mark.parametrize("section", ["databases", "metrics", "queries"])
+    @pytest.mark.parametrize("section", ["databases", "queries"])
     def test_empty_sections(
         self,
         sample_config: dict[str, t.Any],
@@ -491,6 +494,23 @@ class TestConfiguration:
         with pytest.raises(ValidationError) as err:
             Configuration.model_validate(sample_config)
         assert "Field required" in str(err.value)
+
+    # 添加测试：metrics 现在是可选的
+    def test_metrics_optional(self) -> None:
+        cfg = {
+            "databases": {
+                "db1": {"dsn": "sqlite:///foo"}
+            },
+            "queries": {
+                "q1": {
+                    "databases": ["db1"],
+                    "metrics": [],  # 空 metrics 应该被允许
+                    "sql": "SELECT 1"
+                }
+            },
+        }
+        config = Configuration.model_validate(cfg)
+        assert config.metrics == {}  # metrics 应该是空字典
 
     def test_databases(self) -> None:
         cfg = {
@@ -607,3 +627,310 @@ class TestConfiguration:
         assert query2.databases == ["db2"]
         assert query2.metrics == ["m2"]
         assert query2.sql == "SELECT 2"
+        
+    def test_with_alertmanager_and_alerts(self) -> None:  # 新增测试方法
+        cfg = {
+            "alertmanager": {
+                "url": "https://alertmanager.example.com"
+            },
+            "databases": {
+                "db1": {"dsn": "sqlite:///foo"}
+            },
+            "metrics": {
+                "metric1": {"type": "counter"}
+            },
+            "alerts": {
+                "HighErrorRate": {
+                    "severity": "P1",
+                    "for": "10m",
+                    "summary": "High Error Rate",
+                    "description": "Error count exceeds threshold",
+                    "labels": ["team"], 
+                    "annotations": {"runbook": "https://example.com/runbook"}
+                },
+                "CriticalAlert": {
+                    "summary": "Critical Service Down",
+                    "severity": "P0"
+                }
+            },
+            "queries": {
+                "q1": {
+                    "databases": ["db1"],
+                    "metrics": ["metric1"],
+                    "alerts": ["HighErrorRate"],  # 查询中引用告警
+                    "sql": "SELECT 1"
+                },
+                "q2": {
+                    "databases": ["db1"],
+                    "metrics": ["metric1"],
+                    "alerts": ["HighErrorRate", "CriticalAlert"],  # 多个告警
+                    "sql": "SELECT 2"
+                }
+            },
+        }
+        config = Configuration.model_validate(cfg)
+        
+        # 测试 alertmanager 配置
+        assert config.alertmanager is not None
+        assert config.alertmanager.url == "https://alertmanager.example.com"
+        
+        # 测试 alerts 配置
+        assert len(config.alerts) == 2
+        assert "HighErrorRate" in config.alerts
+        assert "CriticalAlert" in config.alerts
+        
+        high_error_alert = config.alerts["HighErrorRate"]
+        assert high_error_alert.severity == "P1"
+        assert high_error_alert.for_duration == "10m"
+        assert high_error_alert.summary == "High Error Rate"
+        assert high_error_alert.description == "Error count exceeds threshold"
+        assert high_error_alert.labels == ["team"] 
+        assert high_error_alert.annotations == {"runbook": "https://example.com/runbook"}
+        
+        critical_alert = config.alerts["CriticalAlert"]
+        assert critical_alert.severity == "P0"
+        assert critical_alert.summary == "Critical Service Down"
+        
+        # 测试查询中的 alerts 引用
+        query1 = config.queries["q1"]
+        assert query1.alerts == ["HighErrorRate"]
+        
+        query2 = config.queries["q2"]
+        assert query2.alerts == ["HighErrorRate", "CriticalAlert"]
+
+    def test_alertmanager_optional(self) -> None:  # 新增测试方法
+        """测试 alertmanager 配置是可选的"""
+        cfg = {
+            "databases": {
+                "db1": {"dsn": "sqlite:///foo"}
+            },
+            "metrics": {
+                "metric1": {"type": "counter"}
+            },
+            "alerts": {
+                "TestAlert": {
+                    "summary": "Test Alert"
+                }
+            },
+            "queries": {
+                "q1": {
+                    "databases": ["db1"],
+                    "metrics": ["metric1"],
+                    "sql": "SELECT 1"
+                }
+            },
+        }
+        config = Configuration.model_validate(cfg)
+        assert config.alertmanager is None
+        assert "TestAlert" in config.alerts
+
+    def test_alerts_optional(self) -> None:  # 新增测试方法
+        """测试 alerts 配置是可选的"""
+        cfg = {
+            "databases": {
+                "db1": {"dsn": "sqlite:///foo"}
+            },
+            "metrics": {
+                "metric1": {"type": "counter"}
+            },
+            "queries": {
+                "q1": {
+                    "databases": ["db1"],
+                    "metrics": ["metric1"],
+                    "sql": "SELECT 1"
+                }
+            },
+        }
+        config = Configuration.model_validate(cfg)
+        assert config.alerts == {}
+
+class TestAlert:
+    def test_defaults(self) -> None:
+        alert = Alert.model_validate({
+            "summary": "Test Alert"
+        })
+        assert alert.severity == "P3"
+        assert alert.for_duration == "0m"
+        assert alert.condition == "> 0"  # 新增：验证默认值
+        assert alert.summary == "Test Alert"
+        assert alert.description == ""
+        assert alert.labels == []
+        assert alert.annotations == {}
+
+    def test_optional(self) -> None:
+        config = {
+            "severity": "P1",
+            "for": "10m",
+            "condition": "> 100",  # 新增
+            "summary": "High Error Rate",
+            "description": "Error count exceeds threshold",
+            "labels": ["team", "service"],
+            "annotations": {"runbook": "https://example.com/runbook"}
+        }
+        alert = Alert.model_validate(config)
+        assert alert.severity == "P1"
+        assert alert.for_duration == "10m"
+        assert alert.condition == "> 100"  # 新增
+        assert alert.summary == "High Error Rate"
+        assert alert.description == "Error count exceeds threshold"
+        assert alert.labels == ["team", "service"]
+        assert alert.annotations == {"runbook": "https://example.com/runbook"}
+
+    def test_valid_conditions(self) -> None:
+        """测试各种有效的条件格式"""
+        test_cases = [
+            # (输入条件, 期望输出)
+            ("> 100", "> 100"),
+            ("< 50", "< 50"),
+            (">= 75.5", ">= 75.5"),
+            ("<= 25.0", "<= 25.0"),
+            ("== 0", "== 0"),
+            ("!= 1", "!= 1"),
+            (">100", "> 100"),           # 无空格 → 规范化
+            (" < 50 ", "< 50"),          # 有空格 → 规范化
+            (">=75.5", ">= 75.5"),       # 无空格的浮点数 → 规范化
+            (" == 0 ", "== 0"),          # 前后有空格 → 规范化
+            (">   100", "> 100"),        # 多个空格 → 规范化
+            ("<50.0", "< 50.0"),         # 无空格浮点数 → 规范化
+        ]
+        
+        for input_condition, expected_condition in test_cases:
+            alert = Alert.model_validate({
+                "summary": "Test Alert",
+                "condition": input_condition
+            })
+            assert alert.condition == expected_condition
+
+    def test_invalid_conditions(self) -> None:
+        """测试无效的条件格式"""
+        invalid_conditions = [
+            "invalid",
+            ">> 100", 
+            "= 50",
+            "> abc",
+            ">= ",
+            "",
+            "100 >",  # 操作符在错误位置
+            "> ",     # 缺少数值
+            "== abc", # 非数值
+        ]
+        
+        for condition in invalid_conditions:
+            with pytest.raises(ValidationError):
+                Alert.model_validate({
+                    "summary": "Test Alert", 
+                    "condition": condition
+                })
+
+
+class TestAlertManagerConfig:
+    def test_url(self) -> None:
+        config = AlertManager.model_validate({
+            "url": "https://alertmanager.example.com"
+        })
+        assert config.url == "https://alertmanager.example.com"
+
+    def test_missing_url(self) -> None:
+        config = AlertManager.model_validate({})
+        print(config)
+        assert config.url == ""
+        
+class TestQuery:
+    def test_defaults(self) -> None:
+        query = Query.model_validate({
+            "databases": ["db1"],
+            "metrics": ["metric1"],
+            "sql": "SELECT 1"
+        })
+        assert query.databases == ["db1"]
+        assert query.metrics == ["metric1"]
+        assert query.alerts == []  # 新增：测试默认值
+        assert query.sql == "SELECT 1"
+        assert query.interval is None
+        assert query.parameters is None
+        assert query.schedule is None
+        assert query.timeout is None
+
+    def test_with_alerts(self) -> None:  # 新增测试方法
+        config = {
+            "databases": ["db1"],
+            "metrics": ["metric1"],
+            "alerts": ["HighErrorRate", "CriticalAlert"],  # 新增 alerts 字段
+            "sql": "SELECT 1"
+        }
+        query = Query.model_validate(config)
+        assert query.databases == ["db1"]
+        assert query.metrics == ["metric1"]
+        assert query.alerts == ["HighErrorRate", "CriticalAlert"]
+        assert query.sql == "SELECT 1"
+
+    def test_optional(self) -> None:
+        config = {
+            "databases": ["db1", "db2"],
+            "metrics": ["metric1", "metric2"],
+            "alerts": ["Alert1"],  # 新增
+            "sql": "SELECT 1",
+            "interval": 10,
+            "timeout": 0.5,
+            "schedule": "*/5 * * * *",
+            "parameters": [{"param1": "value1"}],
+        }
+        query = Query.model_validate(config)
+        assert query.databases == ["db1", "db2"]
+        assert query.metrics == ["metric1", "metric2"]
+        assert query.alerts == ["Alert1"]  # 新增
+        assert query.sql == "SELECT 1"
+        assert query.interval == 10
+        assert query.timeout == 0.5
+        assert query.schedule == "*/5 * * * *"
+        assert query.parameters == [{"param1": "value1"}]
+
+    def test_invalid_databases(self) -> None:
+        with pytest.raises(ValidationError) as err:
+            Query.model_validate({
+                "databases": [],
+                "metrics": ["metric1"],
+                "sql": "SELECT 1"
+            })
+        assert "List should have at least 1 item" in str(err.value)
+
+    # def test_invalid_metrics(self) -> None:
+    #     with pytest.raises(ValidationError) as err:
+    #         Query.model_validate({
+    #             "databases": ["db1"],
+    #             "metrics": [],
+    #             "sql": "SELECT 1"
+    #         })
+    #     assert "List should have at least 1 item" in str(err.value)
+
+    # def test_invalid_alerts(self) -> None:
+    #     with pytest.raises(ValidationError) as err:
+    #         Query.model_validate({
+    #             "databases": ["db1"],
+    #             "metrics": ["metric1"],
+    #             "alerts": [],  # 空列表应该通过，因为有默认值
+    #             "sql": "SELECT 1"
+    #         })
+
+    def test_empty_metrics_and_alerts(self) -> None:
+            """测试 metrics 和 alerts 字段可以为空列表"""
+            config = {
+                "databases": ["db1"],
+                "metrics": [],  # 空 metrics
+                "alerts": [],   # 空 alerts
+                "sql": "SELECT 1"
+            }
+            query = Query.model_validate(config)
+            assert query.databases == ["db1"]
+            assert query.metrics == []
+            assert query.alerts == []
+            assert query.sql == "SELECT 1"
+            
+# # 运行所有测试
+# python3 -m pytest tests/schema_test.py -v
+
+# # 或者运行特定的新测试
+# python3 -m pytest tests/schema_test.py::TestAlert -v
+# python3 -m pytest tests/schema_test.py::TestQuery -v
+# python3 -m pytest tests/schema_test.py::TestConfiguration::test_with_alertmanager_and_alerts -v
+# python3 -m pytest tests/schema_test.py::TestAlertManagerConfig::test_missing_url -v

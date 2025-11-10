@@ -14,6 +14,8 @@ import yaml
 
 from query_exporter.db import DataBase, MetricResults, QueryExecution
 
+from copy import deepcopy
+
 __all__ = ["MetricValues", "QueryTracker", "advance_time", "metric_values"]
 
 
@@ -124,3 +126,36 @@ def metric_values(
                 values_by_suffix[sample_suffix].append(value)
 
     return values_by_label if by_labels else values_by_suffix[suffix]
+
+
+@pytest.fixture
+def sample_config_with_alerts(sample_config: dict[str, t.Any]) -> dict[str, t.Any]:
+    """提供包含 alerts 的测试配置"""
+    config = deepcopy(sample_config)
+    
+    config["alerts"] = {
+        "high_error_rate": {
+            "severity": "P3",
+            "for": "10m", 
+            "summary": "高错误率告警",
+            "description": "错误率超过阈值",
+            "labels": ["cluster", "rjob", "quotagroup"]
+        },
+        "latency_spike": {
+            "severity": "P2", 
+            "for": "5m",
+            "summary": "延迟突增告警",
+            "description": "服务延迟突然增加",
+            "labels": ["hostname"]
+        }
+    }
+    
+    # 添加使用 alerts 的查询
+    config["queries"]["alert_query"] = {
+        "databases": ["db"],
+        "interval": 30,
+        "alerts": ["high_error_rate"],
+        "sql": "SELECT 'cluster1' as cluster, 'rjob1' as rjob, 'quotagroup1' as quotagroup, 95 as value"
+    }
+    
+    return config

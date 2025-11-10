@@ -42,6 +42,8 @@ from .metrics import (
     QUERY_TIMESTAMP_METRIC_NAME,
 )
 
+from .alert_manager import AlertManager, AlertGenerator
+
 
 class InvalidMetricValue(Exception):
     """Raised when a query result is an invalid value for the metric."""
@@ -134,6 +136,16 @@ class QueryExecutor:
             db_config.name: DataBase(db_config, logger=self._logger)
             for db_config in self._config.databases.values()
         }
+        # 新增：初始化告警管理器
+        self._alert_manager = AlertManager(
+            config.alertmanager.url if config.alertmanager else "",
+            logger=self._logger
+        )
+        self._alert_generator = AlertGenerator(
+            self._alert_manager,
+            {name: alert.model_dump() for name, alert in config.alerts.items()},
+            logger=self._logger
+        )
 
         for query_execution in chain(
             *(query.executions for query in self._config.queries.values())
@@ -145,24 +157,29 @@ class QueryExecutor:
 
     async def start(self) -> None:
         """Start timed queries execution."""
+        await self._alert_manager.start()  # 新增
         for query_execution in self._timed_query_executions:
             query = query_execution.query
             call: TimedCall
             if query.interval:
+                print(f"[Executor] query interval: {query_execution}")
                 call = PeriodicCall(self._run_query, query_execution)
                 call.start(query.interval, now=True)
             elif query.schedule is not None:
+                print(f"[Executor] query schedule: {query_execution}")
                 call = TimedCall(self._run_query, query_execution)
                 call.start(self._loop_times_iter(query.schedule))
             self._timed_calls[query_execution.name] = call
 
     async def stop(self) -> None:
         """Stop timed query execution."""
+        print(f"[Executor] stop timed query execution")
         coros = (call.stop() for call in self._timed_calls.values())
         await asyncio.gather(*coros, return_exceptions=True)
         self._timed_calls.clear()
         coros = (db.close() for db in self._databases.values())
         await asyncio.gather(*coros, return_exceptions=True)
+        await self._alert_manager.stop()  # 新增
 
     def clear_expired_series(self) -> None:
         """Clear metric series that have expired."""
@@ -192,6 +209,7 @@ class QueryExecutor:
 
     def _run_query(self, query_execution: QueryExecution) -> None:
         """Periodic task to run a query."""
+        print(f"[Executor] _run_query: {query_execution}")
         for dbname in query_execution.query.databases:
             self._loop.create_task(
                 self._execute_query(query_execution, dbname)
@@ -205,7 +223,9 @@ class QueryExecutor:
             return
 
         db = self._databases[dbname]
+        print(f"[Executor] _execute_query db: {db}")
         query = query_execution.query
+        print(f"[Executor] _execute_query: {query}")
         try:
             metric_results = await db.execute(query_execution)
             if metric_results.latency:
@@ -219,6 +239,11 @@ class QueryExecutor:
             self._update_metrics_from_results(
                 db, query_execution.name, metric_results.results
             )
+            # 新增：处理告警
+            if query_execution.query.alerts and metric_results.results:
+                await self._process_alerts(
+                    query_execution, db, metric_results.results
+                )
             self._increment_queries_count(db, query, "success")
         except InvalidMetricValue:
             self._increment_queries_count(db, query, "invalid-value")
@@ -235,6 +260,86 @@ class QueryExecutor:
                     database=dbname,
                 )
                 self._doomed_queries[query_execution.name].add(dbname)
+    
+    async def _process_alerts(
+        self,
+        query_execution: QueryExecution,
+        database: DataBase,
+        results: list[MetricResult],
+    ) -> None:
+        """Process query results and generate alerts."""
+        try:
+            # 过滤出 alerts 相关的结果
+            alert_results = []
+            for result in results:
+                # 检查结果是否对应某个告警
+                for alert in query_execution.query.alerts:
+                    if result.metric == alert.name:
+                        alert_results.append(result)
+                        break
+            print(f"[Executor] _process_alerts alert_results: {alert_results}")
+            if not alert_results:
+                return
+                
+            # 将 MetricResult 转换为字典格式
+            result_dicts = []
+            for result in alert_results:
+                result_dict = {
+                    'value': result.value,
+                    'metric': result.metric  # 保留 metric 名称
+                }
+                # 添加 labels
+                result_dict.update(result.labels)
+                result_dicts.append(result_dict)
+
+            # 从 QueryAlert 对象中提取告警名称
+            alert_names = [alert.name for alert in query_execution.query.alerts]
+            
+            # 生成告警
+            self._logger.info(
+                    "[Executor] _process_alerts before generate_alerts_from_results",
+                    query_execution=query_execution,
+                    name=query_execution.name,
+                    alert_names=alert_names,
+                    result_dicts=result_dicts
+                )
+            alerts = self._alert_generator.generate_alerts_from_results(
+                query_execution.name,
+                alert_names,
+                result_dicts,
+                database.config.labels
+            )
+
+            # 发送告警
+            if alerts:
+                self._logger.info(
+                    "Processing alerts for query",
+                    query=query_execution.name,
+                    alert_count=len(alerts),
+                    database=database.config.name
+                )
+                success = await self._alert_manager.send_alerts(alerts)
+                if success:
+                    self._logger.info(
+                        "Alerts sent successfully to AlertManager",
+                        query=query_execution.name,
+                        count=len(alerts),
+                        database=database.config.name
+                    )
+                else:
+                    self._logger.error(
+                        "Failed to send alerts to AlertManager",
+                        query=query_execution.name,
+                        count=len(alerts),
+                        database=database.config.name
+                    )
+
+        except Exception as e:
+            self._logger.error(
+                "Failed to process alerts",
+                query=query_execution.name,
+                error=str(e)
+            )
 
     async def _remove_if_dooomed(
         self, query_execution: QueryExecution, dbname: str
@@ -269,6 +374,9 @@ class QueryExecutor:
         has_invalid = False
         for result in results:
             try:
+                # 只更新在 metrics 配置中定义的结果
+                if result.metric not in self._config.metrics:
+                    continue
                 self._update_metric(
                     database, result.metric, result.value, labels=result.labels
                 )
