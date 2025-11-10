@@ -74,35 +74,77 @@ class AlertManager:
         """Send alerts to AlertManager."""
         if not self.url:
             self.logger.debug("AlertManager URL not configured, skipping alert sending")
+            print("[AlertManager] URL not configured, skipping alert sending")
             return True
 
         if not self.session:
             await self.start()
 
         url = urljoin(self.url, '/api/v2/alerts')
+        alert_count = len(alerts)
+        alert_names = [alert['labels'].get('alertname', 'unknown') for alert in alerts]
         
         try:
+            self.logger.info(
+                "Sending alerts to AlertManager",
+                url=url,
+                count=alert_count,
+                alert_names=alert_names
+            )
+            print(f"[AlertManager] Sending {alert_count} alert(s) to {url}")
+            print(f"[AlertManager] Alert names: {', '.join(alert_names)}")
             async with self.session.post(
                 url, 
                 json=alerts,
                 headers={'Content-Type': 'application/json'}
             ) as response:
+                response_text = await response.text()
                 if response.status == 200:
-                    self.logger.debug(
-                        "Alerts sent successfully", 
-                        count=len(alerts),
-                        alert_names=[alert['labels'].get('alertname') for alert in alerts]
+                    self.logger.info(
+                        "Alerts sent successfully to AlertManager",
+                        url=url,
+                        count=alert_count,
+                        alert_names=alert_names,
+                        status=response.status
                     )
+                    print(f"[AlertManager] ✓ Successfully sent {alert_count} alert(s) to AlertManager")
+                    print(f"[AlertManager] Response status: {response.status}")
                     return True
                 else:
                     self.logger.error(
-                        "Failed to send alerts", 
+                        "Failed to send alerts to AlertManager",
+                        url=url,
                         status=response.status,
-                        response=await response.text()
+                        response=response_text,
+                        count=alert_count,
+                        alert_names=alert_names
                     )
+                    print(f"[AlertManager] ✗ Failed to send alerts to AlertManager")
+                    print(f"[AlertManager] Response status: {response.status}")
+                    print(f"[AlertManager] Response body: {response_text[:500]}")  # 限制长度避免过长
                     return False
+        except aiohttp.ClientError as e:
+            error_msg = f"Network error sending alerts to AlertManager: {str(e)}"
+            self.logger.error(
+                error_msg,
+                url=url,
+                error=str(e),
+                error_type=type(e).__name__,
+                count=alert_count
+            )
+            print(f"[AlertManager] ✗ Network error: {str(e)}")
+            return False
         except Exception as e:
-            self.logger.error("Error sending alerts to AlertManager", error=str(e))
+            error_msg = f"Unexpected error sending alerts to AlertManager: {str(e)}"
+            self.logger.error(
+                error_msg,
+                url=url,
+                error=str(e),
+                error_type=type(e).__name__,
+                count=alert_count,
+                traceback=True
+            )
+            print(f"[AlertManager] ✗ Unexpected error: {str(e)}")
             return False
 
 
@@ -135,7 +177,11 @@ class AlertGenerator:
         """Generate alerts from query results with condition evaluation."""
         alerts = []
         current_time = datetime.utcnow()
-        
+        print(f"[AlertGenerator] generate_alerts_from_results alert_names: {alert_names}")
+        print(f"[AlertGenerator] generate_alerts_from_results results: {results}")
+        print(f"[AlertGenerator] generate_alerts_from_results database_labels: {database_labels}")
+        print(f"[AlertGenerator] generate_alerts_from_results query_name: {query_name}")    
+        print(f"[AlertGenerator] generate_alerts_from_results alert_configs: {self.alert_configs}")
         for alert_name in alert_names:
             alert_config = self.alert_configs.get(alert_name)
             if not alert_config:
@@ -149,16 +195,16 @@ class AlertGenerator:
             for result in results:
                 # Check if alert condition is met
                 is_active = self._evaluate_alert_condition(alert_config, result)
-                
+                print(f"[AlertGenerator] _evaluate_alert_condition is_active: {is_active}")
                 # Create unique key for this alert instance
                 alert_key = self._create_alert_key(alert_name, result, database_labels)
-                
+                print(f"[AlertGenerator] _create_alert_key alert_key: {alert_key}")
                 # Update alert state
                 alert_state = self._update_alert_state(alert_key, is_active, current_time)
-                
+                print(f"[AlertGenerator] _update_alert_state alert_state: {alert_state}")
                 # Check if alert should be sent based on duration
                 should_send = self._should_send_alert(alert_config, alert_state, current_time)
-                
+                print(f"[AlertGenerator] _should_send_alert should_send: {should_send}")
                 if should_send and not alert_state.sent:
                     alert = self._create_alert(
                         alert_name, 
@@ -184,6 +230,8 @@ class AlertGenerator:
     def _evaluate_alert_condition(self, alert_config: Dict[str, Any], result: Dict[str, Any]) -> bool:
         """Evaluate if alert condition is met based on result value."""
         try:
+            print(f"[AlertGenerator] _evaluate_alert_condition alert_config: {alert_config}")
+            print(f"[AlertGenerator] _evaluate_alert_condition result: {result}")
             if 'value' not in result:
                 self.logger.debug(
                     "Result missing 'value' field, skipping condition evaluation",
@@ -200,6 +248,7 @@ class AlertGenerator:
             
             # Convert to number for comparison
             numeric_value = self._convert_to_numeric(value)
+            print(f"[AlertGenerator] _evaluate_alert_condition numeric_value: {numeric_value}")
             if numeric_value is None:
                 self.logger.debug(
                     "Cannot convert result value to number, skipping condition evaluation",
@@ -210,6 +259,7 @@ class AlertGenerator:
             
             # Parse condition from alert config
             condition = alert_config.get('condition', '> 0')
+            print(f"[AlertGenerator] _evaluate_alert_condition condition: {condition}")
             return self._evaluate_condition(numeric_value, condition)
             
         except Exception as e:
@@ -345,11 +395,21 @@ class AlertGenerator:
             return False
             
         # Parse duration from alert config (e.g., "10m", "1h", "30s")
-        duration_str = alert_config.get('for', '0m')
+        # Support both 'for' (YAML key) and 'for_duration' (internal model key)
+        duration_raw = alert_config.get('for') or alert_config.get('for_duration') or '0m'
+        # Ensure string for parsing
+        duration_str = str(duration_raw)
         required_duration = self._parse_duration(duration_str)
+        print(f"[AlertGenerator] _should_send_alert required_duration: {required_duration}")
         
         actual_duration = self._get_duration_seconds(alert_state.start_time, current_time)
-        
+        print(f"[AlertGenerator] _should_send_alert actual_duration: {actual_duration}")
+        self.logger.info(
+                "duration alert",
+                required_duration=required_duration,
+                actual_duration=actual_duration
+            )
+        print(f"[AlertGenerator] _should_send_alert actual_duration >= required_duration: {actual_duration >= required_duration}")
         return actual_duration >= required_duration
 
     def _parse_duration(self, duration_str: str) -> int:
@@ -391,9 +451,11 @@ class AlertGenerator:
             self.logger.debug(
                 "Creating alert",
                 alert_name=alert_name,
+                alert_config=alert_config,
                 result=result,
-                alert_config_labels=alert_config.get('labels'),
-                alert_config_labels_type=type(alert_config.get('labels')).__name__
+                database_labels=database_labels,
+                query_name=query_name,
+                alert_state=alert_state
             )
             
             # 合并标签：数据库标签 + 告警配置标签 + 查询结果标签

@@ -162,15 +162,18 @@ class QueryExecutor:
             query = query_execution.query
             call: TimedCall
             if query.interval:
+                print(f"[Executor] query interval: {query_execution}")
                 call = PeriodicCall(self._run_query, query_execution)
                 call.start(query.interval, now=True)
             elif query.schedule is not None:
+                print(f"[Executor] query schedule: {query_execution}")
                 call = TimedCall(self._run_query, query_execution)
                 call.start(self._loop_times_iter(query.schedule))
             self._timed_calls[query_execution.name] = call
 
     async def stop(self) -> None:
         """Stop timed query execution."""
+        print(f"[Executor] stop timed query execution")
         coros = (call.stop() for call in self._timed_calls.values())
         await asyncio.gather(*coros, return_exceptions=True)
         self._timed_calls.clear()
@@ -206,6 +209,7 @@ class QueryExecutor:
 
     def _run_query(self, query_execution: QueryExecution) -> None:
         """Periodic task to run a query."""
+        print(f"[Executor] _run_query: {query_execution}")
         for dbname in query_execution.query.databases:
             self._loop.create_task(
                 self._execute_query(query_execution, dbname)
@@ -219,7 +223,9 @@ class QueryExecutor:
             return
 
         db = self._databases[dbname]
+        print(f"[Executor] _execute_query db: {db}")
         query = query_execution.query
+        print(f"[Executor] _execute_query: {query}")
         try:
             metric_results = await db.execute(query_execution)
             if metric_results.latency:
@@ -271,7 +277,7 @@ class QueryExecutor:
                     if result.metric == alert.name:
                         alert_results.append(result)
                         break
-            
+            print(f"[Executor] _process_alerts alert_results: {alert_results}")
             if not alert_results:
                 return
                 
@@ -290,6 +296,13 @@ class QueryExecutor:
             alert_names = [alert.name for alert in query_execution.query.alerts]
             
             # 生成告警
+            self._logger.info(
+                    "[Executor] _process_alerts before generate_alerts_from_results",
+                    query_execution=query_execution,
+                    name=query_execution.name,
+                    alert_names=alert_names,
+                    result_dicts=result_dicts
+                )
             alerts = self._alert_generator.generate_alerts_from_results(
                 query_execution.name,
                 alert_names,
@@ -299,24 +312,26 @@ class QueryExecutor:
 
             # 发送告警
             if alerts:
-                self._logger.debug(
-                    "Alerts processed and sent",
+                self._logger.info(
+                    "Processing alerts for query",
                     query=query_execution.name,
                     alert_count=len(alerts),
                     database=database.config.name
                 )
                 success = await self._alert_manager.send_alerts(alerts)
                 if success:
-                    self._logger.debug(
+                    self._logger.info(
                         "Alerts sent successfully to AlertManager",
                         query=query_execution.name,
-                        count=len(alerts)
+                        count=len(alerts),
+                        database=database.config.name
                     )
                 else:
                     self._logger.error(
                         "Failed to send alerts to AlertManager",
                         query=query_execution.name,
-                        count=len(alerts)
+                        count=len(alerts),
+                        database=database.config.name
                     )
 
         except Exception as e:
