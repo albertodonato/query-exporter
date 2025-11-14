@@ -12,6 +12,12 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
+  debug:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "${{ toJSON(github)}}"
+      - run: echo "${{ toJSON(pull_request)}}"
+    
   build:
     if: github.actor == github.repository_owner
     runs-on: ${{ matrix.platform == 'linux/arm64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
