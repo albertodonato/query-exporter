@@ -217,13 +217,11 @@ class TestDatabase:
         assert db.connect_sql == []
         assert db.labels == {}
         assert db.keep_connected
-        assert db.autocommit
 
     def test_optional(self) -> None:
         config = {
             "dsn": "sqlite:///db",
             "keep-connected": False,
-            "autocommit": False,
             "connect-sql": [
                 "PRAGMA application_id = 123",
                 "PRAGMA auto_vacuum = 1",
@@ -233,7 +231,6 @@ class TestDatabase:
         db = Database.model_validate(config)
         assert db.dsn == "sqlite:///db"
         assert not db.keep_connected
-        assert not db.autocommit
         assert db.connect_sql == [
             "PRAGMA application_id = 123",
             "PRAGMA auto_vacuum = 1",
@@ -499,7 +496,6 @@ class TestConfiguration:
                 "db2": {
                     "dsn": "sqlite:///bar",
                     "keep-connected": False,
-                    "autocommit": False,
                 },
             },
             "metrics": {},
@@ -511,10 +507,8 @@ class TestConfiguration:
         database2 = config.databases["db2"]
         assert database1.dsn == "sqlite:///foo"
         assert database1.keep_connected
-        assert database1.autocommit
         assert database2.dsn == "sqlite:///bar"
         assert not database2.keep_connected
-        assert not database2.autocommit
 
     def test_metrics(self) -> None:
         cfg = {

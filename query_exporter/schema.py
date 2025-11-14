@@ -174,7 +174,6 @@ class Database(Model):
     """Database connection configuration."""
 
     dsn: DSN
-    autocommit: bool = True
     keep_connected: bool = True
     connect_sql: list[str] = Field(min_length=1, default_factory=list)
     labels: dict[Label, str] = Field(min_length=1, default_factory=dict)

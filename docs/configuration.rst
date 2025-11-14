@@ -66,10 +66,6 @@ Each database definitions can have the following keys:
   **Note**: in the string form, username, password and options need to be
   URL-encoded, whereas this is done automatically for the key/value form.
 
-  **Note**: use of the ``env:`` and ``file:`` prefixes in the string form is
-  deprecated, and will be dropped in the 4.0 release. Use ``!env`` and
-  ``!file`` YAML tags instead.
-
 ``connect-sql``:
   An optional list of queries to run right after database connection. This can
   be used to set up connection-wise parameters and configurations.
@@ -79,14 +75,6 @@ Each database definitions can have the following keys:
   disconnect after each one. If not specified, defaults to ``true``.  Setting
   this option to ``false`` might be useful if queries on a database are run
   with very long interval, to avoid holding idle connections.
-
-``autocommit``:
-  whether to set autocommit for the database connection. If not specified,
-  defaults to ``true``.  This should only be changed to ``false`` if specific
-  queries require it.
-
-  **Note**: this option is deprecated and be removed in the next major
-   release. Explicit transactions are now always used to run each query.
 
 ``labels``:
   an optional mapping of label names and values to tag metrics collected from each database.

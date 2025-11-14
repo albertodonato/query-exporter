@@ -128,7 +128,6 @@ class DataBaseConfig:
     connect_sql: list[str] = field(default_factory=list)
     labels: dict[str, str] = field(default_factory=dict)
     keep_connected: bool = True
-    autocommit: bool = True
 
     def __post_init__(self) -> None:
         # raise DatabaseError error if the DSN in invalid
