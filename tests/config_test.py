@@ -61,11 +61,11 @@ class TestLoadConfig:
         cfg = {
             "databases": {
                 "db1": {
-                    "dsn": "sqlite://",
+                    "dsn": "sqlite:///:memory:",
                     "labels": {"label1": "value1", "label2": "value2"},
                 },
                 "db2": {
-                    "dsn": "sqlite://",
+                    "dsn": "sqlite:///:memory:",
                     "labels": {"label2": "value2", "label3": "value3"},
                 },
             },
@@ -79,7 +79,7 @@ class TestLoadConfig:
 
     def test_load_metrics_section(self, write_config: ConfigWriter) -> None:
         cfg = {
-            "databases": {"db1": {"dsn": "sqlite://"}},
+            "databases": {"db1": {"dsn": "sqlite:///:memory:"}},
             "metrics": {
                 "metric1": {
                     "type": "summary",
@@ -131,7 +131,7 @@ class TestLoadConfig:
         self, write_config: ConfigWriter
     ) -> None:
         cfg = {
-            "databases": {"db1": {"dsn": "sqlite://"}},
+            "databases": {"db1": {"dsn": "sqlite:///:memory:"}},
             "metrics": {"m": {"type": "gauge", "labels": ["database"]}},
             "queries": {},
         }
@@ -147,7 +147,9 @@ class TestLoadConfig:
         self, write_config: ConfigWriter
     ) -> None:
         cfg = {
-            "databases": {"db1": {"dsn": "sqlite://", "labels": {"l1": "v1"}}},
+            "databases": {
+                "db1": {"dsn": "sqlite:///:memory:", "labels": {"l1": "v1"}}
+            },
             "metrics": {"m": {"type": "gauge", "labels": ["l1"]}},
             "queries": {},
         }
@@ -220,7 +222,7 @@ class TestLoadConfig:
         self, write_config: ConfigWriter
     ) -> None:
         cfg = {
-            "databases": {"db": {"dsn": "sqlite://"}},
+            "databases": {"db": {"dsn": "sqlite:///:memory:"}},
             "metrics": {"m": {"type": "summary", "labels": ["l"]}},
             "queries": {
                 "q": {
@@ -259,7 +261,7 @@ class TestLoadConfig:
         self, write_config: ConfigWriter
     ) -> None:
         cfg = {
-            "databases": {"db": {"dsn": "sqlite://"}},
+            "databases": {"db": {"dsn": "sqlite:///:memory:"}},
             "metrics": {"m": {"type": "summary", "labels": ["l"]}},
             "queries": {
                 "q": {
@@ -310,7 +312,7 @@ class TestLoadConfig:
         self, write_config: ConfigWriter
     ) -> None:
         cfg = {
-            "databases": {"db": {"dsn": "sqlite://"}},
+            "databases": {"db": {"dsn": "sqlite:///:memory:"}},
             "metrics": {"m": {"type": "summary", "labels": ["l"]}},
             "queries": {
                 "q": {
@@ -337,7 +339,7 @@ class TestLoadConfig:
         self, write_config: ConfigWriter
     ) -> None:
         cfg = {
-            "databases": {"db": {"dsn": "sqlite://"}},
+            "databases": {"db": {"dsn": "sqlite:///:memory:"}},
             "metrics": {"m": {"type": "summary"}},
             "queries": {
                 "q": {
@@ -361,7 +363,7 @@ class TestLoadConfig:
         self, write_config: ConfigWriter
     ) -> None:
         cfg = {
-            "databases": {"db": {"dsn": "sqlite://"}},
+            "databases": {"db": {"dsn": "sqlite:///:memory:"}},
             "metrics": {"m": {"type": "summary"}},
             "queries": {
                 "q": {
@@ -411,7 +413,7 @@ class TestLoadConfig:
             ),
             (
                 {
-                    "databases": {"db": {"dsn": "sqlite://"}},
+                    "databases": {"db": {"dsn": "sqlite:///:memory:"}},
                     "metrics": {},
                     "queries": {
                         "q": {
@@ -426,7 +428,7 @@ class TestLoadConfig:
             ),
             (
                 {
-                    "databases": {"db": {"dsn": "sqlite://"}},
+                    "databases": {"db": {"dsn": "sqlite:///:memory:"}},
                     "metrics": {"m": {"type": "gauge"}},
                     "queries": {
                         "q": {
@@ -443,7 +445,7 @@ class TestLoadConfig:
             ),
             (
                 {
-                    "databases": {"db": {"dsn": "sqlite://"}},
+                    "databases": {"db": {"dsn": "sqlite:///:memory:"}},
                     "metrics": {"m": {"type": "gauge"}},
                     "queries": {
                         "q": {
@@ -477,8 +479,8 @@ class TestLoadConfig:
         sample_config: dict[str, t.Any],
         write_config: ConfigWriter,
     ) -> None:
-        sample_config["databases"]["db2"] = {"dsn": "sqlite://"}
-        sample_config["databases"]["db3"] = {"dsn": "sqlite://"}
+        sample_config["databases"]["db2"] = {"dsn": "sqlite:///:memory:"}
+        sample_config["databases"]["db3"] = {"dsn": "sqlite:///:memory:"}
         sample_config["metrics"]["m2"] = {"type": "gauge"}
         sample_config["metrics"]["m3"] = {"type": "gauge"}
         config_file = write_config(sample_config)
@@ -496,7 +498,7 @@ class TestLoadConfig:
         self, write_config: ConfigWriter
     ) -> None:
         cfg = {
-            "databases": {"db": {"dsn": "sqlite://"}},
+            "databases": {"db": {"dsn": "sqlite:///:memory:"}},
             "metrics": {"m": {"type": "summary"}},
             "queries": {
                 "q": {"databases": ["db"], "metrics": ["m"], "sql": "SELECT 1"}
@@ -557,7 +559,7 @@ class TestLoadConfig:
     ) -> None:
         file1 = write_config(
             {
-                "databases": {"db1": {"dsn": "sqlite://"}},
+                "databases": {"db1": {"dsn": "sqlite:///:memory:"}},
                 "metrics": {"m1": {"type": "gauge"}},
                 "queries": {
                     "q1": {
@@ -570,7 +572,7 @@ class TestLoadConfig:
         )
         file2 = write_config(
             {
-                "databases": {"db2": {"dsn": "sqlite://"}},
+                "databases": {"db2": {"dsn": "sqlite:///:memory:"}},
                 "metrics": {"m2": {"type": "gauge"}},
                 "queries": {
                     "q2": {

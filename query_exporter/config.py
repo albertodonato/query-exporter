@@ -42,7 +42,7 @@ def load_config(
     paths: list[Path],
     logger: structlog.stdlib.BoundLogger | None = None,
 ) -> Config:
-    """Load YAML config from file."""
+    """Load YAML configuration files."""
     if logger is None:
         logger = structlog.get_logger()
 
@@ -69,7 +69,7 @@ def load_config(
             f"{len(errors)} validation error{'s' if len(errors) > 1 else ''}",
             details=details,
         )
-    database_labels = _validate_databases(configuration.databases, logger)
+    database_labels = _validate_databases(configuration.databases)
     extra_labels = frozenset([DATABASE_LABEL]) | database_labels
     builtin_metrics_config = (
         {
@@ -114,10 +114,7 @@ def _load_config(paths: list[Path]) -> dict[str, t.Any]:
     return config
 
 
-def _validate_databases(
-    dbs: dict[str, schema.Database],
-    logger: structlog.stdlib.BoundLogger,
-) -> frozenset[str]:
+def _validate_databases(dbs: dict[str, schema.Database]) -> frozenset[str]:
     """Validate database configuration and return a set of all database labels."""
     all_db_labels: set[frozenset[str]] = set()  # set of all labels sets
     try:

@@ -76,7 +76,7 @@ async def query_tracker(
 @pytest.fixture
 def sample_config() -> Iterator[dict[str, t.Any]]:
     yield {
-        "databases": {"db": {"dsn": "sqlite://"}},
+        "databases": {"db": {"dsn": "sqlite:///:memory:"}},
         "metrics": {"m": {"type": "gauge", "labels": ["l1", "l2"]}},
         "queries": {
             "q": {

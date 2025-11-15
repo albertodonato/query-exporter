@@ -9,6 +9,7 @@ import requests
 import yaml
 
 from .docker import DockerService, ServiceHandler
+from .report import PHASE_REPORT_KEY
 
 
 class Exporter(DockerService):
@@ -110,8 +111,13 @@ def exporter_service(
 
 @pytest.fixture
 def exporter(
-    exporter_service: Exporter, service_handler: ServiceHandler
+    request: pytest.FixtureRequest,
+    exporter_service: Exporter,
+    service_handler: ServiceHandler,
 ) -> Iterator[Exporter]:
     """The query-exporter service to access in tests."""
     service_handler.wait(exporter_service)
     yield exporter_service
+    collector = request.node.stash[PHASE_REPORT_KEY]
+    if collector.test_failed:
+        print(service_handler.logs(exporter_service))

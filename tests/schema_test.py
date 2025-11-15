@@ -216,26 +216,47 @@ class TestDatabase:
         assert db.dsn == "sqlite:///db"
         assert db.connect_sql == []
         assert db.labels == {}
-        assert db.keep_connected
+        assert db.connection_pool.size == 1
+        assert db.connection_pool.max_overflow == 0
 
     def test_optional(self) -> None:
         config = {
             "dsn": "sqlite:///db",
-            "keep-connected": False,
             "connect-sql": [
                 "PRAGMA application_id = 123",
                 "PRAGMA auto_vacuum = 1",
             ],
             "labels": {"label1": "value1", "label2": "value2"},
+            "connection-pool": {
+                "size": 10,
+                "max-overflow": 20,
+            },
         }
         db = Database.model_validate(config)
         assert db.dsn == "sqlite:///db"
-        assert not db.keep_connected
         assert db.connect_sql == [
             "PRAGMA application_id = 123",
             "PRAGMA auto_vacuum = 1",
         ]
         assert db.labels == {"label1": "value1", "label2": "value2"}
+        assert db.connection_pool.size == 10
+        assert db.connection_pool.max_overflow == 20
+
+    def test_connection_pool_partial_defaults(self) -> None:
+        db = Database.model_validate(
+            {
+                "dsn": "sqlite:///db",
+                "connection-pool": {"size": 20},
+            }
+        )
+        assert db.connection_pool.size == 20
+        assert db.connection_pool.max_overflow == 0
+
+        db = Database.model_validate(
+            {"dsn": "sqlite:///db", "connection-pool": {"max-overflow": 20}}
+        )
+        assert db.connection_pool.size == 1
+        assert db.connection_pool.max_overflow == 20
 
     def test_missing_dsn(self) -> None:
         with pytest.raises(ValidationError) as err:
@@ -495,7 +516,6 @@ class TestExporterConfig:
                 "db1": {"dsn": "sqlite:///foo"},
                 "db2": {
                     "dsn": "sqlite:///bar",
-                    "keep-connected": False,
                 },
             },
             "metrics": {},
@@ -506,9 +526,7 @@ class TestExporterConfig:
         database1 = config.databases["db1"]
         database2 = config.databases["db2"]
         assert database1.dsn == "sqlite:///foo"
-        assert database1.keep_connected
         assert database2.dsn == "sqlite:///bar"
-        assert not database2.keep_connected
 
     def test_metrics(self) -> None:
         cfg = {

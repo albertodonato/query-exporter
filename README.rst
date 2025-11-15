@@ -40,7 +40,6 @@ A sample configuration file for the application looks like this:
           app: app1
       db2:
         dsn: sqlite://
-        keep-connected: false
         labels:
           region: us2
           app: app1
