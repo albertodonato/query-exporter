@@ -22,6 +22,7 @@ from .config import (
     load_config,
 )
 from .executor import QueryExecutor
+from .executor_parallel import ParallelQueryExecutor
 from .metrics import QUERY_INTERVAL_METRIC_NAME
 
 # The application key to track the QueryExecutor
@@ -73,7 +74,21 @@ class QueryExporterScript(PrometheusExporterScript):
     async def on_application_startup(
         self, application: Application
     ) -> None:  # pragma: nocover
-        query_executor = QueryExecutor(self.config, self.registry, self.logger)
+        if self.config.parallel.enabled:
+            query_executor = ParallelQueryExecutor(
+                self.config,
+                self.registry,
+                self.logger,
+                pool_size=self.config.parallel.pool_size,
+                max_overflow=self.config.parallel.max_overflow,
+            )
+            self.logger.info(
+                "parallel execution enabled",
+                pool_size=self.config.parallel.pool_size,
+                max_overflow=self.config.parallel.max_overflow,
+            )
+        else:
+            query_executor = QueryExecutor(self.config, self.registry, self.logger)
         application[EXPORTER_APP_KEY].set_metric_update_handler(
             partial(self._update_handler, query_executor)
         )
