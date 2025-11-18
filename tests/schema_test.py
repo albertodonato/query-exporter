@@ -8,8 +8,8 @@ from query_exporter.schema import (
     Buckets,
     BuiltinMetric,
     BuiltinMetrics,
-    Configuration,
     Database,
+    ExporterConfig,
     Label,
     Metric,
     Port,
@@ -476,7 +476,7 @@ class TestQueryParameters:
     )
 
 
-class TestConfiguration:
+class TestExporterConfig:
     @pytest.mark.parametrize("section", ["databases", "metrics", "queries"])
     def test_empty_sections(
         self,
@@ -486,7 +486,7 @@ class TestConfiguration:
     ) -> None:
         del sample_config[section]
         with pytest.raises(ValidationError) as err:
-            Configuration.model_validate(sample_config)
+            ExporterConfig.model_validate(sample_config)
         assert "Field required" in str(err.value)
 
     def test_databases(self) -> None:
@@ -501,7 +501,7 @@ class TestConfiguration:
             "metrics": {},
             "queries": {},
         }
-        config = Configuration.model_validate(cfg)
+        config = ExporterConfig.model_validate(cfg)
         assert {"db1", "db2"} == set(config.databases)
         database1 = config.databases["db1"]
         database2 = config.databases["db2"]
@@ -534,7 +534,7 @@ class TestConfiguration:
             },
             "queries": {},
         }
-        config = Configuration.model_validate(cfg)
+        config = ExporterConfig.model_validate(cfg)
         metric1 = config.metrics["metric1"]
         assert metric1.type == "summary"
         assert metric1.description == "metric one"
@@ -567,7 +567,7 @@ class TestConfiguration:
             "queries": {},
         }
         with pytest.raises(ValidationError) as err:
-            Configuration.model_validate(cfg)
+            ExporterConfig.model_validate(cfg)
         assert "String should match pattern '^[a-zA-Z_][a-zA-Z0-9_]*$'" in str(
             err.value
         )
@@ -591,7 +591,7 @@ class TestConfiguration:
                 },
             },
         }
-        config = Configuration.model_validate(cfg)
+        config = ExporterConfig.model_validate(cfg)
         assert len(config.queries) == 2
         query1 = config.queries["q1"]
         assert query1.databases == ["db1"]

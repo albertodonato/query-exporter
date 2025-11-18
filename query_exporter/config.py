@@ -10,14 +10,7 @@ from pydantic import ValidationError
 import structlog
 import yaml
 
-from . import schema
-from .db import (
-    DataBaseConfig,
-    InvalidQueryParameters,
-    InvalidQuerySchedule,
-    Query,
-    QueryMetric,
-)
+from . import db, schema
 from .metrics import BUILTIN_METRICS, get_builtin_metric_configs
 from .yaml import load_yaml
 
@@ -40,9 +33,9 @@ class ConfigError(Exception):
 class Config:
     """Top-level configuration."""
 
-    databases: dict[str, DataBaseConfig]
+    databases: dict[str, schema.Database]
     metrics: dict[str, MetricConfig]
-    queries: dict[str, Query]
+    queries: dict[str, db.Query]
 
 
 def load_config(
@@ -58,7 +51,7 @@ def load_config(
     except yaml.scanner.ScannerError as e:
         raise ConfigError(str(e))
     try:
-        configuration = schema.Configuration(**data)
+        configuration = schema.ExporterConfig(**data)
     except ValidationError as ve:
         errors = ve.errors()
         details = [
@@ -76,7 +69,7 @@ def load_config(
             f"{len(errors)} validation error{'s' if len(errors) > 1 else ''}",
             details=details,
         )
-    databases, database_labels = _get_databases(configuration.databases)
+    database_labels = _validate_databases(configuration.databases, logger)
     extra_labels = frozenset([DATABASE_LABEL]) | database_labels
     builtin_metrics_config = (
         {
@@ -90,9 +83,12 @@ def load_config(
         configuration.metrics, builtin_metrics_config, extra_labels
     )
     queries = _get_queries(
-        configuration.queries, frozenset(databases), metrics, extra_labels
+        configuration.queries,
+        frozenset(configuration.databases),
+        metrics,
+        extra_labels,
     )
-    config = Config(databases, metrics, queries)
+    config = Config(configuration.databases, metrics, queries)
     _warn_if_unused(config, logger)
     return config
 
@@ -118,23 +114,17 @@ def _load_config(paths: list[Path]) -> dict[str, t.Any]:
     return config
 
 
-def _get_databases(
+def _validate_databases(
     dbs: dict[str, schema.Database],
-) -> tuple[dict[str, DataBaseConfig], frozenset[str]]:
-    """Return a dict mapping names to database configs, and a set of database labels."""
-    databases = {}
+    logger: structlog.stdlib.BoundLogger,
+) -> frozenset[str]:
+    """Validate database configuration and return a set of all database labels."""
     all_db_labels: set[frozenset[str]] = set()  # set of all labels sets
     try:
-        for name, db in dbs.items():
-            labels = db.labels or {}
-            all_db_labels.add(frozenset(labels))
-            databases[name] = DataBaseConfig(
-                name,
-                t.cast(str, db.dsn),
-                connect_sql=db.connect_sql,
-                labels=labels,
-                keep_connected=db.keep_connected,
-            )
+        for name, config in dbs.items():
+            # raise an error if the configuration is not valid
+            db.create_db_engine(config)
+            all_db_labels.add(frozenset(config.labels))
     except Exception as e:
         raise ConfigError(str(e))
 
@@ -146,7 +136,7 @@ def _get_databases(
     else:
         db_labels = all_db_labels.pop()
 
-    return databases, db_labels
+    return db_labels
 
 
 def _get_metrics(
@@ -188,16 +178,16 @@ def _get_queries(
     database_names: frozenset[str],
     metrics: dict[str, MetricConfig],
     extra_labels: frozenset[str],
-) -> dict[str, Query]:
+) -> dict[str, db.Query]:
     """Return a list of Queries from config."""
     metric_names = frozenset(metrics)
-    queries: dict[str, Query] = {}
+    queries: dict[str, db.Query] = {}
     for name, config in configs.items():
         _validate_query_config(name, config, database_names, metric_names)
         query_metrics = _get_query_metrics(config, metrics, extra_labels)
         parameter_sets = t.cast(list[dict[str, t.Any]], config.parameters)
         try:
-            queries[name] = Query(
+            queries[name] = db.Query(
                 name=name,
                 databases=config.databases,
                 metrics=query_metrics,
@@ -207,7 +197,7 @@ def _get_queries(
                 schedule=config.schedule,
                 parameter_sets=parameter_sets,
             )
-        except (InvalidQueryParameters, InvalidQuerySchedule) as e:
+        except (db.InvalidQueryParameters, db.InvalidQuerySchedule) as e:
             raise ConfigError(str(e))
     return queries
 
@@ -216,14 +206,14 @@ def _get_query_metrics(
     query: schema.Query,
     metrics: dict[str, MetricConfig],
     extra_labels: frozenset[str],
-) -> list[QueryMetric]:
+) -> list[db.QueryMetric]:
     """Return QueryMetrics for a query."""
 
     def _metric_labels(labels: t.Iterable[str]) -> list[str]:
         return sorted(set(labels) - extra_labels)
 
     return [
-        QueryMetric(name, _metric_labels(metrics[name].labels))
+        db.QueryMetric(name, _metric_labels(metrics[name].labels))
         for name in query.metrics
     ]
 

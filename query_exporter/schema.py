@@ -273,7 +273,7 @@ class Query(Model):
     timeout: Timeout | None = None
 
 
-class Configuration(Model):
+class ExporterConfig(Model):
     """Exporter configuration."""
 
     builtin_metrics: BuiltinMetrics | None = None

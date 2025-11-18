@@ -12,8 +12,9 @@ from pytest_structlog import StructuredLogCapture
 from sqlalchemy.sql.elements import TextClause
 import yaml
 
+from query_exporter import schema
 from query_exporter.config import load_config
-from query_exporter.db import DataBase, DataBaseConfig
+from query_exporter.db import Database
 from query_exporter.executor import MetricsLastSeen, QueryExecutor
 
 from .conftest import QueryTracker, metric_values
@@ -75,8 +76,8 @@ async def query_executor(
 
 
 async def run_queries(db_file: Path, *queries: str) -> None:
-    config = DataBaseConfig(name="db", dsn=f"sqlite:///{db_file}")
-    async with DataBase(config) as db:
+    config = schema.Database(dsn=f"sqlite:///{db_file}")
+    async with Database("db", config) as db:
         for query in queries:
             await db.execute_sql(query)
 
@@ -316,7 +317,7 @@ class TestQueryExecutor:
         result: t.Any,
         metric_value: float,
     ) -> None:
-        db = DataBase(DataBaseConfig(name="db", dsn="sqlite://"))
+        db = Database("db", schema.Database(dsn="sqlite://"))
         query_executor = make_query_executor()
         query_executor._update_metric(db, "m", result)
         metric = registry.get_metric("m")
