@@ -16,7 +16,7 @@ annotated-types==0.7.0
     # via pydantic
 attrs==25.4.0
     # via aiohttp
-click==8.3.0
+click==8.3.1
     # via prometheus-aioexporter
 croniter==6.0.0
     # via query-exporter (pyproject.toml)
