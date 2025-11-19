@@ -43,11 +43,13 @@ from sqlalchemy.pool import NullPool
 from sqlalchemy.sql.elements import TextClause
 import structlog
 
+from . import schema
+
 # Timeout for a query
 QueryTimeout = int | float
 
 
-class DataBaseError(Exception):
+class DatabaseError(Exception):
     """A databease error.
 
     if `fatal` is True, it means the Query will never succeed.
@@ -58,11 +60,11 @@ class DataBaseError(Exception):
         self.fatal = fatal
 
 
-class DataBaseConnectError(DataBaseError):
+class DatabaseConnectError(DatabaseError):
     """Database connection error."""
 
 
-class DataBaseQueryError(DataBaseError):
+class DatabaseQueryError(DatabaseError):
     """Database query error."""
 
 
@@ -119,29 +121,14 @@ class InvalidQuerySchedule(Exception):
 FATAL_ERRORS = (InvalidResultCount, InvalidResultColumnNames)
 
 
-@dataclass(frozen=True)
-class DataBaseConfig:
-    """Configuration for a database."""
-
-    name: str
-    dsn: str
-    connect_sql: list[str] = field(default_factory=list)
-    labels: dict[str, str] = field(default_factory=dict)
-    keep_connected: bool = True
-
-    def __post_init__(self) -> None:
-        # raise DatabaseError error if the DSN in invalid
-        create_db_engine(self.dsn)
-
-
-def create_db_engine(dsn: str) -> Engine:
-    """Create the database engine, validating the DSN."""
+def create_db_engine(config: schema.Database) -> Engine:
+    """Create the database engine, validating the configuration."""
     try:
-        return create_engine(dsn, poolclass=NullPool)
+        return create_engine(str(config.dsn), poolclass=NullPool)
     except ImportError as error:
-        raise DataBaseError(f'Module "{error.name}" not found')
+        raise DatabaseError(f'Module "{error.name}" not found')
     except (ArgumentError, ValueError, NoSuchModuleError):
-        raise DataBaseError(f'Invalid database DSN: "{dsn}"')
+        raise DatabaseError(f'Invalid database DSN: "{config.dsn}"')
 
 
 class QueryMetric(t.NamedTuple):
@@ -314,7 +301,7 @@ class WorkerAction:
         self._loop.call_soon_threadsafe(partial(call, *args))
 
 
-class DataBaseConnection:
+class DatabaseConnection:
     """A connection to a database engine."""
 
     _conn: Connection | None = None
@@ -380,7 +367,7 @@ class DataBaseConnection:
     def _create_worker(self) -> None:
         assert not self._worker
         self._worker = Thread(
-            target=self._run, name=f"DataBase-{self.dbname}", daemon=True
+            target=self._run, name=f"Database-{self.dbname}", daemon=True
         )
         self._worker.start()
 
@@ -438,24 +425,26 @@ class DataBaseConnection:
         return await call.result()
 
 
-class DataBase:
+class Database:
     """A database to perform Queries."""
 
-    _conn: DataBaseConnection
+    _conn: DatabaseConnection
     _pending_queries: int = 0
 
     def __init__(
         self,
-        config: DataBaseConfig,
+        name: str,
+        config: schema.Database,
         logger: structlog.stdlib.BoundLogger | None = None,
     ) -> None:
+        self.name = name
         self.config = config
         if logger is None:
             logger = structlog.get_logger()
-        self.logger = logger.bind(database=self.config.name)
+        self.logger = logger.bind(database=self.name)
         self._connect_lock = asyncio.Lock()
-        engine = create_db_engine(self.config.dsn)
-        self._conn = DataBaseConnection(self.config.name, engine, self.logger)
+        engine = create_db_engine(self.config)
+        self._conn = DatabaseConnection(self.name, engine, self.logger)
         self._setup_query_latency_tracking(engine)
 
     async def __aenter__(self) -> t.Self:
@@ -484,7 +473,7 @@ class DataBase:
             try:
                 await self._conn.open()
             except Exception as error:
-                raise self._db_error(error, exc_class=DataBaseConnectError)
+                raise self._db_error(error, exc_class=DatabaseConnectError)
 
             self.logger.debug("connected")
             if self.config.connect_sql:
@@ -496,7 +485,7 @@ class DataBase:
                     await self._close()
                     raise self._db_error(
                         f"failed executing connect SQL: {error}",
-                        exc_class=DataBaseQueryError,
+                        exc_class=DatabaseQueryError,
                     )
 
     async def close(self) -> None:
@@ -581,21 +570,21 @@ class DataBase:
         query_name: str,
         error: str | Exception,
         fatal: bool = False,
-    ) -> DataBaseError:
-        """Create and log a DataBaseError for a failed query."""
+    ) -> DatabaseError:
+        """Create and log a DatabaseError for a failed query."""
         message = self._error_message(error)
         self.logger.exception(
             "query failed", query=query_name, error=message, exception=error
         )
-        return DataBaseQueryError(message, fatal=fatal)
+        return DatabaseQueryError(message, fatal=fatal)
 
     def _db_error(
         self,
         error: str | Exception,
-        exc_class: type[DataBaseError] = DataBaseError,
+        exc_class: type[DatabaseError] = DatabaseError,
         fatal: bool = False,
-    ) -> DataBaseError:
-        """Create and log a DataBaseError."""
+    ) -> DatabaseError:
+        """Create and log a DatabaseError."""
         message = self._error_message(error)
         self.logger.exception("database error", exception=error)
         return exc_class(message, fatal=fatal)

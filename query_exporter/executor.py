@@ -27,9 +27,9 @@ from .config import (
     Config,
 )
 from .db import (
-    DataBase,
-    DataBaseConnectError,
-    DataBaseError,
+    Database,
+    DatabaseConnectError,
+    DatabaseError,
     MetricResult,
     Query,
     QueryExecution,
@@ -130,9 +130,9 @@ class QueryExecutor:
                 for name, metric in self._config.metrics.items()
             }
         )
-        self._databases: dict[str, DataBase] = {
-            db_config.name: DataBase(db_config, logger=self._logger)
-            for db_config in self._config.databases.values()
+        self._databases: dict[str, Database] = {
+            name: Database(name, db_config, logger=self._logger)
+            for name, db_config in self._config.databases.items()
         }
 
         for query_execution in chain(
@@ -200,7 +200,7 @@ class QueryExecutor:
     async def _execute_query(
         self, query_execution: QueryExecution, dbname: str
     ) -> None:
-        """'Execute a Query on a DataBase."""
+        """'Execute a Query on a Database."""
         if await self._remove_if_dooomed(query_execution, dbname):
             return
 
@@ -222,11 +222,11 @@ class QueryExecutor:
             self._increment_queries_count(db, query, "success")
         except InvalidMetricValue:
             self._increment_queries_count(db, query, "invalid-value")
-        except DataBaseConnectError:
+        except DatabaseConnectError:
             self._increment_db_error_count(db)
         except QueryTimeoutExpired:
             self._increment_queries_count(db, query, "timeout")
-        except DataBaseError as error:
+        except DatabaseError as error:
             self._increment_queries_count(db, query, "error")
             if error.fatal:
                 self._logger.debug(
@@ -262,7 +262,7 @@ class QueryExecutor:
 
     def _update_metrics_from_results(
         self,
-        database: DataBase,
+        database: Database,
         query_execution_name: str,
         results: list[MetricResult],
     ) -> None:
@@ -277,7 +277,7 @@ class QueryExecutor:
                     "invalid metric result",
                     error=str(e),
                     query=query_execution_name,
-                    database=database.config.name,
+                    database=database.name,
                 )
                 has_invalid = True
 
@@ -287,7 +287,7 @@ class QueryExecutor:
 
     def _update_metric(
         self,
-        database: DataBase,
+        database: Database,
         name: str,
         value: t.Any,
         labels: Mapping[str, str] | None = None,
@@ -297,7 +297,7 @@ class QueryExecutor:
             # count queries might return NULL, treat it as zero
             value = 0.0
         metric_config = self._config.metrics[name]
-        all_labels = {DATABASE_LABEL: database.config.name}
+        all_labels = {DATABASE_LABEL: database.name}
         all_labels.update(database.config.labels)
         if labels:
             all_labels.update(labels)
@@ -338,7 +338,7 @@ class QueryExecutor:
             getattr(metric, method)(value)
 
     def _increment_queries_count(
-        self, database: DataBase, query: Query, status: str
+        self, database: Database, query: Query, status: str
     ) -> None:
         """Increment count of queries in a status for a database."""
         self._update_metric(
@@ -348,12 +348,12 @@ class QueryExecutor:
             labels={"query": query.name, "status": status},
         )
 
-    def _increment_db_error_count(self, database: DataBase) -> None:
+    def _increment_db_error_count(self, database: Database) -> None:
         """Increment number of errors for a database."""
         self._update_metric(database, DB_ERRORS_METRIC_NAME, 1)
 
     def _update_query_latency_metric(
-        self, database: DataBase, query: Query, latency: float
+        self, database: Database, query: Query, latency: float
     ) -> None:
         """Update latency metric for a query on a database."""
         self._update_metric(
@@ -364,7 +364,7 @@ class QueryExecutor:
         )
 
     def _update_query_timestamp_metric(
-        self, database: DataBase, query: Query, timestamp: float
+        self, database: Database, query: Query, timestamp: float
     ) -> None:
         """Update timestamp metric for a query on a database."""
         self._update_metric(

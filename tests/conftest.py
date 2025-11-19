@@ -12,7 +12,7 @@ from pytest_structlog import StructuredLogCapture
 from toolrack.testing.fixtures import advance_time
 import yaml
 
-from query_exporter.db import DataBase, MetricResults, QueryExecution
+from query_exporter.db import Database, MetricResults, QueryExecution
 
 __all__ = ["MetricValues", "QueryTracker", "advance_time", "metric_values"]
 
@@ -53,12 +53,12 @@ class QueryTracker:
 async def query_tracker(
     request: pytest.FixtureRequest, mocker: MockerFixture
 ) -> AsyncIterator[QueryTracker]:
-    """Return a list collecting Query executed by DataBases."""
+    """Return a list collecting Query executed by Databases."""
     tracker = QueryTracker()
-    orig_execute = DataBase.execute
+    orig_execute = Database.execute
 
     async def execute(
-        db: DataBase, query_execution: QueryExecution
+        db: Database, query_execution: QueryExecution
     ) -> MetricResults:
         tracker.queries.append(query_execution)
         try:
@@ -69,7 +69,7 @@ async def query_tracker(
         tracker.results.append(result)
         return result
 
-    mocker.patch.object(DataBase, "execute", execute)
+    mocker.patch.object(Database, "execute", execute)
     yield tracker
 
 
