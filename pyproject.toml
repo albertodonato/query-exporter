@@ -53,7 +53,9 @@ dependencies = [
   "toolrack>=4",
 ]
 optional-dependencies.dbs = [
+  "ibm-db-sa",
   "mysqlclient",
+  "oracledb",
   "psycopg2-binary",
   "pymssql",
 ]

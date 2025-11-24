@@ -11,6 +11,8 @@ class DockerService(ABC):
     image: str
     port: int = 0
 
+    startup_wait_timeout = 20.0
+
     def __init__(
         self,
         container_prefix: str,
@@ -57,8 +59,6 @@ def docker_compose(
 class ServiceHandler:
     """Handler starting and stopping a Docker service."""
 
-    startup_wait_timeout = 20.0
-
     def __init__(self, executor: DockerComposeExecutor, services: Services):
         self._executor = executor
         self._services = services
@@ -74,20 +74,20 @@ class ServiceHandler:
         self._executor.execute(f"restart {service.name}")
         self.wait(service)
 
+    def logs(self, service: DockerService) -> str:
+        return str(self._executor.execute(f"logs {service.name}").decode())
+
     def wait(self, service: DockerService) -> None:
         try:
             self._services.wait_until_responsive(
                 check=service.check_ready,
-                timeout=self.startup_wait_timeout,
+                timeout=service.startup_wait_timeout,
                 pause=0.5,
             )
         except Exception:
             # on failure, print out logs from the container
             print(self.logs(service))
             raise
-
-    def logs(self, service: DockerService) -> str:
-        return str(self._executor.execute(f"logs {service.name}").decode())
 
 
 @pytest.fixture(scope="session")

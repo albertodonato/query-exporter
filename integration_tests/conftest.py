@@ -25,19 +25,20 @@ __all__ = [
 
 def pytest_addoption(parser: pytest.Parser) -> None:
     parser.addoption(
-        "--databases",
+        "--db",
         help="DB engine to run tests on",
-        nargs="+",
+        action="append",
         choices=list(DATABASE_SERVERS),
-        default=list(DATABASE_SERVERS),
     )
+
+
+def pytest_configure(config: pytest.Config) -> None:
+    if config.option.db is None:
+        config.option.db = list(DATABASE_SERVERS)
 
 
 def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
-    metafunc.parametrize(
-        "db_server_name",
-        metafunc.config.getoption("--databases"),
-    )
+    metafunc.parametrize("db_server_name", metafunc.config.option.db)
 
 
 @pytest.fixture(scope="session")
@@ -54,7 +55,7 @@ def selected_db_servers(
             docker_ip,
             unused_tcp_port_factory(),
         )
-        for name in request.config.getoption("--databases")
+        for name in request.config.option.db
     }
 
 
@@ -98,8 +99,7 @@ def docker_compose_file(
     services[exporter_service.name] = exporter_service.docker_config()
 
     config = {"services": services}
-    with config_path.open("w") as fd:
-        yaml.dump(config, fd)
+    config_path.write_text(yaml.dump(config), "utf-8")
     yield str(config_path)
 
 
