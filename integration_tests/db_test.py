@@ -1,4 +1,19 @@
+from collections.abc import Iterator
+
+import pytest
+
 from .conftest import DatabaseServer, Exporter, ServiceHandler
+
+
+@pytest.fixture
+def timestamp_query(db_server: DatabaseServer) -> Iterator[str]:
+    queries = {
+        "mysql": "SELECT UNIX_TIMESTAMP(CURRENT_TIMESTAMP()) AS m",
+        "postgresql": "SELECT EXTRACT(EPOCH FROM CURRENT_TIMESTAMP) AS m",
+    }
+    query = queries.get(db_server.name)
+    assert query, f"Unsupported server {db_server.name}"
+    yield query
 
 
 def test_basic(
@@ -118,15 +133,8 @@ def test_db_connection_error(
     db_server: DatabaseServer,
     exporter: Exporter,
     service_handler: ServiceHandler,
+    timestamp_query: str,
 ) -> None:
-    match db_server.name:
-        case "mysql":
-            timestamp_expr = "UNIX_TIMESTAMP(CURRENT_TIMESTAMP())"
-        case "postgresql":
-            timestamp_expr = "EXTRACT(EPOCH FROM CURRENT_TIMESTAMP)"
-        case _:
-            raise Exception(f"unsupported server {db_server.name}")
-
     exporter.configure(
         {
             "databases": {
@@ -141,7 +149,7 @@ def test_db_connection_error(
                 "q": {
                     "databases": ["db"],
                     "metrics": ["m"],
-                    "sql": f"SELECT {timestamp_expr} AS m",
+                    "sql": timestamp_query,
                 },
             },
         }
