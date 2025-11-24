@@ -164,6 +164,34 @@ class Oracle(DatabaseServer):
         }
 
 
+class IBMDb2(DatabaseServer):
+    name = "ibmdb2"
+
+    image = "icr.io/db2_community/db2"
+    port = 50000
+
+    dialect = "db2+ibm_db"
+
+    startup_wait_timeout = 300.0
+    check_query = "SELECT 1 FROM SYSIBM.SYSDUMMY1"
+
+    username = "db2inst1"
+    database = "QE"
+
+    def docker_config(self) -> dict[str, t.Any]:
+        return super().docker_config() | {
+            "privileged": True,
+            "environment": {
+                "DB2INST1_PASSWORD": self.password,
+                "DBNAME": self.database,
+                "LICENSE": "accept",
+                "AUTOCONFIG": "false",
+                "ARCHIVE": "false",
+            },
+        }
+
+
 DATABASE_SERVERS = {
-    server.name: server for server in (PostgreSQL, MySQL, MSSQLServer, Oracle)
+    server.name: server
+    for server in (IBMDb2, MSSQLServer, MySQL, Oracle, PostgreSQL)
 }

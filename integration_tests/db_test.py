@@ -8,6 +8,10 @@ from .conftest import DatabaseServer, Exporter, ServiceHandler
 @pytest.fixture
 def timestamp_query(db_server: DatabaseServer) -> Iterator[str]:
     queries = {
+        "ibmdb2": (
+            "SELECT (DAYS(CURRENT TIMESTAMP) - DAYS('1970-01-01')) * 86400 + MIDNIGHT_SECONDS(CURRENT TIMESTAMP) AS m "
+            "FROM SYSIBM.SYSDUMMY1"
+        ),
         "mssql": "SELECT DATEDIFF_BIG(SECOND, '1970-01-01 00:00:00', SYSDATETIME()) AS m",
         "mysql": "SELECT UNIX_TIMESTAMP(CURRENT_TIMESTAMP()) AS m",
         "oracle": "SELECT (CAST(SYS_EXTRACT_UTC(SYSTIMESTAMP) AS DATE) - DATE '1970-01-01') * 86400 AS m FROM DUAL",
