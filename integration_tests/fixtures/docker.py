@@ -57,6 +57,8 @@ def docker_compose(
 class ServiceHandler:
     """Handler starting and stopping a Docker service."""
 
+    startup_wait_timeout = 20.0
+
     def __init__(self, executor: DockerComposeExecutor, services: Services):
         self._executor = executor
         self._services = services
@@ -72,10 +74,12 @@ class ServiceHandler:
         self._executor.execute(f"restart {service.name}")
         self.wait(service)
 
-    def wait(self, service: DockerService, timeout: float = 20.0) -> None:
+    def wait(self, service: DockerService) -> None:
         try:
             self._services.wait_until_responsive(
-                check=service.check_ready, timeout=timeout, pause=0.5
+                check=service.check_ready,
+                timeout=self.startup_wait_timeout,
+                pause=0.5,
             )
         except Exception:
             # on failure, print out logs from the container

@@ -1,16 +1,9 @@
 from functools import cached_property
-import random
-import string
 import typing as t
 
 import sqlalchemy as sa
 
 from .docker import DockerService
-
-
-def random_password(length: int = 10) -> str:
-    """Generate a random password."""
-    return "".join(random.choice(string.hexdigits) for _ in range(length))
 
 
 class DatabaseServer(DockerService):
@@ -19,9 +12,9 @@ class DatabaseServer(DockerService):
 
     username = "query_exporter"
     database = "query_exporter"
+    password = "query_exporter"
 
     def post_init(self) -> None:
-        self.password = random_password()
         self._metadata = sa.MetaData()
 
     @property
