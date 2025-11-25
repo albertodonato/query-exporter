@@ -8,7 +8,6 @@ from .docker import DockerService
 
 class DatabaseServer(DockerService):
     dialect: str
-    password: str
 
     username = "query_exporter"
     database = "query_exporter"
@@ -84,6 +83,7 @@ class DatabaseServer(DockerService):
 
 class PostgreSQL(DatabaseServer):
     name = "postgresql"
+
     image = "postgres"
     port = 5432
 
@@ -101,6 +101,7 @@ class PostgreSQL(DatabaseServer):
 
 class MySQL(DatabaseServer):
     name = "mysql"
+
     image = "mysql"
     port = 3306
 
@@ -117,4 +118,27 @@ class MySQL(DatabaseServer):
         }
 
 
-DATABASE_SERVERS = {server.name: server for server in (PostgreSQL, MySQL)}
+class MSSQLServer(DatabaseServer):
+    name = "mssql"
+
+    image = "mcr.microsoft.com/mssql/server:2022-latest"
+    port = 1433
+
+    dialect = "mssql+pymssql"
+
+    username = "sa"
+    password = "Query-Exporter-123"
+    database = "master"
+
+    def docker_config(self) -> dict[str, t.Any]:
+        return super().docker_config() | {
+            "environment": {
+                "MSSQL_SA_PASSWORD": self.password,
+                "ACCEPT_EULA": "Y",
+            },
+        }
+
+
+DATABASE_SERVERS = {
+    server.name: server for server in (PostgreSQL, MySQL, MSSQLServer)
+}

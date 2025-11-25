@@ -8,6 +8,7 @@ from .conftest import DatabaseServer, Exporter, ServiceHandler
 @pytest.fixture
 def timestamp_query(db_server: DatabaseServer) -> Iterator[str]:
     queries = {
+        "mssql": "SELECT DATEDIFF_BIG(SECOND, '1970-01-01 00:00:00', SYSDATETIME()) AS m",
         "mysql": "SELECT UNIX_TIMESTAMP(CURRENT_TIMESTAMP()) AS m",
         "postgresql": "SELECT EXTRACT(EPOCH FROM CURRENT_TIMESTAMP) AS m",
     }

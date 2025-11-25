@@ -52,12 +52,16 @@ dependencies = [
   "structlog",
   "toolrack>=4",
 ]
-optional-dependencies.integration-tests = [
+optional-dependencies.dbs = [
   "mysqlclient",
   "psycopg2-binary",
+  "pymssql",
+]
+optional-dependencies.integration-tests = [
   "pytest",
   "pytest-asyncio",
   "pytest-docker",
+  "query-exporter[dbs]",
   "requests",
 ]
 optional-dependencies.testing = [
