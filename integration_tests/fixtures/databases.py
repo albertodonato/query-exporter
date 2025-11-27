@@ -13,6 +13,9 @@ class DatabaseServer(DockerService):
     database = "query_exporter"
     password = "query_exporter"
 
+    startup_wait_timeout = 60.0
+    check_query = "SELECT 1"
+
     def post_init(self) -> None:
         self._metadata = sa.MetaData()
 
@@ -29,8 +32,8 @@ class DatabaseServer(DockerService):
     def check_ready(self) -> bool:
         """Check if the database accepts queries."""
         try:
-            self.execute("SELECT 1")
-        except sa.exc.OperationalError:
+            self.execute(self.check_query)
+        except (sa.exc.OperationalError, sa.exc.DatabaseError):
             return False
 
         return True
@@ -56,7 +59,7 @@ class DatabaseServer(DockerService):
             table_name,
             self._metadata,
             *(sa.Column(name, sa.Integer) for name in metrics),
-            *(sa.Column(name, sa.Text) for name in labels),
+            *(sa.Column(name, sa.String(100)) for name in labels),
         )
         self._metadata.create_all(self._engine)
 
@@ -139,6 +142,56 @@ class MSSQLServer(DatabaseServer):
         }
 
 
+class Oracle(DatabaseServer):
+    name = "oracle"
+
+    image = "gvenzl/oracle-free:slim-faststart"
+    port = 1521
+
+    dialect = "oracle+oracledb"
+
+    startup_wait_timeout = 60.0
+
+    database = "?service_name=FREEPDB1"
+
+    def docker_config(self) -> dict[str, t.Any]:
+        return super().docker_config() | {
+            "environment": {
+                "APP_USER": self.username,
+                "APP_USER_PASSWORD": self.password,
+                "ORACLE_RANDOM_PASSWORD": "true",
+            },
+        }
+
+
+class IBMDb2(DatabaseServer):
+    name = "ibmdb2"
+
+    image = "icr.io/db2_community/db2"
+    port = 50000
+
+    dialect = "db2+ibm_db"
+
+    startup_wait_timeout = 240.0
+    check_query = "SELECT 1 FROM SYSIBM.SYSDUMMY1"
+
+    username = "db2inst1"
+    database = "QE"
+
+    def docker_config(self) -> dict[str, t.Any]:
+        return super().docker_config() | {
+            "privileged": True,
+            "environment": {
+                "DB2INST1_PASSWORD": self.password,
+                "DBNAME": self.database,
+                "LICENSE": "accept",
+                "AUTOCONFIG": "false",
+                "ARCHIVE": "false",
+            },
+        }
+
+
 DATABASE_SERVERS = {
-    server.name: server for server in (PostgreSQL, MySQL, MSSQLServer)
+    server.name: server
+    for server in (PostgreSQL, MySQL, MSSQLServer, Oracle, IBMDb2)
 }
