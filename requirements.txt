@@ -48,7 +48,7 @@ propcache==0.4.1
     # via
     #   aiohttp
     #   yarl
-pydantic==2.12.4
+pydantic==2.12.5
     # via query-exporter (pyproject.toml)
 pydantic-core==2.41.5
     # via pydantic
