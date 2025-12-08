@@ -54,7 +54,7 @@ pydantic-core==2.41.5
     # via pydantic
 pygments==2.19.2
     # via pytest
-pytest==9.0.1
+pytest==9.0.2
     # via toolrack
 python-dateutil==2.9.0.post0
     # via
