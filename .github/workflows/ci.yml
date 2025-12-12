@@ -80,6 +80,12 @@ jobs:
 
   integration-test:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        database:
+          - mysql
+          - postgresql
+      fail-fast: false
     steps:
       - name: Repository checkout
         uses: actions/checkout@v6
@@ -95,4 +101,4 @@ jobs:
 
       - name: Test
         run: |
-          tox run -e integration-tests -- -v
+          tox run -e integration-tests -- -vv --db=${{ matrix.database }}

@@ -5,6 +5,8 @@ import pytest
 
 from .conftest import DatabaseServer, Exporter, ServiceHandler
 
+pytestmark = pytest.mark.database_only("mysql")
+
 
 @pytest.fixture
 def mysql_stored_procedure(db_server: DatabaseServer) -> t.Iterator[str]:
@@ -25,7 +27,6 @@ def mysql_stored_procedure(db_server: DatabaseServer) -> t.Iterator[str]:
     db_server.execute(f"DROP PROCEDURE IF EXISTS {name}")
 
 
-@pytest.mark.database_only("mysql")
 def test_mysql_stored_procedure(
     db_server: DatabaseServer,
     exporter: Exporter,

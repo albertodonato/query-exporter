@@ -7,6 +7,9 @@ from query_exporter.yaml import load_yaml
 
 from .conftest import DatabaseServer, Exporter, ServiceHandler
 
+pytestmark = pytest.mark.database_only("postgresql")
+
+
 EXAMPLE_CONFIGS_DIR = Path("examples")
 
 
@@ -18,7 +21,6 @@ def pg_stats_config(
     yield load_yaml(EXAMPLE_CONFIGS_DIR / "postgresql-stats" / "config.yaml")
 
 
-@pytest.mark.database_only("postgresql")
 def test_postgresql_stats_metrics(
     db_server: DatabaseServer,
     exporter: Exporter,

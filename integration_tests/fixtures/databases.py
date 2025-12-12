@@ -13,6 +13,9 @@ class DatabaseServer(DockerService):
     database = "query_exporter"
     password = "query_exporter"
 
+    startup_wait_timeout = 60.0
+    check_query = "SELECT 1"
+
     def post_init(self) -> None:
         self._metadata = sa.MetaData()
 
@@ -29,8 +32,8 @@ class DatabaseServer(DockerService):
     def check_ready(self) -> bool:
         """Check if the database accepts queries."""
         try:
-            self.execute("SELECT 1")
-        except sa.exc.OperationalError:
+            self.execute(self.check_query)
+        except (sa.exc.OperationalError, sa.exc.DatabaseError):
             return False
 
         return True
@@ -56,7 +59,7 @@ class DatabaseServer(DockerService):
             table_name,
             self._metadata,
             *(sa.Column(name, sa.Integer) for name in metrics),
-            *(sa.Column(name, sa.Text) for name in labels),
+            *(sa.Column(name, sa.String(100)) for name in labels),
         )
         self._metadata.create_all(self._engine)
 
