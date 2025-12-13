@@ -1,7 +1,9 @@
 import asyncio
 from collections.abc import AsyncIterator, Callable, Iterator
+from contextlib import closing
 from decimal import Decimal
 from pathlib import Path
+import time
 import typing as t
 from unittest.mock import ANY
 
@@ -9,7 +11,6 @@ from prometheus_aioexporter import MetricsRegistry
 import pytest
 from pytest_mock import MockerFixture
 from pytest_structlog import StructuredLogCapture
-from sqlalchemy.sql.elements import TextClause
 import yaml
 
 from query_exporter import schema
@@ -25,7 +26,7 @@ AdvanceTime = Callable[[float], t.Awaitable[None]]
 @pytest.fixture
 def config_data() -> Iterator[dict[str, t.Any]]:
     yield {
-        "databases": {"db": {"dsn": "sqlite://"}},
+        "databases": {"db": {"dsn": "sqlite:///:memory:"}},
         "metrics": {"m": {"type": "gauge"}},
         "queries": {
             "q": {
@@ -77,7 +78,7 @@ async def query_executor(
 
 async def run_queries(db_file: Path, *queries: str) -> None:
     config = schema.Database(dsn=f"sqlite:///{db_file}")
-    async with Database("db", config) as db:
+    with closing(Database("db", config)) as db:
         for query in queries:
             await db.execute_sql(query)
 
@@ -288,8 +289,14 @@ class TestQueryExecutor:
         make_query_executor: MakeQueryExecutor,
     ) -> None:
         config_data["databases"] = {
-            "db1": {"dsn": "sqlite://", "labels": {"l1": "v1", "l2": "v2"}},
-            "db2": {"dsn": "sqlite://", "labels": {"l1": "v3", "l2": "v4"}},
+            "db1": {
+                "dsn": "sqlite:///:memory:",
+                "labels": {"l1": "v1", "l2": "v2"},
+            },
+            "db2": {
+                "dsn": "sqlite:///:memory:",
+                "labels": {"l1": "v3", "l2": "v4"},
+            },
         }
         config_data["queries"]["q"]["databases"] = ["db1", "db2"]
         query_executor = make_query_executor()
@@ -317,7 +324,7 @@ class TestQueryExecutor:
         result: t.Any,
         metric_value: float,
     ) -> None:
-        db = Database("db", schema.Database(dsn="sqlite://"))
+        db = Database("db", schema.Database(dsn="sqlite:///:memory:"))
         query_executor = make_query_executor()
         query_executor._update_metric(db, "m", result)
         metric = registry.get_metric("m")
@@ -402,7 +409,7 @@ class TestQueryExecutor:
     ) -> None:
         query_executor = make_query_executor()
         db = query_executor._databases["db"]
-        mock_connect = mocker.patch.object(db._conn.engine, "connect")
+        mock_connect = mocker.patch.object(db._engine, "connect")
         mock_connect.side_effect = Exception("connection failed")
         await query_executor.start()
         await query_tracker.wait_failures()
@@ -437,14 +444,15 @@ class TestQueryExecutor:
         query_executor = make_query_executor()
         await query_executor.start()
         db = query_executor._databases["db"]
-        await db.connect()
 
-        async def execute(
-            sql: TextClause, parameters: dict[str, t.Any] | None
+        def execute_sync(
+            self: t.Any,
+            sql: str,
+            parameters: dict[str, t.Any] | None = None,
         ) -> None:
-            await asyncio.sleep(1)  # longer than timeout
+            time.sleep(1)  # longer than timeout
 
-        mocker.patch.object(db._conn, "execute", execute)
+        mocker.patch.object(db, "_execute_sync", execute_sync)
 
         await query_tracker.wait_failures()
         queries_metric = registry.get_metric("queries")

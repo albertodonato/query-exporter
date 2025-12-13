@@ -163,17 +163,22 @@ def test_db_connection_error(
     }
     service_handler.stop(db_server)
     metrics = exporter.get_metrics()
-    # the failure is reported
+    # the failure is reported as database error
+    assert metrics["database_errors"] == {
+        ("db",): 1.0,
+    }
     assert metrics["queries"] == {
         ("db", "q", "success"): 1.0,
-        ("db", "q", "error"): 1.0,
     }
     service_handler.start(db_server)
     metrics = exporter.get_metrics()
+    # no change in errors
+    assert metrics["database_errors"] == {
+        ("db",): 1.0,
+    }
     # latest execution is a success
     assert metrics["queries"] == {
         ("db", "q", "success"): 2.0,
-        ("db", "q", "error"): 1.0,
     }
     # metric has been updated
     assert metrics["m"]["db",] > metric_value

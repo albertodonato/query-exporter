@@ -170,11 +170,18 @@ class BuiltinMetrics(BaseModel):
         return d
 
 
+class ConnectionPool(Model):
+    """Database connection pool configuration."""
+
+    size: int = Field(ge=1, le=100, default=1)
+    max_overflow: int = Field(ge=0, le=100, default=0)
+
+
 class Database(Model):
     """Database connection configuration."""
 
     dsn: DSN
-    keep_connected: bool = True
+    connection_pool: ConnectionPool = Field(default_factory=ConnectionPool)
     connect_sql: list[str] = Field(min_length=1, default_factory=list)
     labels: dict[Label, str] = Field(min_length=1, default_factory=dict)
 

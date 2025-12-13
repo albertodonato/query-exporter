@@ -161,8 +161,8 @@ class QueryExecutor:
         coros = (call.stop() for call in self._timed_calls.values())
         await asyncio.gather(*coros, return_exceptions=True)
         self._timed_calls.clear()
-        coros = (db.close() for db in self._databases.values())
-        await asyncio.gather(*coros, return_exceptions=True)
+        for db in self._databases.values():
+            db.close()
 
     def clear_expired_series(self) -> None:
         """Clear metric series that have expired."""

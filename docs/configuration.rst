@@ -70,12 +70,6 @@ Each database definitions can have the following keys:
   An optional list of queries to run right after database connection. This can
   be used to set up connection-wise parameters and configurations.
 
-``keep-connected``:
-  whether to keep the connection open for the database between queries, or
-  disconnect after each one. If not specified, defaults to ``true``.  Setting
-  this option to ``false`` might be useful if queries on a database are run
-  with very long interval, to avoid holding idle connections.
-
 ``labels``:
   an optional mapping of label names and values to tag metrics collected from each database.
   When labels are used, all databases must define the same set of labels.

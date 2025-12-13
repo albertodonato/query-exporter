@@ -1,4 +1,4 @@
-from collections.abc import Iterator
+from collections.abc import Generator, Iterator
 import typing as t
 
 import pytest
@@ -11,6 +11,7 @@ from .fixtures.docker import (
     service_handler,
 )
 from .fixtures.exporter import Exporter, exporter, exporter_service
+from .fixtures.report import PHASE_REPORT_KEY, ReportCollector
 
 __all__ = [
     "DatabaseServer",
@@ -39,6 +40,16 @@ def pytest_configure(config: pytest.Config) -> None:
 
 def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
     metafunc.parametrize("db_server_name", metafunc.config.option.db)
+
+
+@pytest.hookimpl(wrapper=True, tryfirst=True)
+def pytest_runtest_makereport(
+    item: t.Any, call: t.Any
+) -> Generator[None, None, None]:
+    report = yield
+    collector = item.stash.setdefault(PHASE_REPORT_KEY, ReportCollector())
+    collector.collect(report)
+    return report
 
 
 @pytest.fixture(scope="session")

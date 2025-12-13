@@ -2,45 +2,41 @@
 
 import asyncio
 from collections.abc import (
-    Callable,
     Iterable,
+    Iterator,
     Sequence,
 )
+from concurrent.futures import ThreadPoolExecutor
+from contextlib import contextmanager
 from dataclasses import (
     InitVar,
     dataclass,
     field,
 )
-from functools import partial
 from itertools import chain
-from threading import (
-    Thread,
-    current_thread,
-)
 from time import (
     perf_counter,
     time,
 )
-from types import TracebackType
 import typing as t
 
 from croniter import croniter
 from sqlalchemy import (
     create_engine,
     event,
+    make_url,
     text,
 )
 from sqlalchemy.engine import (
-    Connection,
     CursorResult,
     Engine,
 )
+from sqlalchemy.engine.interfaces import DBAPIConnection, DBAPICursor
 from sqlalchemy.exc import (
     ArgumentError,
     NoSuchModuleError,
 )
-from sqlalchemy.pool import NullPool
-from sqlalchemy.sql.elements import TextClause
+from sqlalchemy.pool import ConnectionPoolEntry, QueuePool
 import structlog
 
 from . import schema
@@ -124,7 +120,22 @@ FATAL_ERRORS = (InvalidResultCount, InvalidResultColumnNames)
 def create_db_engine(config: schema.Database) -> Engine:
     """Create the database engine, validating the configuration."""
     try:
-        return create_engine(str(config.dsn), poolclass=NullPool)
+        url = make_url(str(config.dsn))
+        connect_args = {}
+        if url.get_backend_name() == "sqlite":
+            # disable check as the logic ensure coonection isn't used by
+            # multiple threads at once
+            connect_args["check_same_thread"] = False
+
+        return create_engine(
+            url,
+            poolclass=QueuePool,
+            pool_size=config.connection_pool.size,
+            max_overflow=config.connection_pool.max_overflow,
+            pool_pre_ping=True,
+            pool_recycle=3600,
+            connect_args=connect_args,
+        )
     except ImportError as error:
         raise DatabaseError(f'Module "{error.name}" not found')
     except (ArgumentError, ValueError, NoSuchModuleError):
@@ -267,169 +278,8 @@ class QueryExecution:
             raise InvalidQueryParameters(self.name)
 
 
-class WorkerAction:
-    """An action to be called in the worker thread."""
-
-    def __init__(
-        self, func: Callable[..., t.Any], *args: t.Any, **kwargs: t.Any
-    ) -> None:
-        self._func = partial(func, *args, **kwargs)
-        self._loop = asyncio.get_event_loop()
-        self._future = self._loop.create_future()
-
-    def __str__(self) -> str:
-        return self._func.func.__name__
-
-    __repr__ = __str__
-
-    def __call__(self) -> None:
-        """Call the action asynchronously in a thread-safe way."""
-        try:
-            result = self._func()
-        except Exception as e:
-            self._call_threadsafe(self._future.set_exception, e)
-        else:
-            self._call_threadsafe(self._future.set_result, result)
-
-    async def result(self) -> t.Any:
-        """Wait for completion and return the action result."""
-        return await self._future
-
-    def _call_threadsafe(
-        self, call: Callable[..., t.Any], *args: t.Any
-    ) -> None:
-        self._loop.call_soon_threadsafe(partial(call, *args))
-
-
-class DatabaseConnection:
-    """A connection to a database engine."""
-
-    _conn: Connection | None = None
-    _worker: Thread | None = None
-
-    def __init__(
-        self,
-        dbname: str,
-        engine: Engine,
-        logger: structlog.stdlib.BoundLogger | None = None,
-    ) -> None:
-        self.dbname = dbname
-        self.engine = engine
-        self.logger = logger or structlog.get_logger()
-        self._loop = asyncio.get_event_loop()
-        self._queue: asyncio.Queue[WorkerAction] = asyncio.Queue()
-
-    @property
-    def connected(self) -> bool:
-        """Whether the connection is open."""
-        return self._conn is not None
-
-    async def open(self) -> None:
-        """Open the connection."""
-        if self.connected:
-            return
-
-        self._create_worker()
-        try:
-            await self._call_in_thread(self._connect)
-        except Exception:
-            self._terminate_worker()
-            raise
-
-    async def close(self) -> None:
-        """Close the connection."""
-        if not self.connected:
-            return
-
-        await self._call_in_thread(self._close)
-        self._terminate_worker()
-
-    async def execute(
-        self,
-        statement: TextClause,
-        parameters: dict[str, t.Any] | None = None,
-    ) -> QueryResults:
-        """Execute a query, returning results."""
-        if parameters is None:
-            parameters = {}
-        return t.cast(
-            QueryResults,
-            await self._call_in_thread(self._execute, statement, parameters),
-        )
-
-    async def execute_many(
-        self,
-        statements: list[TextClause],
-    ) -> None:
-        """Execute multiple statements."""
-        await self._call_in_thread(self._execute_many, statements)
-
-    def _create_worker(self) -> None:
-        assert not self._worker
-        self._worker = Thread(
-            target=self._run, name=f"Database-{self.dbname}", daemon=True
-        )
-        self._worker.start()
-
-    def _terminate_worker(self) -> None:
-        assert self._worker
-        self._worker.join()
-        self._worker = None
-
-    def _connect(self) -> None:
-        self._conn = self.engine.connect()
-
-    def _execute(
-        self, statement: TextClause, parameters: dict[str, t.Any]
-    ) -> QueryResults:
-        assert self._conn
-        with self._conn.begin():
-            result = self._conn.execute(statement, parameters)
-            return QueryResults.from_result(result)
-
-    def _execute_many(self, statements: list[TextClause]) -> None:
-        assert self._conn
-        with self._conn.begin():
-            for statement in statements:
-                self._conn.execute(statement)
-
-    def _close(self) -> None:
-        assert self._conn
-        self._conn.detach()
-        self._conn.close()
-        self._conn = None
-
-    def _run(self) -> None:
-        """The worker thread function."""
-        logger = self.logger.bind(worker_id=current_thread().native_id)
-        logger.debug("start")
-        while True:
-            future = asyncio.run_coroutine_threadsafe(
-                self._queue.get(), self._loop
-            )
-            action = future.result()
-            logger.debug("action received", action=str(action))
-            action()
-            self._loop.call_soon_threadsafe(self._queue.task_done)
-            if self._conn is None:
-                # the connection has been closed, exit the thread
-                logger.debug("shutdown")
-                return
-
-    async def _call_in_thread(
-        self, func: Callable[..., t.Any], *args: t.Any, **kwargs: t.Any
-    ) -> t.Any:
-        """Call a sync action in the worker thread."""
-        call = WorkerAction(func, *args, **kwargs)
-        await self._queue.put(call)
-        return await call.result()
-
-
 class Database:
     """A database to perform Queries."""
-
-    _conn: DatabaseConnection
-    _pending_queries: int = 0
 
     def __init__(
         self,
@@ -442,64 +292,23 @@ class Database:
         if logger is None:
             logger = structlog.get_logger()
         self.logger = logger.bind(database=self.name)
-        self._connect_lock = asyncio.Lock()
-        engine = create_db_engine(self.config)
-        self._conn = DatabaseConnection(self.name, engine, self.logger)
-        self._setup_query_latency_tracking(engine)
 
-    async def __aenter__(self) -> t.Self:
-        await self.connect()
-        return self
+        self._engine = self._setup_engine()
 
-    async def __aexit__(
-        self,
-        exc_type: type,
-        exc_value: Exception,
-        traceback: TracebackType,
-    ) -> None:
-        await self.close()
+        pool_config = self.config.connection_pool
+        max_workers = pool_config.size + pool_config.max_overflow
+        self._executor = ThreadPoolExecutor(
+            max_workers=max_workers,
+            thread_name_prefix=f"[Database-{self.name}]",
+        )
 
-    @property
-    def connected(self) -> bool:
-        """Whether the database is connected."""
-        return self._conn.connected
-
-    async def connect(self) -> None:
-        """Connect to the database."""
-        async with self._connect_lock:
-            if self.connected:
-                return
-
-            try:
-                await self._conn.open()
-            except Exception as error:
-                raise self._db_error(error, exc_class=DatabaseConnectError)
-
-            self.logger.debug("connected")
-            if self.config.connect_sql:
-                try:
-                    await self._conn.execute_many(
-                        [text(sql) for sql in self.config.connect_sql]
-                    )
-                except Exception as error:
-                    await self._close()
-                    raise self._db_error(
-                        f"failed executing connect SQL: {error}",
-                        exc_class=DatabaseQueryError,
-                    )
-
-    async def close(self) -> None:
-        """Close the database connection."""
-        async with self._connect_lock:
-            if not self.connected:
-                return
-            await self._close()
+    def close(self) -> None:
+        self._engine.dispose()
+        self._executor.shutdown(wait=True, cancel_futures=True)
 
     async def execute(self, query_execution: QueryExecution) -> MetricResults:
         """Execute a query."""
-        await self.connect()
         self.logger.debug("run query", query=query_execution.name)
-        self._pending_queries += 1
         query = query_execution.query
         try:
             query_results = await self.execute_sql(
@@ -508,6 +317,8 @@ class Database:
                 timeout=query.timeout,
             )
             return query.results(query_results)
+        except DatabaseError:
+            raise
         except TimeoutError:
             self.logger.warning("query timeout", query=query_execution.name)
             raise QueryTimeoutExpired()
@@ -517,11 +328,6 @@ class Database:
                 error,
                 fatal=isinstance(error, FATAL_ERRORS),
             )
-        finally:
-            assert self._pending_queries >= 0, "pending queries is negative"
-            self._pending_queries -= 1
-            if not self.config.keep_connected and not self._pending_queries:
-                await self.close()
 
     async def execute_sql(
         self,
@@ -530,20 +336,46 @@ class Database:
         timeout: QueryTimeout | None = None,
     ) -> QueryResults:
         """Execute a raw SQL query."""
+        if parameters is None:
+            parameters = {}
+
+        loop = asyncio.get_event_loop()
         return await asyncio.wait_for(
-            self._conn.execute(text(sql), parameters),
+            loop.run_in_executor(
+                self._executor, self._execute_sync, sql, parameters
+            ),
             timeout=timeout,
         )
 
-    async def _close(self) -> None:
-        # ensure the connection with the DB is actually closed
-        await self._conn.close()
-        self.logger.debug("disconnected")
+    def _setup_engine(self) -> Engine:
+        engine = create_db_engine(self.config)
 
-    def _setup_query_latency_tracking(self, engine: Engine) -> None:
+        @event.listens_for(engine, "connect")
+        def on_connect(
+            dbapi_conn: DBAPIConnection, conn: ConnectionPoolEntry
+        ) -> None:
+            if self.config.connect_sql:
+                try:
+                    with self._dbapi_transaction(dbapi_conn) as cursor:
+                        for sql in self.config.connect_sql:
+                            cursor.execute(sql)
+                except Exception as error:
+                    raise self._db_error(
+                        f"failed executing connect SQL: {error}",
+                        exc_class=DatabaseQueryError,
+                    )
+            self.logger.debug("connected")
+
+        @event.listens_for(engine, "close")
+        def on_close(
+            dbapi_conn: DBAPIConnection, conn: ConnectionPoolEntry
+        ) -> None:
+            conn.info.clear()
+            self.logger.debug("disconnected")
+
         @event.listens_for(engine, "before_cursor_execute")
         def before_cursor_execute(
-            conn: Connection,
+            conn: ConnectionPoolEntry,
             cursor: t.Any,
             statement: str,
             parameters: t.Any,
@@ -554,7 +386,7 @@ class Database:
 
         @event.listens_for(engine, "after_cursor_execute")
         def after_cursor_execute(
-            conn: Connection,
+            conn: ConnectionPoolEntry,
             cursor: t.Any,
             statement: str,
             parameters: t.Any,
@@ -564,6 +396,25 @@ class Database:
             conn.info["query_latency"] = perf_counter() - conn.info.pop(
                 "query_start_time"
             )
+
+        return engine
+
+    def _execute_sync(
+        self,
+        sql: str,
+        parameters: dict[str, t.Any],
+    ) -> QueryResults:
+        try:
+            with self._engine.begin() as conn:
+                try:
+                    result = conn.execute(text(sql), parameters)
+                    return QueryResults.from_result(result)
+                except Exception as error:
+                    raise self._db_error(error, exc_class=DatabaseQueryError)
+        except DatabaseQueryError:
+            raise
+        except Exception as error:
+            raise self._db_error(error, exc_class=DatabaseConnectError)
 
     def _query_db_error(
         self,
@@ -595,3 +446,17 @@ class Database:
         if not message and isinstance(error, Exception):
             message = error.__class__.__name__
         return message
+
+    @contextmanager
+    def _dbapi_transaction(
+        self, dbapi_conn: DBAPIConnection
+    ) -> Iterator[DBAPICursor]:
+        cursor = dbapi_conn.cursor()
+        try:
+            yield cursor
+            dbapi_conn.commit()
+        except Exception:
+            dbapi_conn.rollback()
+            raise
+        finally:
+            cursor.close()
