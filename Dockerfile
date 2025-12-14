@@ -4,11 +4,9 @@ RUN apt-get update
 RUN apt-get full-upgrade -y
 RUN apt-get install -y --no-install-recommends \
     build-essential \
-    curl \
+    pkg-config \
     default-libmysqlclient-dev \
-    freetds-dev \
-    libpq-dev \
-    pkg-config
+    libpq-dev
 
 COPY . /srcdir
 RUN python3 -m venv /virtualenv
@@ -29,9 +27,6 @@ FROM --platform=$BUILDPLATFORM python:3.13-slim-bookworm
 RUN apt-get update && \
     apt-get full-upgrade -y && \
     apt-get install -y --no-install-recommends \
-    curl \
-    gnupg2 \
-    libaio1 \
     libmariadb-dev-compat \
     libpq5 \
     libxml2 && \
