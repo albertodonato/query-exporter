@@ -142,6 +142,28 @@ class MSSQLServer(DatabaseServer):
         }
 
 
+class Oracle(DatabaseServer):
+    name = "oracle"
+
+    image = "gvenzl/oracle-free:slim-faststart"
+    port = 1521
+
+    dialect = "oracle+oracledb"
+
+    startup_wait_timeout = 60.0
+
+    database = "?service_name=FREEPDB1"
+
+    def docker_config(self) -> dict[str, t.Any]:
+        return super().docker_config() | {
+            "environment": {
+                "APP_USER": self.username,
+                "APP_USER_PASSWORD": self.password,
+                "ORACLE_RANDOM_PASSWORD": "true",
+            },
+        }
+
+
 DATABASE_SERVERS = {
-    server.name: server for server in (PostgreSQL, MySQL, MSSQLServer)
+    server.name: server for server in (PostgreSQL, MySQL, MSSQLServer, Oracle)
 }

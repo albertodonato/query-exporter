@@ -19,22 +19,14 @@ ENV PATH="/virtualenv/bin:$PATH"
 RUN pip install \
     -r /srcdir/requirements.txt \
     /srcdir \
-    cx-Oracle \
     clickhouse-sqlalchemy \
     "ibm-db-sa; platform_machine == 'x86_64'" \
     mysqlclient \
+    oracledb \
     psycopg2 \
     pymssql \
     pyodbc \
     teradatasqlalchemy
-
-RUN curl \
-    https://download.oracle.com/otn_software/linux/instantclient/instantclient-basiclite-linux$(arch | sed -e 's/x86_64/x64/g; s/aarch64/-arm64/g').zip \
-    -o instantclient.zip
-RUN unzip instantclient.zip
-RUN mkdir -p /opt/oracle/instantclient
-RUN mv instantclient*/* /opt/oracle/instantclient
-
 
 FROM --platform=$BUILDPLATFORM python:3.13-slim-bookworm
 ARG ODBC_DRIVER_VERSION=18
@@ -62,7 +54,6 @@ COPY --from=build-image /opt /opt
 
 ENV PATH="/virtualenv/bin:$PATH"
 ENV VIRTUAL_ENV="/virtualenv"
-ENV LD_LIBRARY_PATH="/opt/oracle/instantclient"
 
 # IPv6 support is not enabled by default, only bind IPv4
 ENV QE_HOST="0.0.0.0"

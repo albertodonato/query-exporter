@@ -83,7 +83,9 @@ jobs:
     strategy:
       matrix:
         database:
+          - mssql
           - mysql
+          - oracle
           - postgresql
       fail-fast: false
     steps:

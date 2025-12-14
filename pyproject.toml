@@ -54,6 +54,7 @@ dependencies = [
 ]
 optional-dependencies.dbs = [
   "mysqlclient",
+  "oracledb",
   "psycopg2-binary",
   "pymssql",
 ]
