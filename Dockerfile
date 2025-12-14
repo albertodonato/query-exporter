@@ -7,11 +7,8 @@ RUN apt-get install -y --no-install-recommends \
     curl \
     default-libmysqlclient-dev \
     freetds-dev \
-    libkrb5-dev \
     libpq-dev \
-    pkg-config \
-    unixodbc-dev \
-    unzip
+    pkg-config
 
 COPY . /srcdir
 RUN python3 -m venv /virtualenv
@@ -25,12 +22,9 @@ RUN pip install \
     oracledb \
     psycopg2 \
     pymssql \
-    pyodbc \
     teradatasqlalchemy
 
 FROM --platform=$BUILDPLATFORM python:3.13-slim-bookworm
-ARG ODBC_DRIVER_VERSION=18
-ENV ODBC_DRIVER=msodbcsql${ODBC_DRIVER_VERSION}
 
 RUN apt-get update && \
     apt-get full-upgrade -y && \
@@ -39,13 +33,8 @@ RUN apt-get update && \
     gnupg2 \
     libaio1 \
     libmariadb-dev-compat \
-    libodbc1 \
     libpq5 \
     libxml2 && \
-    curl https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > /etc/apt/trusted.gpg.d/microsoft.gpg && \
-    (. /etc/os-release; echo "deb https://packages.microsoft.com/debian/$VERSION_ID/prod $VERSION_CODENAME main") > /etc/apt/sources.list.d/mssql-release.list && \
-    apt-get update && \
-    ACCEPT_EULA=Y apt-get install -y --no-install-recommends $ODBC_DRIVER && \
     rm -rf /var/lib/apt/lists/* /usr/share/doc /usr/share/man && \
     apt-get clean
 

@@ -68,16 +68,14 @@ parts:
       - ibm-db-sa; platform_machine == 'x86_64'
       - mysqlclient
       - psycopg2
-      - pyodbc
+      - pymssql
     build-packages:
       - libmysqlclient-dev
       - libpq-dev
       - libssl-dev
       - pkg-config
-      - unixodbc-dev
     stage-packages:
       - libmysqlclient21
-      - libodbc2
       - libpq5
       - libxml2
     override-build: |
