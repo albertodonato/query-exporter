@@ -1,12 +1,11 @@
-FROM --platform=$BUILDPLATFORM python:3.13-slim-bookworm AS build-image
+FROM --platform=$BUILDPLATFORM python:3.13-alpine AS build-image
 
-RUN apt-get update
-RUN apt-get full-upgrade -y
-RUN apt-get install -y --no-install-recommends \
-    build-essential \
-    pkg-config \
-    default-libmysqlclient-dev \
-    libpq-dev
+RUN apk add --no-cache --virtual .build-deps \
+    build-base \
+    pkgconfig \
+    mariadb-dev \
+    postgresql-dev \
+    libxml2-dev
 
 COPY . /srcdir
 RUN python3 -m venv /virtualenv
@@ -22,16 +21,12 @@ RUN pip install \
     pymssql \
     teradatasqlalchemy
 
-FROM --platform=$BUILDPLATFORM python:3.13-slim-bookworm
+FROM --platform=$BUILDPLATFORM python:3.13-alpine
 
-RUN apt-get update && \
-    apt-get full-upgrade -y && \
-    apt-get install -y --no-install-recommends \
-    libmariadb-dev-compat \
-    libpq5 \
-    libxml2 && \
-    rm -rf /var/lib/apt/lists/* /usr/share/doc /usr/share/man && \
-    apt-get clean
+RUN apk add --no-cache \
+    mariadb-connector-c \
+    postgresql-libs \
+    libxml2
 
 COPY --from=build-image /virtualenv /virtualenv
 COPY --from=build-image /opt /opt
