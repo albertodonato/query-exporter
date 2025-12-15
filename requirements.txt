@@ -68,7 +68,7 @@ pyyaml==6.0.3
     # via query-exporter (pyproject.toml)
 six==1.17.0
     # via python-dateutil
-sqlalchemy==2.0.44
+sqlalchemy==2.0.45
     # via query-exporter (pyproject.toml)
 structlog==25.5.0
     # via
