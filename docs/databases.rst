@@ -5,14 +5,6 @@ This section collects a few details and gotchas related to specific database
 engines.
 
 
-Microsoft SQL Server [``mssql://``]
-===================================
-
-Sample DSN::
-
-  mssql://<username>:<password>@<host>:<port>/<db>?driver=ODBC+Driver+17+for+SQL+Server
-
-
 Multiple queries on a single connection
 ---------------------------------------
 

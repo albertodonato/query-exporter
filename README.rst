@@ -219,15 +219,6 @@ Automated builds from the ``main`` branch are available on the `GitHub container
   docker pull ghcr.io/albertodonato/query-exporter:main
 
 
-ODBC driver version
--------------------
-
-A different ODBC driver version to use can be specified during image building,
-by passing ``--build-arg ODBC_bVERSION_NUMBER``, e.g.::
-
-  docker build . --build-arg ODBC_DRIVER_VERSION=17
-
-
 Install from Snap
 =================
 
