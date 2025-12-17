@@ -1,4 +1,5 @@
 from collections.abc import Iterator
+import os
 from pathlib import Path
 import shutil
 import typing as t
@@ -32,13 +33,19 @@ class Exporter(DockerService):
         self.configure({"databases": {}, "metrics": {}, "queries": {}})
 
     def docker_config(self) -> dict[str, t.Any]:
-        return super().docker_config() | {
+        config = super().docker_config() | {
             "environment": {
                 "QE_LOG_LEVEL": "debug",
             },
-            "build": str(Path(".").absolute()),
             "volumes": [f"{self.config_dir}:/config"],
         }
+
+        if image := os.environ.get("QUERY_EXPORTER_TEST_IMAGE"):
+            config["image"] = image
+        else:
+            config["build"] = str(Path(".").absolute())
+
+        return config
 
     def check_ready(self) -> bool:
         try:
