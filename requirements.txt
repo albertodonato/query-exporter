@@ -28,16 +28,10 @@ greenlet==3.3.0
     # via sqlalchemy
 idna==3.11
     # via yarl
-iniconfig==2.3.0
-    # via pytest
 multidict==6.7.0
     # via
     #   aiohttp
     #   yarl
-packaging==25.0
-    # via pytest
-pluggy==1.6.0
-    # via pytest
 prometheus-aioexporter==3.1.0
     # via query-exporter (pyproject.toml)
 prometheus-client==0.23.1
@@ -52,10 +46,6 @@ pydantic==2.12.5
     # via query-exporter (pyproject.toml)
 pydantic-core==2.41.5
     # via pydantic
-pygments==2.19.2
-    # via pytest
-pytest==9.0.2
-    # via toolrack
 python-dateutil==2.9.0.post0
     # via
     #   croniter
@@ -74,8 +64,6 @@ structlog==25.5.0
     # via
     #   prometheus-aioexporter
     #   query-exporter (pyproject.toml)
-toolrack==4.0.3
-    # via query-exporter (pyproject.toml)
 typing-extensions==4.15.0
     # via
     #   aiosignal

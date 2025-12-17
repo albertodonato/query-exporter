@@ -1,4 +1,4 @@
-"""Loop to execute database queries and collect metrics."""
+"""Execute database queries and collect metrics."""
 
 import asyncio
 from collections import defaultdict
@@ -17,10 +17,6 @@ from prometheus_aioexporter import (
 from prometheus_client import Counter
 from prometheus_client.metrics import MetricWrapperBase
 import structlog
-from toolrack.aio import (
-    PeriodicCall,
-    TimedCall,
-)
 
 from .config import (
     DATABASE_LABEL,
@@ -40,6 +36,10 @@ from .metrics import (
     QUERIES_METRIC_NAME,
     QUERY_LATENCY_METRIC_NAME,
     QUERY_TIMESTAMP_METRIC_NAME,
+)
+from .periodic_call import (
+    PeriodicCall,
+    TimedCall,
 )
 
 
