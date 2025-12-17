@@ -123,7 +123,7 @@ def create_db_engine(config: schema.Database) -> Engine:
         url = make_url(str(config.dsn))
         connect_args = {}
         if url.get_backend_name() == "sqlite":
-            # disable check as the logic ensure coonection isn't used by
+            # disable check as the logic ensures connections aren't used by
             # multiple threads at once
             connect_args["check_same_thread"] = False
 
