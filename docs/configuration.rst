@@ -33,7 +33,7 @@ The following tags are supported in the configuration file:
 
 This section contains definitions for databases to connect to. Key names are
 arbitrary and only used to reference databases in the ``queries`` section.
-  
+
 Each database definitions can have the following keys:
 
 ``dsn``:
@@ -65,6 +65,20 @@ Each database definitions can have the following keys:
 
   **Note**: in the string form, username, password and options need to be
   URL-encoded, whereas this is done automatically for the key/value form.
+
+``connection-pool``:
+  configuration for the database connection pool.
+
+  If specified it can contain the following keys:
+
+  .. code:: yaml
+
+      size: <integer>
+      max-overflow: <integer>
+
+  specifying the number of connections to maintain open for the database
+  (``size``, default `1`) and the maximum additional connections that can be
+  created (``max-overflow``, default `0`).
 
 ``connect-sql``:
   An optional list of queries to run right after database connection. This can
