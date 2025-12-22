@@ -4,14 +4,25 @@ on:
   workflow_call:
     inputs:
       python-version:
-        required: true
         type: string
+        description: The Python version to use
+        required: true
       tox-env:
+        type: string
+        description: Name of the tox environment to run
         required: true
-        type: string
       env-args:
-        required: false
         type: string
+        description: Optional arguments for the tox environment
+        required: false
+      artifact-path:
+        type: string
+        description: Path to upload as artifact
+        required: false
+      artifact-name:
+        type: string
+        description: Name for the artifact to upload (only used if a path is specified)
+        required: false
 
 jobs:
   run-tox:
@@ -32,3 +43,10 @@ jobs:
       - name: Run environment 
         run: |
           tox run -e ${{ inputs.tox-env }} -- ${{ inputs.env-args }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        if: ${{ inputs.artifact-path != '' }}
+        with:
+          name: ${{ inputs.artifact-name }}
+          path: ${{ inputs.artifact-path }}

@@ -6,23 +6,24 @@ on:
       - "[0-9]+.[0-9]+.[0-9]+"
 
 jobs:
+  build-release:
+    name: Build packages
+    uses: ./.github/workflows/run-tox.yaml
+    with:
+      python-version: "3.13"
+      tox-env: build-packages
+      artifact-name: packages
+      artifact-path: dist/
+
   release:
-    runs-on: ubuntu-latest
     environment: pypi
     permissions:
       id-token: write
     steps:
-      - name: Repository checkout
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
-
-      - name: Set up Python
-        uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
-          python-version: "3.13"
-
-      - name: Build packages
-        run: |
-          python -m build
+          name: packages
+          path: dist/
 
       - name: Publish packges to PyPI
         uses: pypa/gh-action-pypi-publish@ed0c53931b1dc9bd32cbe73a98c7f6766f8a527e # v1.13.0
