@@ -1,3 +1,29 @@
+v4.0.0 - 2025-12-22
+===================
+
+- Add connection pooling, supporting specifying how many connections can be
+  used for each database entry (via the ``connection-pool`` section in the
+  ``database`` config).
+- [docker] Use ``pymssql`` instead of PyODBC for MS SQL Server connection.
+- [docker] Use ``oracledb`` instead of ``cx-Oracle`` for Oracle connection.
+- Report a query error and log the error if the query returns invalid values (#138).
+- Switch YAML configuration parsing and validation to Pydantic.
+- Import code for periodic calls from ``toolrack``.
+- Integration tests improvements.
+- Update dependencies.
+
+**Note**:
+ This release introduce a few breaking changes from the 3.x series,
+ specifically:
+
+ - The ``keep-connected`` flag in ``database`` entries has been removed, since
+   connections are now managed automatically by the pooling.
+ - The ``autocommit`` flag in ``database`` entries has been removed, since
+   queries are now always run in a transaction.
+ - The ``env:`` and ``file:`` prefixes for DSNs string form have been replaced
+   by the corresponding tags.
+
+
 v3.2.1 - 2025-06-08
 ===================
 
@@ -27,7 +53,7 @@ v3.1.0 - 2025-01-08
 - Support YAML tags for ``env``, ``file``, and ``include`` (#188).
 
 **NOTE**:
-  The ``env:`` and ``file:`` prefixes for DSNs string form is now deprecated in
+  The ``env:`` and ``file:`` prefixes for DSNs string form are now deprecated in
   favor of the corresponding tags, and will be dropped in the next major release.
 
 
