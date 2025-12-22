@@ -207,7 +207,7 @@ The image has support for connecting the following databases:
 - MySQL (``mysql://``)
 - SQLite (``sqlite://``)
 - Microsoft SQL Server (``mssql://``)
-- IBM DB2 (``db2://``)
+- IBM DB2 (``db2://``) (on x86_64 architecture)
 - Oracle (``oracle://``)
 - ClickHouse (``clickhouse+native://``)
 - Teradata (``teradatasql://``)
