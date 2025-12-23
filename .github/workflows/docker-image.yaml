@@ -3,9 +3,12 @@ name: Docker image
 on:
   push:
     branches:
-      - "**"
-    create:
-      - "[0-9]+.[0-9]+.[0-9]+"
+      - main
+    tags:
+      - '[0-9]+.[0-9]+.[0-9]+'
+  pull_request:
+    branches:
+      - main
 
 env:
   REGISTRY: ghcr.io
@@ -14,7 +17,7 @@ env:
 jobs:
   build:
     if: github.actor == github.repository_owner
-    runs-on: ${{ matrix.platform == 'linux/arm64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
@@ -23,34 +26,23 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        platform:
-          - linux/amd64
-          - linux/arm64
+        variant:
+          - base
+          - full
+
     steps:
-      - name: Prepare
+      - name: Repository checkout
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+
+      - name: Define common vars
+        id: vars
         run: |
-          platform=${{ matrix.platform }}
-          echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_ENV
-
-      - name: Extract metadata
-        id: meta
-        uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5.10.0
-        with:
-          images: |
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          tags: |
-            type=schedule
-            type=semver,pattern={{version}}
-            type=ref,event=branch
-            type=ref,event=tag
-            type=sha,prefix=sha-
-
-      - name: Log in to the Container registry
-        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.repository_owner }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          if [ "${{ matrix.variant }}" != "base ]; then
+            tag_suffix="-${{ matrix.variant }}"
+          else
+            tag_suffix=""
+          fi
+          echo "tag_suffix=$tag_suffix" >> $GITHUB_OUTPUT
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3.7.0
@@ -58,66 +50,51 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
 
-      - name: Build and push by digest
-        id: build
-        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
-        with:
-          platforms: ${{ matrix.platform }}
-          labels: ${{ steps.meta.outputs.labels }}
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          outputs: type=image,push-by-digest=true,name-canonical=true,push=true
-
-      - name: Export digest
-        run: |
-          mkdir -p ${{ runner.temp }}/digests
-          digest="${{ steps.build.outputs.digest }}"
-          touch "${{ runner.temp }}/digests/${digest#sha256:}"
-
-      - name: Upload digest
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
-        with:
-          name: digests-${{ env.PLATFORM_PAIR }}
-          path: ${{ runner.temp }}/digests/*
-          if-no-files-found: error
-          retention-days: 1
-
-  merge:
-    runs-on: ubuntu-latest
-    needs:
-      - build
-    steps:
-      - name: Download digests
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
-        with:
-          path: ${{ runner.temp }}/digests
-          pattern: digests-*
-          merge-multiple: true
-
-      - name: Log in to the Container registry
+      - name: Log in to GHCR
         uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
         with:
           registry: ${{ env.REGISTRY }}
-          username: ${{ github.repository_owner }}
+          username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
 
       - name: Extract metadata
         id: meta
         uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5.10.0
         with:
-          images: |
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=schedule
-            type=semver,pattern={{version}}
-            type=ref,event=branch
-            type=ref,event=tag
-            type=sha,prefix=sha-
+            type=schedule,suffix=${{ steps.vars.output.tag_suffix }}
+            type=semver,pattern={{version}},suffix=${{ steps.vars.output.tag_suffix }}
+            type=ref,event=branch,suffix=${{ steps.vars.output.tag_suffix }}
+            type=ref,event=tag,suffix=${{ steps.vars.output.tag_suffix }}
+            type=sha,prefix=sha-,suffix=${{ steps.vars.output.tag_suffix }}
+          flavor: |
+            latest=${{ matrix.variant == 'full' }}
 
-      - name: Create manifest list and push
-        working-directory: ${{ runner.temp }}/digests
+      - name: Build and push
+        id: build
+        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          provenance: true
+          sbom: true
+
+      - name: Export digest
         run: |
-          docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
-            $(printf '${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@sha256:%s ' *)
+          mkdir -p digests
+          echo '${{ steps.build.outputs.metadata }}' | jq -r '."containerimage.digest"' > digests/${{ matrix.variant }}.txt
+          cat digests/${{ matrix.variant }}.txt
+
+      - name: Upload digest
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: digests
+          path: digests/${{ matrix.variant }}.txt
+          if-no-files-found: error
+          retention-days: 1
