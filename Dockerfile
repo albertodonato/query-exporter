@@ -33,7 +33,6 @@ RUN apt-get install -y --no-install-recommends \
 RUN rm -rf /var/lib/apt/lists/* /usr/share/doc /usr/share/man && apt-get clean
 
 COPY --from=build-image /virtualenv /virtualenv
-COPY --from=build-image /opt /opt
 
 ENV PATH="/virtualenv/bin:$PATH"
 ENV VIRTUAL_ENV="/virtualenv"
