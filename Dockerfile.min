@@ -1,0 +1,21 @@
+FROM --platform=$BUILDPLATFORM python:slim-bookworm
+
+RUN apt-get update && apt-get full-upgrade -y
+
+COPY . /src
+RUN python3 -m venv /virtualenv
+RUN /virtualenv/bin/pip install \
+    -r /src/requirements.txt \
+    /src
+RUN rm -rf /src
+
+ENV PATH="/virtualenv/bin:$PATH"
+ENV VIRTUAL_ENV="/virtualenv"
+
+# IPv6 support is not enabled by default, only bind IPv4
+ENV QE_HOST="0.0.0.0"
+
+EXPOSE 9560/tcp
+VOLUME /config
+WORKDIR /config
+ENTRYPOINT ["query-exporter"]
