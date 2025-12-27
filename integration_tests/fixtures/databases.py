@@ -22,12 +22,26 @@ class DatabaseServer(DockerService):
     @property
     def host_dsn(self) -> str:
         """The database connection string for connecting from the host."""
-        return f"{self.dialect}://{self.username}:{self.password}@{self.host_ip}:{self.host_port}/{self.database}"
+        return sa.URL.create(
+            self.dialect,
+            username=self.username,
+            password=self.password,
+            host=self.host_ip,
+            port=self.host_port,
+            database=self.database,
+        ).render_as_string(hide_password=False)
 
     @property
     def dsn(self) -> str:
         """The database connection string for connecting from the container network."""
-        return f"{self.dialect}://{self.username}:{self.password}@{self.name}:{self.port}/{self.database}"
+        return sa.URL.create(
+            self.dialect,
+            username=self.username,
+            password=self.password,
+            host=self.name,
+            port=self.port,
+            database=self.database,
+        ).render_as_string(hide_password=False)
 
     def check_ready(self) -> bool:
         """Check if the database accepts queries."""
