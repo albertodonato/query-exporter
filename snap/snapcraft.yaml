@@ -8,6 +8,8 @@ description: |
 
   Each query can be run on multiple databases, and update multiple metrics.
 
+  **NOTE**: the snap is deprecated and will not be updated beyond 4.x releases.
+
   The snap provides both the `query-exporter` command and a deamon instance of
   the command, managed via a Systemd service.
   To run the latter:
