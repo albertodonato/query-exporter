@@ -224,8 +224,7 @@ Install from Snap
 
 |Get it from the Snap Store|
 
-**NOTE**: the snap is deprecated and will not be updated beyond 4.x
- releases. Please consider using Docker images instead.
+**NOTE**: the snap is deprecated and will not be updated beyond 4.x releases. Please consider using Docker images instead.
 
 ``query-exporter`` can be installed from `Snap Store`_ on systems where Snaps
 are supported, via::
