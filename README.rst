@@ -3,7 +3,7 @@
 Export Prometheus metrics from SQL queries
 ==========================================
 
-|Latest Version| |Build Status| |PyPI Downloads| |Docker Pulls| |Snap Package|
+|Latest Version| |Build Status| |PyPI Downloads| |Docker Pulls|
 
 ``query-exporter`` is a Prometheus_ exporter which allows collecting metrics
 from database queries, at specified time intervals.
@@ -219,38 +219,6 @@ Automated builds from the ``main`` branch are available on the `GitHub container
   docker pull ghcr.io/albertodonato/query-exporter:main
 
 
-Install from Snap
-=================
-
-|Get it from the Snap Store|
-
-**NOTE**: the snap is deprecated and will not be updated beyond 4.x releases. Please consider using Docker images instead.
-
-``query-exporter`` can be installed from `Snap Store`_ on systems where Snaps
-are supported, via::
-
-  sudo snap install query-exporter
-
-The snap provides both the ``query-exporter`` command and a daemon instance of
-the command, managed via a Systemd service.
-
-To configure the daemon:
-
-- create or edit ``/var/snap/query-exporter/current/config.yaml`` with the
-  configuration
-- optionally, create a ``/var/snap/query-exporter/current/.env`` file with
-  environment variables definitions for additional config options
-- run ``sudo snap restart query-exporter``
-
-The snap has support for connecting the following databases:
-
-- PostgreSQL (``postgresql://``)
-- MySQL (``mysql://``)
-- SQLite (``sqlite://``)
-- Microsoft SQL Server (``mssql://``)
-- IBM DB2 (``db2://``) (on x86_64 architecture)
-
-
 Contributing
 ============
 
@@ -264,7 +232,6 @@ For general purpose questions, you can use `Discussions`_ on GitHub.
 .. _SQLAlchemy: https://www.sqlalchemy.org/
 .. _`supported databases`:
    http://docs.sqlalchemy.org/en/latest/core/engines.html#supported-databases
-.. _`Snap Store`: https://snapcraft.io
 .. _Docker: http://docker.com/
 .. _`Docker Hub`: https://hub.docker.com/r/adonato/query-exporter
 .. _`configuration file format`: docs/configuration.rst
@@ -281,12 +248,6 @@ For general purpose questions, you can use `Discussions`_ on GitHub.
 .. |Build Status| image:: https://github.com/albertodonato/query-exporter/actions/workflows/ci.yaml/badge.svg?branch=main
    :alt: Build Status
    :target: https://github.com/albertodonato/query-exporter/actions?query=workflow%3ACI+branch%3Amain
-.. |Snap Package| image:: https://snapcraft.io/query-exporter/badge.svg
-   :alt: Snap Package
-   :target: https://snapcraft.io/query-exporter
-.. |Get it from the Snap Store| image:: https://snapcraft.io/static/images/badges/en/snap-store-black.svg
-   :alt: Get it from the Snap Store
-   :target: https://snapcraft.io/query-exporter
 .. |Docker Pulls| image:: https://img.shields.io/docker/pulls/adonato/query-exporter
    :alt: Docker Pulls
    :target: https://hub.docker.com/r/adonato/query-exporter
