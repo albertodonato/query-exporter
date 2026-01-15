@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - "**"
-    tags:
+    create:
       - "[0-9]+.[0-9]+.[0-9]+"
 
 env:
