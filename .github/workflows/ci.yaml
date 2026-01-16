@@ -36,7 +36,7 @@ jobs:
     with:
       python-version: ${{ matrix.python-version }}
       tox-env: coverage
-    
+
     strategy:
       matrix:
         python-version:
