@@ -16,6 +16,8 @@ jobs:
       artifact-path: dist/
 
   release:
+    needs:
+      - build
     environment: pypi
     permissions:
       id-token: write
