@@ -1,38 +1,13 @@
-FROM --platform=$BUILDPLATFORM python:3.13-slim-bookworm AS build-image
+FROM --platform=$BUILDPLATFORM python:slim-bookworm AS base
 
-RUN apt-get update
-RUN apt-get full-upgrade -y
-RUN apt-get install -y --no-install-recommends \
-    build-essential \
-    pkg-config \
-    default-libmysqlclient-dev \
-    libpq-dev
+RUN apt-get update && apt-get full-upgrade -y
 
-COPY . /srcdir
+COPY . /src
 RUN python3 -m venv /virtualenv
-ENV PATH="/virtualenv/bin:$PATH"
-RUN pip install \
-    -r /srcdir/requirements.txt \
-    /srcdir \
-    clickhouse-sqlalchemy \
-    "ibm-db-sa; platform_machine == 'x86_64'" \
-    mysqlclient \
-    oracledb \
-    psycopg2 \
-    pymssql \
-    teradatasqlalchemy
-
-FROM --platform=$BUILDPLATFORM python:3.13-slim-bookworm
-
-RUN apt-get update
-RUN apt-get full-upgrade -y
-RUN apt-get install -y --no-install-recommends \
-    libmariadb-dev-compat \
-    libpq5 \
-    libxml2
-RUN rm -rf /var/lib/apt/lists/* /usr/share/doc /usr/share/man && apt-get clean
-
-COPY --from=build-image /virtualenv /virtualenv
+RUN /virtualenv/bin/pip install \
+    -r /src/requirements.txt \
+    /src
+RUN rm -rf /src
 
 ENV PATH="/virtualenv/bin:$PATH"
 ENV VIRTUAL_ENV="/virtualenv"
@@ -44,3 +19,29 @@ EXPOSE 9560/tcp
 VOLUME /config
 WORKDIR /config
 ENTRYPOINT ["query-exporter"]
+
+
+FROM --platform=$BUILDPLATFORM base AS full
+
+ENV BUILD_DEPS=" \
+    build-essential \
+    pkg-config \
+    default-libmysqlclient-dev \
+    libpq-dev"
+RUN apt-get update && apt-get full-upgrade -y
+RUN apt-get install -y --no-install-recommends $BUILD_DEPS
+
+RUN /virtualenv/bin/pip install \
+    clickhouse-sqlalchemy \
+    "ibm-db-sa; platform_machine == 'x86_64'" \
+    mysqlclient \
+    oracledb \
+    psycopg2 \
+    pymssql \
+    teradatasqlalchemy
+
+RUN apt-get install -y --no-install-recommends \
+    libmariadb-dev-compat \
+    libpq5 \
+    libxml2
+RUN apt-get purge -y $BUILD_DEPS && apt-get autoremove --purge -y

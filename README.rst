@@ -218,6 +218,19 @@ Automated builds from the ``main`` branch are available on the `GitHub container
 
   docker pull ghcr.io/albertodonato/query-exporter:main
 
+Base image
+-------------
+
+A base image is also available, containing only ``query-exporter`` and no
+additional database drivers. This can be used as a base image for installing only desired drivers, e.g.:
+
+.. code:: dockerfile
+
+   FROM adonato/query-exporter:<version>-base
+
+   apt-get install <my database driver>
+   ...
+
 
 Install from Snap
 =================

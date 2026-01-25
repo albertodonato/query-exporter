@@ -6,7 +6,7 @@ on:
       - "[0-9]+.[0-9]+.[0-9]+"
 
 jobs:
-  build-release:
+  build:
     name: Build packages
     uses: ./.github/workflows/run-tox.yaml
     with:
@@ -16,12 +16,14 @@ jobs:
       artifact-path: dist/
 
   release:
+    runs-on: ubuntu-latest
     needs:
       - build
     environment: pypi
     permissions:
       id-token: write
     steps:
+      - name: Download built packages
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           name: packages
