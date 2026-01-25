@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - next
     tags:
       - '[0-9]+.[0-9]+.[0-9]+'
   pull_request:
@@ -66,9 +67,7 @@ jobs:
             type=ref,event=branch,suffix=${{ steps.vars.outputs.tag_suffix }}
             type=ref,event=pr,prefix=pr-,suffix=${{ steps.vars.outputs.tag_suffix }}
             type=ref,event=tag,suffix=${{ steps.vars.outputs.tag_suffix }}
-            type=schedule,suffix=${{ steps.vars.outputs.tag_suffix }}
             type=semver,pattern={{version}},suffix=${{ steps.vars.outputs.tag_suffix }}
-            type=sha,prefix=sha-,suffix=${{ steps.vars.outputs.tag_suffix }}
           flavor: |
             latest=${{ matrix.variant == 'full' }}
 
