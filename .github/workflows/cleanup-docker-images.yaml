@@ -1,0 +1,33 @@
+name: Cleanup Docker images
+
+on:
+  schedule:
+    # Run every Sunday at 2:00 AM UTC
+    - cron: '0 2 * * 0'
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: 'Dry run mode (only show what would be deleted)'
+        required: false
+        type: boolean
+        default: false
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+    steps:
+      - name: Delete old images
+        uses: snok/container-retention-policy@3b0972b2276b171b212f8c4efbca59ebba26eceb # v3.0.1
+        with:
+          image-names: ${{ github.event.repository.name }}
+          cut-off: 2months
+          account: user
+          token: ${{ secrets.GITHUB_TOKEN }}
+          filter-tags: "^(pr-|sha-).*$"
+          dry-run: ${{ inputs.dry-run }}
