@@ -57,7 +57,7 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=ref,event=branch,suffix=${{ env.TAG_SUFFIX }}
+            type=ref,event=branch,suffix=${{ env.TAG_SUFFIX }},enable=${{ !env.MAIN_PUSH }}
             type=ref,event=pr,prefix=pr-,suffix=${{ env.TAG_SUFFIX }}
             type=ref,event=tag,suffix=${{ env.TAG_SUFFIX }}
             type=sha,prefix=sha-,suffix=${{ env.TAG_SUFFIX }}
