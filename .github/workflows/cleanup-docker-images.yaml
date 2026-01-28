@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       dry-run:
-        description: 'Dry run mode (only show what would be deleted)'
+        description: Dry run mode
         required: false
         type: boolean
         default: false
@@ -29,5 +29,5 @@ jobs:
           cut-off: 2months
           account: user
           token: ${{ secrets.GITHUB_TOKEN }}
-          filter-tags: "^(pr-|sha-).*$"
+          tag-selection: "^(pr-|sha-).*$"
           dry-run: ${{ inputs.dry-run }}
