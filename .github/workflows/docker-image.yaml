@@ -30,20 +30,13 @@ jobs:
         variant:
           - base
           - full
+    env:
+      TAG_SUFFIX: ${{ matrix.variant != 'full' && format('-{0}', matrix.variant) || '' }}
+      MAIN_PUSH: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
 
     steps:
       - name: Repository checkout
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
-
-      - name: Define common variables
-        id: vars
-        run: |
-          if [ "${{ matrix.variant }}" != "full" ]; then
-            tag_suffix="-${{ matrix.variant }}"
-          else
-            tag_suffix=""
-          fi
-          echo "tag_suffix=$tag_suffix" >> $GITHUB_OUTPUT
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3.7.0
@@ -64,12 +57,13 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=ref,event=branch,suffix=${{ steps.vars.outputs.tag_suffix }}
-            type=ref,event=pr,prefix=pr-,suffix=${{ steps.vars.outputs.tag_suffix }}
-            type=ref,event=tag,suffix=${{ steps.vars.outputs.tag_suffix }}
-            type=semver,pattern={{version}},suffix=${{ steps.vars.outputs.tag_suffix }}
+            type=ref,event=branch,suffix=${{ env.TAG_SUFFIX }},enable=${{ !env.MAIN_PUSH }}
+            type=ref,event=pr,prefix=pr-,suffix=${{ env.TAG_SUFFIX }}
+            type=ref,event=tag,suffix=${{ env.TAG_SUFFIX }}
+            type=sha,prefix=sha-,suffix=${{ env.TAG_SUFFIX }}
+            type=raw,value=latest,suffix=${{ env.TAG_SUFFIX }},enable=${{ env.MAIN_PUSH }}
           flavor: |
-            latest=${{ matrix.variant == 'full' }}
+            latest=false
 
       - name: Build and push
         id: build
