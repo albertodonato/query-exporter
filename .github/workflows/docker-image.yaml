@@ -31,9 +31,9 @@ jobs:
           - base
           - full
     env:
-      TAG_SUFFIX: ${{ matrix.variant != 'full' && format('-{0}', matrix.variant) || '' }}
+      SUFFIX: ${{ matrix.variant != 'full' && format('-{0}', matrix.variant) || '' }}
       IS_MAIN_PUSH: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
-      IS_TAG: ${{ startsWith(github.ref, 'refs/tags/') }}
+      IS_TAG_REF: ${{ startsWith(github.ref, 'refs/tags/') }}
 
     steps:
       - name: Repository checkout
@@ -67,12 +67,12 @@ jobs:
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
             ${{ env.IS_TAG == 'true' && format('{0}/query-exporter', vars.DOCKERHUB_USERNAME) || '' }}
           tags: |
-            type=ref,event=branch,suffix=${{ env.TAG_SUFFIX }}
-            type=ref,event=pr,prefix=pr-,suffix=${{ env.TAG_SUFFIX }}
-            type=ref,event=tag,suffix=${{ env.TAG_SUFFIX }}
-            type=semver,pattern={{major}},suffix=${{ env.TAG_SUFFIX }},enable=${{ env.IS_TAG == 'true' }}
-            type=sha,prefix=sha-,suffix=${{ env.TAG_SUFFIX }}
-            type=raw,value=latest,suffix=${{ env.TAG_SUFFIX }},enable=${{ env.IS_MAIN_PUSH == 'true' || env.IS_TAG == 'true' }}
+            type=ref,event=branch,suffix=${{ env.SUFFIX }}
+            type=ref,event=pr,prefix=pr-,suffix=${{ env.SUFFIX }}
+            type=ref,event=tag,suffix=${{ env.SUFFIX }}
+            type=semver,pattern={{major}},suffix=${{ env.SUFFIX }},enable=${{ env.IS_TAG == 'true' }}
+            type=sha,prefix=sha-,suffix=${{ env.SUFFIX }},enable=${{ env.IS_TAG == 'false' }}
+            type=raw,value=latest,suffix=${{ env.SUFFIX }},enable=${{ env.IS_MAIN_PUSH == 'true' || env.IS_TAG == 'true' }}
           flavor: |
             latest=false
 
