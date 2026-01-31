@@ -1,3 +1,11 @@
+v4.0.1 - 2026-01-31
+===================
+
+- [docker] Add base docker image (as ``X.Y.Z-base``) without any builtin
+  database engine. It can be used to build custom images with only specific
+  engines to keep image size small.
+
+
 v4.0.0 - 2025-12-22
 ===================
 
@@ -13,7 +21,7 @@ v4.0.0 - 2025-12-22
 - Update dependencies.
 
 **Note**:
- This release introduce a few breaking changes from the 3.x series,
+ This release introduces a few breaking changes from the 3.x series,
  specifically:
 
  - The ``keep-connected`` flag in ``database`` entries has been removed, since
