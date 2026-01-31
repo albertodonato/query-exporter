@@ -14,7 +14,7 @@ keywords = [
   "prometheus",
   "sql",
 ]
-license = "GPL-3.0-or-later"
+license = "GPL-3.0-OR-later"
 license-files = [ "LICENSE.txt" ]
 maintainers = [
   { name = "Alberto Donato", email = "alberto.donato@gmail.com" },
@@ -81,11 +81,11 @@ scripts.query-exporter = "query_exporter.main:script"
 [tool.setuptools.dynamic]
 version = { attr = "query_exporter.__version__" }
 
-[tool.setuptools.packages.find]
-include = [ "query_exporter*" ]
-
 [tool.setuptools.package-data]
 query_exporter = [ "py.typed" ]
+
+[tool.setuptools.packages.find]
+include = [ "query_exporter*" ]
 
 [tool.ruff]
 line-length = 79
