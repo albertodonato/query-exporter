@@ -8,14 +8,11 @@ on:
     inputs:
       dry-run:
         description: Dry run mode
-        required: false
         type: boolean
-        default: false
       cut-off:
         description: Cut-off value for image deletion
-        required: false
+        required: true
         type: string
-        default: 2months
 
 env:
   REGISTRY: ghcr.io
@@ -31,8 +28,8 @@ jobs:
         uses: snok/container-retention-policy@3b0972b2276b171b212f8c4efbca59ebba26eceb # v3.0.1
         with:
           image-names: ${{ github.event.repository.name }}
-          cut-off: ${{ inputs.cut-off }}
+          cut-off: ${{ inputs['cut-off'] || '2months' }}
           account: user
           token: ${{ secrets.GITHUB_TOKEN }}
           image-tags: "^(pr-|sha-).*$"
-          dry-run: ${{ inputs.dry-run }}
+          dry-run: ${{ inputs['dry-run'] || 'false' }}
