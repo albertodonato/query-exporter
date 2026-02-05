@@ -1,4 +1,4 @@
-FROM --platform=$BUILDPLATFORM python:slim-bookworm AS base
+FROM --platform=$BUILDPLATFORM python:3.14-slim AS base
 
 RUN apt-get update && apt-get full-upgrade -y
 

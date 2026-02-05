@@ -14,7 +14,7 @@ jobs:
     name: Lint
     uses: ./.github/workflows/run-tox.yaml
     with:
-      python-version: "3.13"
+      python-version: "3.14"
       tox-env: lint
 
   check:
@@ -30,6 +30,7 @@ jobs:
           - "3.11"
           - "3.12"
           - "3.13"
+          - "3.14"
 
   test:
     name: Unit tests
@@ -44,12 +45,13 @@ jobs:
           - "3.11"
           - "3.12"
           - "3.13"
+          - "3.14"
 
   integration-test:
     name: Integration tests
     uses: ./.github/workflows/run-tox.yaml
     with:
-      python-version: "3.13"
+      python-version: "3.14"
       tox-env: integration-tests
       env-args: -vv --db=${{ matrix.database }}
 
