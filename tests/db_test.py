@@ -58,6 +58,7 @@ class TestCreateDBEngine:
         engine = create_db_engine(config)
         assert isinstance(engine.pool, QueuePool)
         assert engine.pool.size() == 2
+        engine.dispose()
 
     def test_without_pool(self) -> None:
         config = schema.Database.model_validate(
@@ -276,6 +277,7 @@ class TestQueryResults:
         with engine.connect() as conn:
             result = conn.execute(text("SELECT 1 AS a, 2 AS b"))
             query_results = QueryResults.from_result(result)
+        engine.dispose()
         assert query_results.keys == ["a", "b"]
         assert query_results.rows == [(1, 2)]
         assert query_results.latency is None
@@ -286,6 +288,7 @@ class TestQueryResults:
         with engine.connect() as conn:
             result = conn.execute(text("PRAGMA auto_vacuum = 1"))
             query_results = QueryResults.from_result(result)
+        engine.dispose()
         assert query_results.keys == []
         assert query_results.rows == []
         assert query_results.latency is None
@@ -297,6 +300,7 @@ class TestQueryResults:
             # simulate latency tracking
             conn.info["query_latency"] = 1.2
             query_results = QueryResults.from_result(result)
+        engine.dispose()
         assert query_results.keys == ["a", "b"]
         assert query_results.rows == [(1, 2)]
         assert query_results.latency == 1.2
@@ -341,6 +345,7 @@ class TestDatabase:
         with pytest.raises(DatabaseConnectError) as error:
             await db.execute(make_query_execution())
         assert "unable to open database file" in str(error.value)
+        db.close()
 
     async def test_connect_sql(self, mocker: MockerFixture) -> None:
         config = schema.Database.model_validate(
@@ -369,6 +374,7 @@ class TestDatabase:
         with pytest.raises(DatabaseQueryError) as error:
             await db.execute_sql("SELECT 100")
         assert "failed executing connect SQL" in str(error.value)
+        db.close()
 
     async def test_close(
         self, log: StructuredLogCapture, db: Database

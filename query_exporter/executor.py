@@ -2,14 +2,14 @@
 
 import asyncio
 from collections import defaultdict
-from collections.abc import Iterator, Mapping
+from collections.abc import Mapping
 from datetime import datetime
 from itertools import chain
-import time
 from typing import Any, cast
 
-from croniter import croniter
-from dateutil.tz import gettz
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.cron import CronTrigger
+from apscheduler.triggers.interval import IntervalTrigger
 from prometheus_aioexporter import (
     MetricConfig,
     MetricsRegistry,
@@ -36,10 +36,6 @@ from .metrics import (
     QUERIES_METRIC_NAME,
     QUERY_LATENCY_METRIC_NAME,
     QUERY_TIMESTAMP_METRIC_NAME,
-)
-from .periodic_call import (
-    PeriodicCall,
-    TimedCall,
 )
 
 
@@ -114,16 +110,16 @@ class QueryExecutor:
         registry: MetricsRegistry,
         logger: structlog.stdlib.BoundLogger | None = None,
     ):
+        loop = asyncio.get_event_loop()
+
         self._config = config
         self._registry = registry
         self._logger = logger or structlog.get_logger()
-        self._timed_query_executions: list[QueryExecution] = []
-        self._aperiodic_query_executions: list[QueryExecution] = []
-        # map query names to their TimedCalls
-        self._timed_calls: dict[str, TimedCall] = {}
+        self._scheduler = AsyncIOScheduler(event_loop=loop)
+        self._aperiodic_executions: list[QueryExecution] = []
         # map query names to list of database names
         self._doomed_queries: dict[str, set[str]] = defaultdict(set)
-        self._loop = asyncio.get_event_loop()
+        self._loop = loop
         self._last_seen = MetricsLastSeen(
             {
                 name: metric.config.get("expiration")
@@ -135,32 +131,40 @@ class QueryExecutor:
             for name, db_config in self._config.databases.items()
         }
 
-        for query_execution in chain(
-            *(query.executions for query in self._config.queries.values())
-        ):
-            if query_execution.query.timed:
-                self._timed_query_executions.append(query_execution)
-            else:
-                self._aperiodic_query_executions.append(query_execution)
-
     async def start(self) -> None:
-        """Start timed queries execution."""
-        for query_execution in self._timed_query_executions:
+        """Configure queries execution and start periodic ones."""
+        query_executions = chain(
+            *(query.executions for query in self._config.queries.values())
+        )
+        for query_execution in query_executions:
             query = query_execution.query
-            call: TimedCall
-            if query.interval:
-                call = PeriodicCall(self._run_query, query_execution)
-                call.start(query.interval, now=True)
+            if query.interval is not None:
+                self._scheduler.add_job(
+                    self._run_query,
+                    args=[query_execution],
+                    trigger=IntervalTrigger(seconds=query.interval),
+                    id=query_execution.name,
+                    name=query_execution.name,
+                    next_run_time=datetime.now(),  # don't wait interval to run
+                )
             elif query.schedule is not None:
-                call = TimedCall(self._run_query, query_execution)
-                call.start(self._loop_times_iter(query.schedule))
-            self._timed_calls[query_execution.name] = call
+                self._scheduler.add_job(
+                    self._run_query,
+                    args=[query_execution],
+                    trigger=CronTrigger.from_crontab(query.schedule),
+                    id=query_execution.name,
+                    name=query_execution.name,
+                )
+            else:
+                self._aperiodic_executions.append(query_execution)
+
+        self._scheduler.start()
 
     async def stop(self) -> None:
         """Stop timed query execution."""
-        coros = (call.stop() for call in self._timed_calls.values())
-        await asyncio.gather(*coros, return_exceptions=True)
-        self._timed_calls.clear()
+        self._scheduler.shutdown()
+        self._scheduler.remove_all_jobs()
+        self._aperiodic_executions.clear()
         for db in self._databases.values():
             db.close()
 
@@ -176,21 +180,12 @@ class QueryExecutor:
         """Run queries on request."""
         coros = (
             self._execute_query(query_execution, dbname)
-            for query_execution in self._aperiodic_query_executions
+            for query_execution in self._aperiodic_executions
             for dbname in query_execution.query.databases
         )
         await asyncio.gather(*coros, return_exceptions=True)
 
-    def _loop_times_iter(self, schedule: str) -> Iterator[float | int]:
-        """Wrap a croniter iterator to sync time with the loop clock."""
-        cron_iter = croniter(schedule, datetime.now(gettz()))
-        while True:
-            cc = next(cron_iter)
-            t = time.time()
-            delta = cc - t
-            yield self._loop.time() + delta
-
-    def _run_query(self, query_execution: QueryExecution) -> None:
+    async def _run_query(self, query_execution: QueryExecution) -> None:
         """Periodic task to run a query."""
         for dbname in query_execution.query.databases:
             self._loop.create_task(
@@ -252,12 +247,9 @@ class QueryExecutor:
         if set(query.databases) == self._doomed_queries[query_execution.name]:
             # the query has failed on all databases
             if query.timed:
-                self._timed_query_executions.remove(query_execution)
-                call = self._timed_calls.pop(query_execution.name, None)
-                if call is not None:
-                    await call.stop()
+                self._scheduler.remove_job(query_execution.name)
             else:
-                self._aperiodic_query_executions.remove(query_execution)
+                self._aperiodic_executions.remove(query_execution)
         return True
 
     def _update_metrics_from_results(
