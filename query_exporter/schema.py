@@ -180,8 +180,14 @@ class BuiltinMetrics(BaseModel):
 class ConnectionPool(Model):
     """Database connection pool configuration."""
 
-    size: int = Field(ge=1, le=100, default=1)
+    size: int = Field(ge=0, le=100, default=1)
     max_overflow: int = Field(ge=0, le=100, default=0)
+
+    @model_validator(mode="after")
+    def validate_all(self) -> t.Self:
+        if self.max_overflow > 0 and self.size == 0:
+            raise ValueError("overflow can't be set with no connection pool")
+        return self
 
 
 class Database(Model):

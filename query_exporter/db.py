@@ -35,7 +35,7 @@ from sqlalchemy.exc import (
     ArgumentError,
     NoSuchModuleError,
 )
-from sqlalchemy.pool import ConnectionPoolEntry, QueuePool
+from sqlalchemy.pool import ConnectionPoolEntry, NullPool, QueuePool
 import structlog
 
 from . import schema
@@ -117,15 +117,23 @@ def create_db_engine(config: schema.Database) -> Engine:
             # multiple threads at once
             connect_args["check_same_thread"] = False
 
-        return create_engine(
-            url,
-            poolclass=QueuePool,
-            pool_size=config.connection_pool.size,
-            max_overflow=config.connection_pool.max_overflow,
-            pool_pre_ping=True,
-            pool_recycle=3600,
-            connect_args=connect_args,
-        )
+        pool = config.connection_pool
+        if pool.size == 0:
+            return create_engine(
+                url,
+                poolclass=NullPool,
+                connect_args=connect_args,
+            )
+        else:
+            return create_engine(
+                url,
+                poolclass=QueuePool,
+                pool_size=config.connection_pool.size,
+                max_overflow=config.connection_pool.max_overflow,
+                pool_pre_ping=True,
+                pool_recycle=3600,
+                connect_args=connect_args,
+            )
     except ImportError as error:
         raise DatabaseError(f'Module "{error.name}" not found')
     except (ArgumentError, ValueError, NoSuchModuleError):
@@ -277,7 +285,8 @@ class Database:
         self._engine = self._setup_engine()
 
         pool_config = self.config.connection_pool
-        max_workers = pool_config.size + pool_config.max_overflow
+        # need at least one worker even if connection pooling is disabledG
+        max_workers = max(pool_config.size + pool_config.max_overflow, 1)
         self._executor = ThreadPoolExecutor(
             max_workers=max_workers,
             thread_name_prefix=f"[Database-{self.name}]",

@@ -8,6 +8,7 @@ from query_exporter.schema import (
     Buckets,
     BuiltinMetric,
     BuiltinMetrics,
+    ConnectionPool,
     Database,
     ExporterConfig,
     Label,
@@ -223,6 +224,30 @@ class TestBuiltinMetrics:
         query_latency = BuiltinMetric(buckets=[0.1, 0.5, 1.0])
         metrics = BuiltinMetrics(query_latency=query_latency)
         assert metrics.as_dict() == {"query_latency": query_latency}
+
+
+class TestConnectionPool:
+    def test_default(self) -> None:
+        config = ConnectionPool()
+        assert config.size == 1
+        assert config.max_overflow == 0
+
+    def test_zero_pool(self) -> None:
+        config = ConnectionPool.model_validate({"size": 0})
+        assert config.size == 0
+        assert config.max_overflow == 0
+
+    def test_zero_with_overflow_invalid(self) -> None:
+        with pytest.raises(ValueError) as err:
+            ConnectionPool.model_validate({"size": 0, "max-overflow": 1})
+        assert "overflow can't be set with no connection pool" in str(
+            err.value
+        )
+
+    def test_negative_size_invalid(self) -> None:
+        with pytest.raises(ValueError) as err:
+            ConnectionPool.model_validate({"size": -1})
+        assert "should be greater than or equal to 0" in str(err.value)
 
 
 class TestDatabase:
