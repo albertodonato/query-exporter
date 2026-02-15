@@ -20,7 +20,6 @@ from time import (
 )
 import typing as t
 
-from croniter import croniter
 from sqlalchemy import (
     create_engine,
     event,
@@ -97,15 +96,6 @@ class InvalidQueryParameters(Exception):
     def __init__(self, query_name: str) -> None:
         super().__init__(
             f'Parameters for query "{query_name}" don\'t match those from SQL'
-        )
-
-
-class InvalidQuerySchedule(Exception):
-    """Query schedule is wrong or both schedule and interval specified."""
-
-    def __init__(self, query_name: str, message: str) -> None:
-        super().__init__(
-            f'Invalid schedule for query "{query_name}": {message}'
         )
 
 
@@ -203,7 +193,6 @@ class Query:
     def __post_init__(
         self, parameter_sets: list[dict[str, t.Any]] | None
     ) -> None:
-        self._check_schedule()
         if not parameter_sets:
             self.executions = [QueryExecution(self.name, self)]
         else:
@@ -250,14 +239,6 @@ class Query:
             timestamp=query_results.timestamp,
             latency=query_results.latency,
         )
-
-    def _check_schedule(self) -> None:
-        if self.interval and self.schedule:
-            raise InvalidQuerySchedule(
-                self.name, "both interval and schedule specified"
-            )
-        if self.schedule and not croniter.is_valid(self.schedule):
-            raise InvalidQuerySchedule(self.name, "invalid schedule format")
 
 
 @dataclass(frozen=True)

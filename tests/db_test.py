@@ -18,7 +18,6 @@ from query_exporter.db import (
     DatabaseError,
     DatabaseQueryError,
     InvalidQueryParameters,
-    InvalidQuerySchedule,
     InvalidResultColumnNames,
     InvalidResultCount,
     MetricResult,
@@ -135,35 +134,6 @@ class TestQuery:
             schedule="0 * * * *",
         )
         assert query.schedule == "0 * * * *"
-
-    def test_instantiate_with_interval_and_schedule(self) -> None:
-        with pytest.raises(InvalidQuerySchedule) as error:
-            Query(
-                "query",
-                ["db1"],
-                [QueryMetric("metric1", [])],
-                "SELECT 1",
-                interval=20,
-                schedule="0 * * * *",
-            )
-        assert (
-            str(error.value)
-            == 'Invalid schedule for query "query": both interval and schedule specified'
-        )
-
-    def test_instantiate_with_invalid_schedule(self) -> None:
-        with pytest.raises(InvalidQuerySchedule) as error:
-            Query(
-                "query",
-                ["db1"],
-                [QueryMetric("metric1", [])],
-                "SELECT 1",
-                schedule="wrong",
-            )
-        assert (
-            str(error.value)
-            == 'Invalid schedule for query "query": invalid schedule format'
-        )
 
     def test_instantiate_with_timeout(self) -> None:
         query = Query(

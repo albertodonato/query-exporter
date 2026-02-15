@@ -4,6 +4,7 @@ from itertools import product
 import re
 import typing as t
 
+from croniter import croniter
 from pydantic import (
     AfterValidator,
     AliasGenerator,
@@ -35,11 +36,7 @@ _INTERVAL_RE = re.compile(r"^[0-9]+[smhd]?$")
 
 
 def _validate_interval(interval: int | str) -> int:
-    """Convert a time interval to seconds.
-
-    Return None if no interval is specified.
-
-    """
+    """Convert a time interval to seconds."""
     multiplier = 1
     if isinstance(interval, str):
         assert _INTERVAL_RE.match(interval), "invalid interval definition"
@@ -55,6 +52,12 @@ def _validate_interval(interval: int | str) -> int:
     return value
 
 
+def _validate_schedule(schedule: str) -> str:
+    """Check that the schedule is a valid Cron expression."""
+    croniter(schedule)
+    return schedule
+
+
 Buckets = t.Annotated[
     list[float],
     Field(min_length=1),
@@ -68,6 +71,10 @@ Label = t.Annotated[
 TimeInterval = t.Annotated[
     int,
     BeforeValidator(_validate_interval),
+]
+TimeSchedule = t.Annotated[
+    str,
+    BeforeValidator(_validate_schedule),
 ]
 Timeout = t.Annotated[
     float,
@@ -276,8 +283,14 @@ class Query(Model):
     sql: str
     interval: TimeInterval | None = None
     parameters: QueryParameters | None = None
-    schedule: str | None = None
+    schedule: TimeSchedule | None = None
     timeout: Timeout | None = None
+
+    @model_validator(mode="after")
+    def validate_all(self) -> t.Self:
+        if self.interval and self.schedule:
+            raise ValueError("can't set both interval and schedule")
+        return self
 
 
 class ExporterConfig(Model):

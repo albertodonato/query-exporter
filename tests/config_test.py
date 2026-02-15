@@ -335,53 +335,6 @@ class TestLoadConfig:
             == 'Parameters for query "q[params1]" don\'t match those from SQL'
         )
 
-    def test_load_queries_section_with_schedule_and_interval(
-        self, write_config: ConfigWriter
-    ) -> None:
-        cfg = {
-            "databases": {"db": {"dsn": "sqlite:///:memory:"}},
-            "metrics": {"m": {"type": "summary"}},
-            "queries": {
-                "q": {
-                    "databases": ["db"],
-                    "metrics": ["m"],
-                    "sql": "SELECT 1",
-                    "interval": 10,
-                    "schedule": "0 * * * *",
-                },
-            },
-        }
-        config_file = write_config(cfg)
-        with pytest.raises(ConfigError) as err:
-            load_config([config_file])
-        assert (
-            str(err.value)
-            == 'Invalid schedule for query "q": both interval and schedule specified'
-        )
-
-    def test_load_queries_section_invalid_schedule(
-        self, write_config: ConfigWriter
-    ) -> None:
-        cfg = {
-            "databases": {"db": {"dsn": "sqlite:///:memory:"}},
-            "metrics": {"m": {"type": "summary"}},
-            "queries": {
-                "q": {
-                    "databases": ["db"],
-                    "metrics": ["m"],
-                    "sql": "SELECT 1",
-                    "schedule": "wrong",
-                },
-            },
-        }
-        config_file = write_config(cfg)
-        with pytest.raises(ConfigError) as err:
-            load_config([config_file])
-        assert (
-            str(err.value)
-            == 'Invalid schedule for query "q": invalid schedule format'
-        )
-
     def test_load_queries_section_timeout(
         self,
         sample_config: dict[str, t.Any],

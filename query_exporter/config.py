@@ -194,7 +194,7 @@ def _get_queries(
                 schedule=config.schedule,
                 parameter_sets=parameter_sets,
             )
-        except (db.InvalidQueryParameters, db.InvalidQuerySchedule) as e:
+        except db.InvalidQueryParameters as e:
             raise ConfigError(str(e))
     return queries
 

@@ -17,10 +17,10 @@ keywords = [
 license = "GPL-3.0-OR-later"
 license-files = [ "LICENSE.txt" ]
 maintainers = [
-  { name = "Alberto Donato", email = "alberto.donato@gmail.com" },
+  { name = "Alberto Donato", email = "alberto@albertodonato.net" },
 ]
 authors = [
-  { name = "Alberto Donato", email = "alberto.donato@gmail.com" },
+  { name = "Alberto Donato", email = "alberto@albertodonato.net" },
 ]
 requires-python = ">=3.11"
 classifiers = [

@@ -13,9 +13,11 @@ from query_exporter.schema import (
     Label,
     Metric,
     Port,
+    Query,
     QueryParameters,
     TimeInterval,
     Timeout,
+    TimeSchedule,
 )
 
 from .conftest import ConfigWriter
@@ -96,6 +98,19 @@ class TestTimeInterval:
         ("123g", "invalid interval definition"),
         (0, "must be a positive number"),
         (-10, "must be a positive number"),
+    )
+
+
+class TestTimeSchedule:
+    field = TimeSchedule
+
+    tets_valid = valid_inputs(
+        ("0/10 * * * *", "0/10 * * * *"),
+        ("1 2 3 4 5", "1 2 3 4 5"),
+    )
+    test_invalid = invalid_inputs(
+        ("1 2 3", "Exactly 5, 6 or 7 columns"),
+        ("-20 * * * *", "is not acceptable"),
     )
 
 
@@ -360,6 +375,21 @@ class TestMetric:
             "Input should be 'counter', 'enum', 'gauge', 'histogram' or 'summary'"
             in str(err.value)
         )
+
+
+class TestQuery:
+    def test_both_interval_and_schedule(self) -> None:
+        with pytest.raises(ValueError) as err:
+            Query.model_validate(
+                {
+                    "databases": ["db"],
+                    "metrics": ["m"],
+                    "sql": "SELECT 1 AS m",
+                    "interval": 10,
+                    "schedule": "*/30 * * * *",
+                }
+            )
+        assert "can't set both interval and schedule" in str(err.value)
 
 
 class TestQueryParameters:
