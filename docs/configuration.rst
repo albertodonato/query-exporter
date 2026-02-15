@@ -80,6 +80,11 @@ Each database definitions can have the following keys:
   (``size``, default `1`) and the maximum additional connections that can be
   created (``max-overflow``, default `0`).
 
+  *Note*: Connection pooling can be disabled by specifying ``size: 0``,
+   preventing persistent connections. In this case, a new connection will be
+   opened and closed before each query. This may affect performances when many
+   query are performed on the a database with the same schedule.
+
 ``connect-sql``:
   An optional list of queries to run right after database connection. This can
   be used to set up connection-wise parameters and configurations.
