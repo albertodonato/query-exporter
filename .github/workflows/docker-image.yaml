@@ -89,16 +89,3 @@ jobs:
           cache-to: type=gha,mode=max
           provenance: true
           sbom: true
-
-      - name: Export digest
-        run: |
-          mkdir -p digests
-          echo '${{ steps.build.outputs.metadata }}' | jq -r '."containerimage.digest"' | tee digest.txt
-
-      - name: Upload digest
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
-        with:
-          name: digests-${{ matrix.variant }}
-          path: digest.txt
-          if-no-files-found: error
-          retention-days: 1
