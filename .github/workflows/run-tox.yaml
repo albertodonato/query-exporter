@@ -15,17 +15,9 @@ on:
         type: string
         description: Optional arguments for the tox environment
         required: false
-      artifact-path:
-        type: string
-        description: Path to upload as artifact
-        required: false
-      artifact-name:
-        type: string
-        description: Name for the artifact to upload (only used if a path is specified)
-        required: false
 
 jobs:
-  run-tox:
+  run:
     runs-on: ubuntu-latest
     steps:
       - name: Repository checkout
@@ -38,15 +30,8 @@ jobs:
 
       - name: Install tox
         run: |
-          pip install --upgrade pip tox
+          pip install tox
 
-      - name: Run environment 
+      - name: Run environment
         run: |
           tox run -e ${{ inputs.tox-env }} -- ${{ inputs.env-args }}
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
-        if: ${{ inputs.artifact-path != '' }}
-        with:
-          name: ${{ inputs.artifact-name }}
-          path: ${{ inputs.artifact-path }}
