@@ -29,11 +29,10 @@ QUERY_EXECUTOR_APP_KEY: AppKey[QueryExecutor] = AppKey("query-executor")
 
 
 class QueryExporterScript(PrometheusExporterScript):
-    """Periodically run database queries and export results to Prometheus."""
+    """Run SQL queries on multiple databases and export results as Prometheus metrics."""
 
     name = "query-exporter"
     version = __version__
-    description = __doc__
     default_port = 9560
     envvar_prefix = "QE"
 
