@@ -24,7 +24,7 @@ frozenlist==1.8.0
     # via
     #   aiohttp
     #   aiosignal
-greenlet==3.3.1
+greenlet==3.3.2
     # via sqlalchemy
 idna==3.11
     # via yarl
@@ -32,7 +32,7 @@ multidict==6.7.1
     # via
     #   aiohttp
     #   yarl
-prometheus-aioexporter==3.1.0
+prometheus-aioexporter==3.1.1
     # via query-exporter (pyproject.toml)
 prometheus-client==0.24.1
     # via
