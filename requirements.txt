@@ -32,7 +32,7 @@ multidict==6.7.1
     # via
     #   aiohttp
     #   yarl
-prometheus-aioexporter==3.1.1
+prometheus-aioexporter==3.1.3
     # via query-exporter (pyproject.toml)
 prometheus-client==0.24.1
     # via

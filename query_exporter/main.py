@@ -15,7 +15,6 @@ from prometheus_aioexporter import (
 )
 from prometheus_client.metrics import Gauge
 
-from . import __version__
 from .config import (
     Config,
     ConfigError,
@@ -32,7 +31,6 @@ class QueryExporterScript(PrometheusExporterScript):
     """Run SQL queries on multiple databases and export results as Prometheus metrics."""
 
     name = "query-exporter"
-    version = __version__
     default_port = 9560
     envvar_prefix = "QE"
 
