@@ -218,9 +218,10 @@ Automated builds from the ``main`` branch are available on the `GitHub container
 
   docker pull ghcr.io/albertodonato/query-exporter:main
 
-**NOTE**: GHCR images are periodically cleaned up and shouldn't be used for
- production purposes. They're meant mainly for testing unreleased features,
- e.g. from the ``main`` branch or pull requests.
+**NOTE**: GHCR images are periodically cleaned up and shouldn't be used for production purposes.
+
+They're mainly meant for testing unreleased features, e.g. from the ``main``
+branch or pull requests.
 
 
 Base image
