@@ -9,10 +9,15 @@ updates:
         update-types: [minor]
       major:
         update-types: [major]
+    commit-message:
+      prefix: chore
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
     groups:
       all:
-        update-types: [major, minor]
+        patterns:
+          - "*"
+    commit-message:
+      prefix: chore
