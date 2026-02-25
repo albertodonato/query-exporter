@@ -10,6 +10,7 @@ from sqlalchemy import (
     create_engine,
     text,
 )
+from sqlalchemy.pool import NullPool, QueuePool
 
 from query_exporter import schema
 from query_exporter.db import (
@@ -49,6 +50,24 @@ class TestCreateDBEngine:
         with pytest.raises(DatabaseError) as error:
             create_db_engine(config)
         assert str(error.value) == f'Invalid database DSN: "{dsn}"'
+
+    def test_with_pool(self) -> None:
+        config = schema.Database.model_validate(
+            {"dsn": "sqlite:///", "connection-pool": {"size": 2}},
+        )
+        engine = create_db_engine(config)
+        assert isinstance(engine.pool, QueuePool)
+        assert engine.pool.size() == 2
+
+    def test_without_pool(self) -> None:
+        config = schema.Database.model_validate(
+            {
+                "dsn": "sqlite:///",
+                "connection-pool": {"size": 0},
+            },
+        )
+        engine = create_db_engine(config)
+        assert isinstance(engine.pool, NullPool)
 
 
 class TestQuery:
