@@ -30,6 +30,12 @@ v4.0.0 - 2025-12-22
    queries are now always run in a transaction.
  - The ``env:`` and ``file:`` prefixes for DSNs string form have been replaced
    by the corresponding tags.
+ - [docker] Due to the change to ``pymssql``, the MS SQL Server connection
+   string dialect must be defined as ``mssql+pymssql://`` (as SQLAlchmy would
+   otherwise default to ``pyodbc``).
+ - [docker] Due to the change to ``oracledb``, the Oracle connection
+   string dialect must be defined as ``oracle+oracledb://`` (as SQLAlchmy would
+   otherwise default to ``cx_oracle``, until SQLAlchemy 2.1 is released).
 
 
 v3.2.1 - 2025-06-08

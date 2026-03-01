@@ -5,6 +5,9 @@ This section collects a few details and gotchas related to specific database
 engines.
 
 
+MS SQL Server [``mssql+pymssql://``]
+====================================
+
 Multiple queries on a single connection
 ---------------------------------------
 
@@ -14,15 +17,15 @@ reported correctly.
 
 This can be done via the ``MARS_Connection`` parameter on the database DSN::
 
-  mssql://<username>:<password>@<host>:<port>/<db>?MARS_Connection=yes
+  mssql+pymssql://<username>:<password>@<host>:<port>/<db>?MARS_Connection=yes
 
 
-Oracle [``oracle://``]
-======================
+Oracle [``oracle+oracledb://``]
+===============================
 
 Sample DSN::
 
-  oracle://<username>:<password>@(DESCRIPTION =(ADDRESS = (PROTOCOL = TCP)(HOST = <hostname>)(PORT = <port>))(CONNECT_DATA =(SERVER = DEDICATED)(SERVICE_NAME = <service>)))
+  oracle+oracledb://<username>:<password>@(DESCRIPTION =(ADDRESS = (PROTOCOL = TCP)(HOST = <hostname>)(PORT = <port>))(CONNECT_DATA =(SERVER = DEDICATED)(SERVICE_NAME = <service>)))
 
 
 

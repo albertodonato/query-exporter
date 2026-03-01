@@ -104,7 +104,7 @@ class PostgreSQL(DatabaseServer):
     image = "postgres"
     port = 5432
 
-    dialect = "postgresql+psycopg2"
+    dialect = "postgresql"
 
     def docker_config(self) -> dict[str, t.Any]:
         return super().docker_config() | {
@@ -122,7 +122,7 @@ class MySQL(DatabaseServer):
     image = "mysql"
     port = 3306
 
-    dialect = "mysql+mysqldb"
+    dialect = "mysql"
 
     def docker_config(self) -> dict[str, t.Any]:
         return super().docker_config() | {
