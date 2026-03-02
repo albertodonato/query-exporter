@@ -1,4 +1,4 @@
-FROM --platform=$BUILDPLATFORM python:3.14-slim AS base
+FROM python:3.14-slim AS base
 
 RUN apt-get update && apt-get full-upgrade -y
 
@@ -21,7 +21,7 @@ WORKDIR /config
 ENTRYPOINT ["query-exporter"]
 
 
-FROM --platform=$BUILDPLATFORM base AS full
+FROM base AS full
 
 ENV BUILD_DEPS=" \
     build-essential \
