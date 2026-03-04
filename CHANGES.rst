@@ -1,3 +1,12 @@
+v4.0.2 - 2026-03-04
+===================
+
+- [docker] Fix arm64 Docker image build
+- [github] Cleanup and simplify workflows
+- Improve schedule validation in schema
+- [github] Add Python 3.14 to CI workflows
+
+
 v4.0.1 - 2026-01-31
 ===================
 
