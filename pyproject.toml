@@ -70,12 +70,12 @@ optional-dependencies.testing = [
   "pytest-mock",
   "pytest-structlog",
 ]
-urls."Changelog" = "https://github.com/albertodonato/query-exporter/blob/main/CHANGES.rst"
-urls."Documentation" = "https://github.com/albertodonato/query-exporter"
-urls."Homepage" = "https://github.com/albertodonato/query-exporter"
 urls."Issue Tracker" = "https://github.com/albertodonato/query-exporter/issues"
 urls."Release Notes" = "https://github.com/albertodonato/query-exporter/blob/main/CHANGES.rst"
 urls."Source Code" = "https://github.com/albertodonato/query-exporter"
+urls.Changelog = "https://github.com/albertodonato/query-exporter/blob/main/CHANGES.rst"
+urls.Documentation = "https://github.com/albertodonato/query-exporter"
+urls.Homepage = "https://github.com/albertodonato/query-exporter"
 scripts.query-exporter = "query_exporter.main:script"
 
 [tool.setuptools]
