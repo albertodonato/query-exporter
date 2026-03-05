@@ -1,6 +1,6 @@
 import asyncio
-from collections.abc import AsyncIterator, Iterator
-import typing as t
+from collections.abc import AsyncIterator, Awaitable, Callable, Iterator
+from typing import Any
 
 import pytest
 
@@ -19,19 +19,19 @@ def loop_time() -> float:
 
 
 @pytest.fixture
-def calls() -> Iterator[list[t.Any]]:
+def calls() -> Iterator[list[Any]]:
     yield []
 
 
 @pytest.fixture
-def sync_func(calls: list[t.Any]) -> Iterator[t.Callable[[], None]]:
+def sync_func(calls: list[Any]) -> Iterator[Callable[[], None]]:
     yield lambda: calls.append(loop_time())
 
 
 @pytest.fixture
 def async_func(
-    calls: list[t.Any],
-) -> Iterator[t.Callable[[], t.Awaitable[None]]]:
+    calls: list[Any],
+) -> Iterator[Callable[[], Awaitable[None]]]:
     async def func() -> None:
         calls.append(loop_time())
         await asyncio.sleep(0.1)
@@ -41,7 +41,7 @@ def async_func(
 
 @pytest.fixture
 async def timed_call(
-    sync_func: t.Callable[[], None],
+    sync_func: Callable[[], None],
 ) -> AsyncIterator[TimedCall]:
     call = TimedCall(sync_func)
     yield call
@@ -50,7 +50,7 @@ async def timed_call(
 
 
 @pytest.fixture
-def periodic_call(sync_func: t.Callable[[], None]) -> Iterator[PeriodicCall]:
+def periodic_call(sync_func: Callable[[], None]) -> Iterator[PeriodicCall]:
     yield PeriodicCall(sync_func)
 
 
@@ -59,7 +59,7 @@ def time_intervals() -> Iterator[list[float]]:
     yield [1.0, 5.0]
 
 
-TimesIterator = t.Callable[[], Iterator[float]]
+TimesIterator = Callable[[], Iterator[float]]
 
 
 @pytest.fixture
@@ -88,7 +88,7 @@ class TestTimedCall:
         advance_time: AdvanceTime,
         timed_call: TimedCall,
         times_iter: TimesIterator,
-        calls: list[t.Any],
+        calls: list[Any],
     ) -> None:
         """Starting the TimedCall makes it call the function."""
         timed_call.start(times_iter())
@@ -109,7 +109,7 @@ class TestTimedCall:
         advance_time: AdvanceTime,
         timed_call: TimedCall,
         times_iter: TimesIterator,
-        calls: list[t.Any],
+        calls: list[Any],
     ) -> None:
         """Stopping the TimedCall stops runs."""
         timed_call.start(times_iter())
@@ -130,11 +130,11 @@ class TestTimedCall:
         self,
         advance_time: AdvanceTime,
         times_iter: TimesIterator,
-        calls: list[t.Any],
+        calls: list[Any],
     ) -> None:
         """Specified arguments are passed to the function on call."""
 
-        def func(*args: t.Any, **kwargs: t.Any) -> None:
+        def func(*args: Any, **kwargs: Any) -> None:
             calls.append((args, kwargs))
 
         timed_call = TimedCall(func, "foo", "bar", baz="baz", bza="bza")
@@ -149,7 +149,7 @@ class TestTimedCall:
         advance_time: AdvanceTime,
         timed_call: TimedCall,
         times_iter: TimesIterator,
-        calls: list[t.Any],
+        calls: list[Any],
     ) -> None:
         """The sync function is called at specified time intervals."""
         timed_call.start(times_iter())
@@ -160,9 +160,9 @@ class TestTimedCall:
     async def test_run_async_at_time_intervals(
         self,
         advance_time: AdvanceTime,
-        async_func: t.Callable[[], t.Awaitable[None]],
+        async_func: Callable[[], Awaitable[None]],
         times_iter: TimesIterator,
-        calls: list[t.Any],
+        calls: list[Any],
     ) -> None:
         """The async function is called at specified time intervals."""
         timed_call = TimedCall(async_func)
@@ -177,7 +177,7 @@ class TestTimedCall:
         timed_call: TimedCall,
         times_iter: TimesIterator,
         time_intervals: list[float],
-        calls: list[t.Any],
+        calls: list[Any],
     ) -> None:
         """The TimedCall stops if the time iterator ends."""
         timed_call.start(times_iter())
@@ -191,7 +191,7 @@ class TestPeriodicCall:
         self,
         advance_time: AdvanceTime,
         periodic_call: PeriodicCall,
-        calls: list[t.Any],
+        calls: list[Any],
     ) -> None:
         """Starting the PeriodicCall makes it call the function immediately."""
         periodic_call.start(5)
@@ -202,7 +202,7 @@ class TestPeriodicCall:
         self,
         advance_time: AdvanceTime,
         periodic_call: PeriodicCall,
-        calls: list[t.Any],
+        calls: list[Any],
     ) -> None:
         """Stopping the PeriodicCall stops periodic runs."""
         periodic_call.start(5)
@@ -216,7 +216,7 @@ class TestPeriodicCall:
         self,
         advance_time: AdvanceTime,
         periodic_call: PeriodicCall,
-        calls: list[t.Any],
+        calls: list[Any],
     ) -> None:
         """The PeriodicCall gets called at each interval."""
         periodic_call.start(5)
@@ -229,7 +229,7 @@ class TestPeriodicCall:
         self,
         advance_time: AdvanceTime,
         periodic_call: PeriodicCall,
-        calls: list[t.Any],
+        calls: list[Any],
     ) -> None:
         """If now is False, the function is not run immediately."""
         periodic_call.start(5, now=False)
@@ -240,7 +240,7 @@ class TestPeriodicCall:
         self,
         advance_time: AdvanceTime,
         periodic_call: PeriodicCall,
-        calls: list[t.Any],
+        calls: list[Any],
     ) -> None:
         """If now is False, the function is run after the interval."""
         periodic_call.start(5, now=False)

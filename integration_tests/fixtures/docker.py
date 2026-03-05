@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from collections.abc import Iterator
-import typing as t
+from typing import Any
 
 import pytest
 from pytest_docker.plugin import DockerComposeExecutor, Services
@@ -27,7 +27,7 @@ class DockerService(ABC):
     def post_init(self) -> None:
         """Add post-init configuration."""
 
-    def docker_config(self) -> dict[str, t.Any]:
+    def docker_config(self) -> dict[str, Any]:
         """The docker-compose configuration for the service."""
         return {
             "container_name": f"{self.container_prefix}-{self.name}",

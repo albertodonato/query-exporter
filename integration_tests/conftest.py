@@ -1,5 +1,5 @@
-from collections.abc import Generator, Iterator
-import typing as t
+from collections.abc import Callable, Generator, Iterator
+from typing import Any
 
 import pytest
 import yaml
@@ -44,7 +44,7 @@ def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
 
 @pytest.hookimpl(wrapper=True, tryfirst=True)
 def pytest_runtest_makereport(
-    item: t.Any, call: t.Any
+    item: Any, call: Any
 ) -> Generator[None, None, None]:
     report = yield
     collector = item.stash.setdefault(PHASE_REPORT_KEY, ReportCollector())
@@ -55,7 +55,7 @@ def pytest_runtest_makereport(
 @pytest.fixture(scope="session")
 def selected_db_servers(
     request: pytest.FixtureRequest,
-    unused_tcp_port_factory: t.Callable[[], int],
+    unused_tcp_port_factory: Callable[[], int],
     docker_compose_project_name: str,
     docker_ip: str,
 ) -> Iterator[dict[str, DatabaseServer]]:
@@ -73,7 +73,7 @@ def selected_db_servers(
 @pytest.fixture(scope="session")
 def selected_db_servers_services(
     selected_db_servers: dict[str, DatabaseServer],
-) -> Iterator[dict[str, dict[str, t.Any]]]:
+) -> Iterator[dict[str, dict[str, Any]]]:
     """Configuration stanzas for docker-compose services."""
     yield {
         server.name: server.docker_config()
@@ -98,7 +98,7 @@ def skip_if_not_selected_db_server(
 @pytest.fixture(scope="session")
 def docker_compose_file(
     tmp_path_factory: pytest.TempPathFactory,
-    selected_db_servers_services: dict[str, dict[str, t.Any]],
+    selected_db_servers_services: dict[str, dict[str, Any]],
     exporter_service: Exporter,
 ) -> Iterator[str]:
     """Path to docker-compose.yaml config file."""

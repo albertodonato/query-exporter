@@ -6,7 +6,7 @@ from collections.abc import Iterator, Mapping
 from datetime import datetime
 from itertools import chain
 import time
-import typing as t
+from typing import Any, cast
 
 from croniter import croniter
 from dateutil.tz import gettz
@@ -87,7 +87,7 @@ class MetricsLastSeen:
         """
         expired = {}
         for name, metric_last_seen in self._last_seen.items():
-            expiration = t.cast(int, self._expirations[name])
+            expiration = cast(int, self._expirations[name])
             expired_labels = [
                 label_values
                 for label_values, last_seen in metric_last_seen.items()
@@ -289,7 +289,7 @@ class QueryExecutor:
         self,
         database: Database,
         name: str,
-        value: t.Any,
+        value: Any,
         labels: Mapping[str, str] | None = None,
     ) -> None:
         """Update value for a metric."""
@@ -329,11 +329,11 @@ class QueryExecutor:
         return method
 
     def _update_metric_value(
-        self, metric: MetricWrapperBase, method: str, value: t.Any
+        self, metric: MetricWrapperBase, method: str, value: Any
     ) -> None:
         if metric._type == "counter" and method == "set":
             # counters can only be incremented, directly set the underlying value
-            t.cast(Counter, metric)._value.set(value)
+            cast(Counter, metric)._value.set(value)
         else:
             getattr(metric, method)(value)
 

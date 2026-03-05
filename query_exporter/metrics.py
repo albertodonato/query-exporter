@@ -1,4 +1,4 @@
-import typing as t
+from typing import Any
 
 from prometheus_aioexporter import MetricConfig
 
@@ -59,7 +59,7 @@ BUILTIN_METRICS = frozenset(
 
 def get_builtin_metric_configs(
     extra_labels: frozenset[str],
-    builtin_metrics_config: dict[str, dict[str, t.Any]],
+    builtin_metrics_config: dict[str, dict[str, Any]],
 ) -> dict[str, MetricConfig]:
     """Return configuration for builtin metrics."""
     metric_configs = {

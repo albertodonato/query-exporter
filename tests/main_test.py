@@ -1,6 +1,6 @@
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from copy import deepcopy
-import typing as t
+from typing import Any
 from unittest import mock
 
 from click.testing import CliRunner, Result
@@ -26,7 +26,7 @@ def script() -> Iterator[QueryExporterScript]:
 def invoke_cli(
     mock_run_app: mock.MagicMock,
     script: QueryExporterScript,
-) -> Iterator[t.Callable[..., Result]]:
+) -> Iterator[Callable[..., Result]]:
     def invoke(*args: str) -> Result:
         return CliRunner().invoke(script.command, args)
 
@@ -37,9 +37,9 @@ class TestQureyExporterScript:
     def test_run(
         self,
         mock_run_app: mock.MagicMock,
-        sample_config: dict[str, t.Any],
+        sample_config: dict[str, Any],
         write_config: ConfigWriter,
-        invoke_cli: t.Callable[..., Result],
+        invoke_cli: Callable[..., Result],
     ) -> None:
         config_file = write_config(sample_config)
         invoke_cli("--config", str(config_file))
@@ -48,9 +48,9 @@ class TestQureyExporterScript:
     def test_run_check_only(
         self,
         mock_run_app: mock.MagicMock,
-        sample_config: dict[str, t.Any],
+        sample_config: dict[str, Any],
         write_config: ConfigWriter,
-        invoke_cli: t.Callable[..., Result],
+        invoke_cli: Callable[..., Result],
     ) -> None:
         config_file = write_config(sample_config)
         result = invoke_cli("--config", str(config_file), "--check-only")
@@ -60,9 +60,9 @@ class TestQureyExporterScript:
     def test_run_check_only_wrong_config(
         self,
         mock_run_app: mock.MagicMock,
-        sample_config: dict[str, t.Any],
+        sample_config: dict[str, Any],
         write_config: ConfigWriter,
-        invoke_cli: t.Callable[..., Result],
+        invoke_cli: Callable[..., Result],
     ) -> None:
         sample_config["extra"] = "stuff"
         config_file = write_config(sample_config)
@@ -74,9 +74,9 @@ class TestQureyExporterScript:
         self,
         mock_run_app: mock.MagicMock,
         script: QueryExporterScript,
-        sample_config: dict[str, t.Any],
+        sample_config: dict[str, Any],
         write_config: ConfigWriter,
-        invoke_cli: t.Callable[..., Result],
+        invoke_cli: Callable[..., Result],
     ) -> None:
         sample_config["queries"]["q2"] = deepcopy(
             sample_config["queries"]["q"]

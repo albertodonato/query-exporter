@@ -1,4 +1,5 @@
-import typing as t
+from collections.abc import Callable, Iterable
+from typing import Any, cast
 
 from pydantic import TypeAdapter, ValidationError
 import pytest
@@ -23,7 +24,7 @@ from query_exporter.schema import (
 from .conftest import ConfigWriter
 
 
-def validate_field(field: type, value: t.Any) -> t.Any:
+def validate_field(field: type, value: Any) -> Any:
     return TypeAdapter(field).validate_python(value)
 
 
@@ -32,29 +33,29 @@ class InputsTest:
 
 
 def valid_inputs(
-    *inputs: tuple[t.Any, t.Any],
-    fixtures: t.Iterable[str] = (),
-) -> t.Callable[[InputsTest, t.Any, t.Any], None]:
+    *inputs: tuple[Any, Any],
+    fixtures: Iterable[str] = (),
+) -> Callable[[InputsTest, Any, Any], None]:
     @pytest.mark.parametrize("value,converted", inputs)
-    def test(self: InputsTest, value: t.Any, converted: t.Any) -> None:
+    def test(self: InputsTest, value: Any, converted: Any) -> None:
         assert validate_field(self.field, value) == converted
 
     if fixtures:
         test = pytest.mark.usefixtures(*fixtures)(test)
 
-    return t.cast(t.Callable[[InputsTest, t.Any, t.Any], None], test)
+    return cast(Callable[[InputsTest, Any, Any], None], test)
 
 
 def invalid_inputs(
-    *inputs: tuple[t.Any, t.Any],
-) -> t.Callable[[InputsTest, t.Any, str], None]:
+    *inputs: tuple[Any, Any],
+) -> Callable[[InputsTest, Any, str], None]:
     @pytest.mark.parametrize("value,message", inputs)
-    def test(self: InputsTest, value: t.Any, message: t.Any) -> None:
+    def test(self: InputsTest, value: Any, message: Any) -> None:
         with pytest.raises(ValidationError) as err:
             validate_field(self.field, value)
         assert message in str(err.value)
 
-    return t.cast(t.Callable[[InputsTest, t.Any, str], None], test)
+    return cast(Callable[[InputsTest, Any, str], None], test)
 
 
 class TestBuckets:
@@ -363,7 +364,7 @@ class TestMetric:
         ],
     )
     def test_config(
-        self, metric_config: dict[str, t.Any], config: dict[str, t.Any]
+        self, metric_config: dict[str, Any], config: dict[str, Any]
     ) -> None:
         metric = Metric.model_validate(metric_config)
         assert metric.config == config
@@ -531,7 +532,7 @@ class TestExporterConfig:
     @pytest.mark.parametrize("section", ["databases", "metrics", "queries"])
     def test_empty_sections(
         self,
-        sample_config: dict[str, t.Any],
+        sample_config: dict[str, Any],
         write_config: ConfigWriter,
         section: str,
     ) -> None:

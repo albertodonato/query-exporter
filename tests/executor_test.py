@@ -1,10 +1,10 @@
 import asyncio
-from collections.abc import AsyncIterator, Callable, Iterator
+from collections.abc import AsyncIterator, Awaitable, Callable, Iterator
 from contextlib import closing
 from decimal import Decimal
 from pathlib import Path
 import time
-import typing as t
+from typing import Any
 from unittest.mock import ANY
 
 from prometheus_aioexporter import MetricsRegistry
@@ -20,11 +20,11 @@ from query_exporter.executor import MetricsLastSeen, QueryExecutor
 
 from .conftest import QueryTracker, metric_values
 
-AdvanceTime = Callable[[float], t.Awaitable[None]]
+AdvanceTime = Callable[[float], Awaitable[None]]
 
 
 @pytest.fixture
-def config_data() -> Iterator[dict[str, t.Any]]:
+def config_data() -> Iterator[dict[str, Any]]:
     yield {
         "databases": {"db": {"dsn": "sqlite:///:memory:"}},
         "metrics": {"m": {"type": "gauge"}},
@@ -49,7 +49,7 @@ MakeQueryExecutor = Callable[[], QueryExecutor]
 
 @pytest.fixture
 async def make_query_executor(
-    tmp_path: Path, config_data: dict[str, t.Any], registry: MetricsRegistry
+    tmp_path: Path, config_data: dict[str, Any], registry: MetricsRegistry
 ) -> AsyncIterator[MakeQueryExecutor]:
     query_executors = []
 
@@ -172,12 +172,12 @@ class TestQueryExecutor:
         advance_time: AdvanceTime,
         query_tracker: QueryTracker,
         registry: MetricsRegistry,
-        config_data: dict[str, t.Any],
+        config_data: dict[str, Any],
         make_query_executor: MakeQueryExecutor,
     ) -> None:
         event_loop = asyncio.get_running_loop()
 
-        def croniter(*args: t.Any) -> Iterator[float]:
+        def croniter(*args: Any) -> Iterator[float]:
             while True:
                 # sync croniter time with the loop one
                 yield event_loop.time() + 60
@@ -200,7 +200,7 @@ class TestQueryExecutor:
         self,
         query_tracker: QueryTracker,
         registry: MetricsRegistry,
-        config_data: dict[str, t.Any],
+        config_data: dict[str, Any],
         make_query_executor: MakeQueryExecutor,
     ) -> None:
         config_data["metrics"]["m"]["type"] = "counter"
@@ -236,7 +236,7 @@ class TestQueryExecutor:
         self,
         query_tracker: QueryTracker,
         registry: MetricsRegistry,
-        config_data: dict[str, t.Any],
+        config_data: dict[str, Any],
         make_query_executor: MakeQueryExecutor,
         increment: bool,
         value: float,
@@ -266,9 +266,9 @@ class TestQueryExecutor:
         self,
         query_tracker: QueryTracker,
         registry: MetricsRegistry,
-        config_data: dict[str, t.Any],
+        config_data: dict[str, Any],
         make_query_executor: MakeQueryExecutor,
-        metric_config: dict[str, t.Any],
+        metric_config: dict[str, Any],
         sql: str,
     ) -> None:
         config_data["metrics"]["m"] = metric_config
@@ -285,7 +285,7 @@ class TestQueryExecutor:
         self,
         query_tracker: QueryTracker,
         registry: MetricsRegistry,
-        config_data: dict[str, t.Any],
+        config_data: dict[str, Any],
         make_query_executor: MakeQueryExecutor,
     ) -> None:
         config_data["databases"] = {
@@ -321,7 +321,7 @@ class TestQueryExecutor:
         self,
         registry: MetricsRegistry,
         make_query_executor: MakeQueryExecutor,
-        result: t.Any,
+        result: Any,
         metric_value: float,
     ) -> None:
         db = Database("db", schema.Database(dsn="sqlite:///:memory:"))
@@ -368,7 +368,7 @@ class TestQueryExecutor:
         self,
         log: StructuredLogCapture,
         query_tracker: QueryTracker,
-        config_data: dict[str, t.Any],
+        config_data: dict[str, Any],
         make_query_executor: MakeQueryExecutor,
     ) -> None:
         config_data["metrics"]["m"]["labels"] = ["l"]
@@ -388,7 +388,7 @@ class TestQueryExecutor:
     async def test_run_query_increase_db_error_count(
         self,
         query_tracker: QueryTracker,
-        config_data: dict[str, t.Any],
+        config_data: dict[str, Any],
         make_query_executor: MakeQueryExecutor,
         registry: MetricsRegistry,
     ) -> None:
@@ -403,7 +403,7 @@ class TestQueryExecutor:
         self,
         mocker: MockerFixture,
         query_tracker: QueryTracker,
-        config_data: dict[str, t.Any],
+        config_data: dict[str, Any],
         make_query_executor: MakeQueryExecutor,
         registry: MetricsRegistry,
     ) -> None:
@@ -419,7 +419,7 @@ class TestQueryExecutor:
     async def test_run_query_increase_query_error_count(
         self,
         query_tracker: QueryTracker,
-        config_data: dict[str, t.Any],
+        config_data: dict[str, Any],
         make_query_executor: MakeQueryExecutor,
         registry: MetricsRegistry,
     ) -> None:
@@ -436,7 +436,7 @@ class TestQueryExecutor:
         self,
         mocker: MockerFixture,
         query_tracker: QueryTracker,
-        config_data: dict[str, t.Any],
+        config_data: dict[str, Any],
         make_query_executor: MakeQueryExecutor,
         registry: MetricsRegistry,
     ) -> None:
@@ -446,9 +446,9 @@ class TestQueryExecutor:
         db = query_executor._databases["db"]
 
         def execute_sync(
-            self: t.Any,
+            self: Any,
             sql: str,
-            parameters: dict[str, t.Any] | None = None,
+            parameters: dict[str, Any] | None = None,
         ) -> None:
             time.sleep(1)  # longer than timeout
 
@@ -480,7 +480,7 @@ class TestQueryExecutor:
     async def test_run_timed_queries_invalid_result_count(
         self,
         query_tracker: QueryTracker,
-        config_data: dict[str, t.Any],
+        config_data: dict[str, Any],
         make_query_executor: MakeQueryExecutor,
     ) -> None:
         config_data["queries"]["q"]["sql"] = "SELECT 100.0 AS a, 200.0 AS b"
@@ -502,7 +502,7 @@ class TestQueryExecutor:
     async def test_run_timed_queries_invalid_result_count_stop_task(
         self,
         query_tracker: QueryTracker,
-        config_data: dict[str, t.Any],
+        config_data: dict[str, Any],
         make_query_executor: MakeQueryExecutor,
     ) -> None:
         config_data["queries"]["q"]["sql"] = "SELECT 100.0 AS a, 200.0 AS b"
@@ -520,7 +520,7 @@ class TestQueryExecutor:
         self,
         tmp_path: Path,
         query_tracker: QueryTracker,
-        config_data: dict[str, t.Any],
+        config_data: dict[str, Any],
         make_query_executor: MakeQueryExecutor,
     ) -> None:
         db1 = tmp_path / "db1.sqlite"
@@ -562,7 +562,7 @@ class TestQueryExecutor:
     async def test_run_aperiodic_queries(
         self,
         query_tracker: QueryTracker,
-        config_data: dict[str, t.Any],
+        config_data: dict[str, Any],
         make_query_executor: MakeQueryExecutor,
     ) -> None:
         del config_data["queries"]["q"]["interval"]
@@ -575,7 +575,7 @@ class TestQueryExecutor:
     async def test_run_aperiodic_queries_invalid_result_count(
         self,
         query_tracker: QueryTracker,
-        config_data: dict[str, t.Any],
+        config_data: dict[str, Any],
         make_query_executor: MakeQueryExecutor,
     ) -> None:
         config_data["queries"]["q"]["sql"] = "SELECT 100.0 AS a, 200.0 AS b"
@@ -592,7 +592,7 @@ class TestQueryExecutor:
         self,
         tmp_path: Path,
         query_tracker: QueryTracker,
-        config_data: dict[str, t.Any],
+        config_data: dict[str, Any],
         make_query_executor: MakeQueryExecutor,
     ) -> None:
         db1 = tmp_path / "db1.sqlite"
@@ -635,7 +635,7 @@ class TestQueryExecutor:
         tmp_path: Path,
         advance_time: AdvanceTime,
         query_tracker: QueryTracker,
-        config_data: dict[str, t.Any],
+        config_data: dict[str, Any],
         make_query_executor: MakeQueryExecutor,
         registry: MetricsRegistry,
     ) -> None:

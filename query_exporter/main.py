@@ -2,7 +2,7 @@
 
 from functools import partial
 from pathlib import Path
-import typing as t
+from typing import cast
 
 from aiohttp.web import AppKey, Application
 import click
@@ -101,7 +101,7 @@ class QueryExporterScript(PrometheusExporterScript):
             raise SystemExit(1)
 
     def _set_static_metrics(self) -> None:
-        query_interval_metric = t.cast(
+        query_interval_metric = cast(
             Gauge, self.registry.get_metric(QUERY_INTERVAL_METRIC_NAME)
         )
         for query in self.config.queries.values():

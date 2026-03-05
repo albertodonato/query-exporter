@@ -1,8 +1,8 @@
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 import os
 from pathlib import Path
 import shutil
-import typing as t
+from typing import Any
 
 from prometheus_client.parser import text_string_to_metric_families
 import pytest
@@ -32,7 +32,7 @@ class Exporter(DockerService):
         self.url = f"http://{self.host_ip}:{self.host_port}"
         self.configure({"databases": {}, "metrics": {}, "queries": {}})
 
-    def docker_config(self) -> dict[str, t.Any]:
+    def docker_config(self) -> dict[str, Any]:
         config = super().docker_config() | {
             "environment": {
                 "QE_LOG_LEVEL": "debug",
@@ -53,7 +53,7 @@ class Exporter(DockerService):
         except (requests.HTTPError, requests.ConnectionError):
             return False
 
-    def configure(self, config: dict[str, t.Any]) -> None:
+    def configure(self, config: dict[str, Any]) -> None:
         """Write exporter configuration."""
         self._clean_config_dir()
         path = self.config_dir / "config.yaml"
@@ -103,7 +103,7 @@ class Exporter(DockerService):
 @pytest.fixture(scope="session")
 def exporter_service(
     tmp_path_factory: pytest.TempPathFactory,
-    unused_tcp_port_factory: t.Callable[[], int],
+    unused_tcp_port_factory: Callable[[], int],
     docker_compose_project_name: str,
     docker_ip: str,
 ) -> Iterator[Exporter]:

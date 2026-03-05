@@ -1,5 +1,6 @@
+from collections.abc import Sequence
 from functools import cached_property
-import typing as t
+from typing import Any
 
 import sqlalchemy as sa
 
@@ -55,7 +56,7 @@ class DatabaseServer(DockerService):
     def execute(
         self,
         statement: str,
-        params: dict[str, t.Any] | list[dict[str, t.Any]] | None = None,
+        params: dict[str, Any] | list[dict[str, Any]] | None = None,
     ) -> None:
         """Execute a query."""
         with self._engine.connect() as conn:
@@ -65,8 +66,8 @@ class DatabaseServer(DockerService):
     def make_table(
         self,
         table_name: str,
-        metrics: t.Sequence[str],
-        labels: t.Sequence[str] = (),
+        metrics: Sequence[str],
+        labels: Sequence[str] = (),
     ) -> None:
         """Add a table to the database for specified metrics."""
         sa.Table(
@@ -106,7 +107,7 @@ class PostgreSQL(DatabaseServer):
 
     dialect = "postgresql"
 
-    def docker_config(self) -> dict[str, t.Any]:
+    def docker_config(self) -> dict[str, Any]:
         return super().docker_config() | {
             "environment": {
                 "POSTGRES_USER": self.username,
@@ -124,7 +125,7 @@ class MySQL(DatabaseServer):
 
     dialect = "mysql"
 
-    def docker_config(self) -> dict[str, t.Any]:
+    def docker_config(self) -> dict[str, Any]:
         return super().docker_config() | {
             "environment": {
                 "MYSQL_USER": self.username,
@@ -147,7 +148,7 @@ class MSSQLServer(DatabaseServer):
     password = "Query-Exporter-123"
     database = "master"
 
-    def docker_config(self) -> dict[str, t.Any]:
+    def docker_config(self) -> dict[str, Any]:
         return super().docker_config() | {
             "environment": {
                 "MSSQL_SA_PASSWORD": self.password,
@@ -168,7 +169,7 @@ class Oracle(DatabaseServer):
 
     database = "?service_name=FREEPDB1"
 
-    def docker_config(self) -> dict[str, t.Any]:
+    def docker_config(self) -> dict[str, Any]:
         return super().docker_config() | {
             "environment": {
                 "APP_USER": self.username,

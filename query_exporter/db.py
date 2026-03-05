@@ -18,7 +18,7 @@ from time import (
     perf_counter,
     time,
 )
-import typing as t
+from typing import Any, NamedTuple, Self
 
 from sqlalchemy import (
     create_engine,
@@ -132,42 +132,42 @@ def create_db_engine(config: schema.Database) -> Engine:
         raise DatabaseError(f'Invalid database DSN: "{config.dsn}"')
 
 
-class QueryMetric(t.NamedTuple):
+class QueryMetric(NamedTuple):
     """Metric details for a Query."""
 
     name: str
     labels: Iterable[str]
 
 
-class QueryResults(t.NamedTuple):
+class QueryResults(NamedTuple):
     """Results of a database query."""
 
     keys: list[str]
-    rows: Sequence[Sequence[t.Any]]
+    rows: Sequence[Sequence[Any]]
     timestamp: float | None = None
     latency: float | None = None
 
     @classmethod
-    def from_result(cls, result: CursorResult[t.Any]) -> t.Self:
+    def from_result(cls, result: CursorResult[Any]) -> Self:
         """Return a QueryResults from results for a query."""
         timestamp = time()
         keys: list[str] = []
-        rows: Sequence[Sequence[t.Any]] = []
+        rows: Sequence[Sequence[Any]] = []
         if result.returns_rows:
             keys, rows = list(result.keys()), result.all()
         latency = result.connection.info.get("query_latency", None)
         return cls(keys, rows, timestamp=timestamp, latency=latency)
 
 
-class MetricResult(t.NamedTuple):
+class MetricResult(NamedTuple):
     """A result for a metric from a query."""
 
     metric: str
-    value: t.Any
+    value: Any
     labels: dict[str, str]
 
 
-class MetricResults(t.NamedTuple):
+class MetricResults(NamedTuple):
     """Collection of metric results for a query."""
 
     results: list[MetricResult]
@@ -187,11 +187,11 @@ class Query:
     interval: int | None = None
     schedule: str | None = None
 
-    parameter_sets: InitVar[list[dict[str, t.Any]] | None] = None
+    parameter_sets: InitVar[list[dict[str, Any]] | None] = None
     executions: list["QueryExecution"] = field(init=False, compare=False)
 
     def __post_init__(
-        self, parameter_sets: list[dict[str, t.Any]] | None
+        self, parameter_sets: list[dict[str, Any]] | None
     ) -> None:
         if not parameter_sets:
             self.executions = [QueryExecution(self.name, self)]
@@ -247,7 +247,7 @@ class QueryExecution:
 
     name: str
     query: Query
-    parameters: dict[str, t.Any] = field(default_factory=dict)
+    parameters: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         self._check_query_parameters()
@@ -313,7 +313,7 @@ class Database:
     async def execute_sql(
         self,
         sql: str,
-        parameters: dict[str, t.Any] | None = None,
+        parameters: dict[str, Any] | None = None,
         timeout: QueryTimeout | None = None,
     ) -> QueryResults:
         """Execute a raw SQL query."""
@@ -357,10 +357,10 @@ class Database:
         @event.listens_for(engine, "before_cursor_execute")
         def before_cursor_execute(
             conn: ConnectionPoolEntry,
-            cursor: t.Any,
+            cursor: Any,
             statement: str,
-            parameters: t.Any,
-            context: t.Any,
+            parameters: Any,
+            context: Any,
             executemany: bool,
         ) -> None:
             conn.info["query_start_time"] = perf_counter()
@@ -368,10 +368,10 @@ class Database:
         @event.listens_for(engine, "after_cursor_execute")
         def after_cursor_execute(
             conn: ConnectionPoolEntry,
-            cursor: t.Any,
+            cursor: Any,
             statement: str,
-            parameters: t.Any,
-            context: t.Any,
+            parameters: Any,
+            context: Any,
             executemany: bool,
         ) -> None:
             conn.info["query_latency"] = perf_counter() - conn.info.pop(
@@ -383,7 +383,7 @@ class Database:
     def _execute_sync(
         self,
         sql: str,
-        parameters: dict[str, t.Any],
+        parameters: dict[str, Any],
     ) -> QueryResults:
         try:
             with self._engine.begin() as conn:

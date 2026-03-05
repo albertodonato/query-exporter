@@ -1,5 +1,5 @@
 from pathlib import Path
-import typing as t
+from typing import Any
 
 import pytest
 from pytest_structlog import StructuredLogCapture
@@ -164,7 +164,7 @@ class TestLoadConfig:
     @pytest.mark.parametrize("builtin_metric_name", list(BUILTIN_METRICS))
     def test_load_metrics_reserved_name(
         self,
-        sample_config: dict[str, t.Any],
+        sample_config: dict[str, Any],
         write_config: ConfigWriter,
         builtin_metric_name: str,
     ) -> None:
@@ -337,7 +337,7 @@ class TestLoadConfig:
 
     def test_load_queries_section_timeout(
         self,
-        sample_config: dict[str, t.Any],
+        sample_config: dict[str, Any],
         write_config: ConfigWriter,
     ) -> None:
         sample_config["queries"]["q"]["timeout"] = 2.0
@@ -418,7 +418,7 @@ class TestLoadConfig:
     def test_configuration_incorrect(
         self,
         write_config: ConfigWriter,
-        config: dict[str, t.Any],
+        config: dict[str, Any],
         error_message: str,
     ) -> None:
         config_file = write_config(config)
@@ -429,7 +429,7 @@ class TestLoadConfig:
     def test_configuration_warning_unused(
         self,
         log: StructuredLogCapture,
-        sample_config: dict[str, t.Any],
+        sample_config: dict[str, Any],
         write_config: ConfigWriter,
     ) -> None:
         sample_config["databases"]["db2"] = {"dsn": "sqlite:///:memory:"}
@@ -475,7 +475,7 @@ class TestLoadConfig:
     )
     def test_load_queries_interval(
         self,
-        sample_config: dict[str, t.Any],
+        sample_config: dict[str, Any],
         write_config: ConfigWriter,
         interval: str | int | None,
         value: int | None,
@@ -487,7 +487,7 @@ class TestLoadConfig:
 
     def test_load_queries_interval_not_specified(
         self,
-        sample_config: dict[str, t.Any],
+        sample_config: dict[str, Any],
         write_config: ConfigWriter,
     ) -> None:
         del sample_config["queries"]["q"]["interval"]
@@ -497,7 +497,7 @@ class TestLoadConfig:
 
     def test_load_multiple_files(
         self,
-        sample_config: dict[str, t.Any],
+        sample_config: dict[str, Any],
         write_config: ConfigWriter,
     ) -> None:
         file_full = write_config(sample_config)
@@ -543,7 +543,7 @@ class TestLoadConfig:
 
     def test_load_multiple_files_duplicated_database(
         self,
-        sample_config: dict[str, t.Any],
+        sample_config: dict[str, Any],
         write_config: ConfigWriter,
     ) -> None:
         file1 = write_config(sample_config)
@@ -557,7 +557,7 @@ class TestLoadConfig:
 
     def test_load_multiple_files_duplicated_metric(
         self,
-        sample_config: dict[str, t.Any],
+        sample_config: dict[str, Any],
         write_config: ConfigWriter,
     ) -> None:
         file1 = write_config(sample_config)
@@ -570,7 +570,7 @@ class TestLoadConfig:
 
     def test_load_multiple_files_duplicated_query(
         self,
-        sample_config: dict[str, t.Any],
+        sample_config: dict[str, Any],
         write_config: ConfigWriter,
     ) -> None:
         file1 = write_config(sample_config)
@@ -583,7 +583,7 @@ class TestLoadConfig:
 
     def test_load_builtin_metrics_query_latency_default_buckets(
         self,
-        sample_config: dict[str, t.Any],
+        sample_config: dict[str, Any],
         write_config: ConfigWriter,
     ) -> None:
         config_file = write_config(sample_config)
@@ -592,7 +592,7 @@ class TestLoadConfig:
 
     def test_load_builtin_metrics_query_latency_custom_buckets(
         self,
-        sample_config: dict[str, t.Any],
+        sample_config: dict[str, Any],
         write_config: ConfigWriter,
     ) -> None:
         sample_config["builtin-metrics"] = {

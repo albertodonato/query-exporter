@@ -1,5 +1,5 @@
+from collections.abc import Iterator
 from textwrap import dedent
-import typing as t
 
 import pytest
 
@@ -9,7 +9,7 @@ pytestmark = pytest.mark.database_only("mysql")
 
 
 @pytest.fixture
-def mysql_stored_procedure(db_server: DatabaseServer) -> t.Iterator[str]:
+def mysql_stored_procedure(db_server: DatabaseServer) -> Iterator[str]:
     name = "my_proc"
     sql = dedent(
         f"""

@@ -2,7 +2,7 @@ from enum import StrEnum
 from functools import reduce
 from itertools import product
 import re
-import typing as t
+from typing import Annotated, Any, Self
 
 from croniter import croniter
 from pydantic import (
@@ -18,7 +18,7 @@ from sqlalchemy import exc
 from sqlalchemy.engine import URL, make_url
 
 
-def _validate_unique_items(items: list[t.Any]) -> list[t.Any]:
+def _validate_unique_items(items: list[Any]) -> list[Any]:
     """Validate that there are no duplicate items in the list."""
     assert sorted(items) == sorted(set(items)), (
         "must not contain duplicate items"
@@ -26,7 +26,7 @@ def _validate_unique_items(items: list[t.Any]) -> list[t.Any]:
     return items
 
 
-def _validate_sorted(items: list[t.Any]) -> list[t.Any]:
+def _validate_sorted(items: list[Any]) -> list[Any]:
     """Validate that items in the list are sorted."""
     assert items == sorted(items), "items must be sorted"
     return items
@@ -58,32 +58,32 @@ def _validate_schedule(schedule: str) -> str:
     return schedule
 
 
-Buckets = t.Annotated[
+Buckets = Annotated[
     list[float],
     Field(min_length=1),
     AfterValidator(_validate_unique_items),
     AfterValidator(_validate_sorted),
 ]
-Label = t.Annotated[
+Label = Annotated[
     str,
     Field(pattern="^[a-zA-Z_][a-zA-Z0-9_]*$"),
 ]
-TimeInterval = t.Annotated[
+TimeInterval = Annotated[
     int,
     BeforeValidator(_validate_interval),
 ]
-TimeSchedule = t.Annotated[
+TimeSchedule = Annotated[
     str,
     BeforeValidator(_validate_schedule),
 ]
-Timeout = t.Annotated[
+Timeout = Annotated[
     float,
     Field(
         gt=0,
         multiple_of=0.1,
     ),
 ]
-Port = t.Annotated[
+Port = Annotated[
     int,
     Field(
         ge=1,
@@ -147,7 +147,7 @@ def _validate_dsn(dsn: str | dict[str, str | list[str]]) -> str:
     return url.render_as_string(hide_password=False)
 
 
-DSN = t.Annotated[str | DSNDetails, AfterValidator(_validate_dsn)]
+DSN = Annotated[str | DSNDetails, AfterValidator(_validate_dsn)]
 
 
 class BuiltinMetric(Model):
@@ -155,7 +155,7 @@ class BuiltinMetric(Model):
 
     buckets: Buckets
 
-    def config(self) -> dict[str, t.Any]:
+    def config(self) -> dict[str, Any]:
         """The metric configuration."""
 
         return self.model_dump()
@@ -201,7 +201,7 @@ class Metric(Model):
     labels: list[Label] = Field(min_length=1, default_factory=list)
     buckets: Buckets | None = None
     states: (
-        t.Annotated[
+        Annotated[
             list[str],
             Field(min_length=1),
             AfterValidator(_validate_unique_items),
@@ -212,7 +212,7 @@ class Metric(Model):
     increment: bool = False
 
     @model_validator(mode="after")
-    def validate_all(self) -> t.Self:
+    def validate_all(self) -> Self:
         if self.states and not self.type == MetricType.ENUM:
             raise ValueError("states can only be set for enum metrics")
         if self.increment and not self.type == MetricType.COUNTER:
@@ -220,7 +220,7 @@ class Metric(Model):
         return self
 
     @property
-    def config(self) -> dict[str, t.Any]:
+    def config(self) -> dict[str, Any]:
         """The metric configuration."""
         return self.model_dump(
             exclude={"type", "description", "labels"},
@@ -230,8 +230,8 @@ class Metric(Model):
 
 
 def _validate_query_paramters(
-    parameters: list[dict[str, t.Any]] | dict[str, list[dict[str, t.Any]]],
-) -> list[dict[str, t.Any]]:
+    parameters: list[dict[str, Any]] | dict[str, list[dict[str, Any]]],
+) -> list[dict[str, Any]]:
     """Return an sequence of set of paramters with their values."""
     if isinstance(parameters, list):
         return parameters
@@ -264,9 +264,9 @@ def _validate_query_paramters(
     )
 
 
-QueryParameters = t.Annotated[
-    t.Annotated[list[dict[str, t.Any]], Field(min_length=1)]
-    | t.Annotated[dict[str, list[dict[str, t.Any]]], Field(min_length=1)],
+QueryParameters = Annotated[
+    Annotated[list[dict[str, Any]], Field(min_length=1)]
+    | Annotated[dict[str, list[dict[str, Any]]], Field(min_length=1)],
     AfterValidator(_validate_query_paramters),
 ]
 
@@ -274,10 +274,10 @@ QueryParameters = t.Annotated[
 class Query(Model):
     """A database query definition."""
 
-    databases: t.Annotated[
+    databases: Annotated[
         list[str], Field(min_length=1), AfterValidator(_validate_unique_items)
     ]
-    metrics: t.Annotated[
+    metrics: Annotated[
         list[str], Field(min_length=1), AfterValidator(_validate_unique_items)
     ]
     sql: str
@@ -287,7 +287,7 @@ class Query(Model):
     timeout: Timeout | None = None
 
     @model_validator(mode="after")
-    def validate_all(self) -> t.Self:
+    def validate_all(self) -> Self:
         if self.interval and self.schedule:
             raise ValueError("can't set both interval and schedule")
         return self

@@ -6,10 +6,11 @@ from asyncio import (
 )
 from collections.abc import (
     Callable,
+    Coroutine,
     Iterator,
 )
 from functools import partial
-import typing as t
+from typing import Any, TypeVar, cast
 
 
 class AlreadyRunning(Exception):
@@ -27,7 +28,7 @@ class NotRunning(Exception):
 
 
 TimesIterator = Iterator[float | int]
-FuncRetVal = t.TypeVar("FuncRetVal", bound=t.Any)
+FuncRetVal = TypeVar("FuncRetVal", bound=Any)
 
 
 class TimedCall:
@@ -44,7 +45,7 @@ class TimedCall:
     """
 
     def __init__(
-        self, func: Callable[..., FuncRetVal], *args: t.Any, **kwargs: t.Any
+        self, func: Callable[..., FuncRetVal], *args: Any, **kwargs: Any
     ) -> None:
         self._func = self._wrap_func(func, *args, **kwargs)
         self._loop = get_event_loop()
@@ -104,10 +105,10 @@ class TimedCall:
         return float(next_time - now)
 
     def _wrap_func(
-        self, func: Callable[..., FuncRetVal], *args: t.Any, **kwargs: t.Any
-    ) -> Callable[[], t.Coroutine[t.Any, t.Any, FuncRetVal]]:
+        self, func: Callable[..., FuncRetVal], *args: Any, **kwargs: Any
+    ) -> Callable[[], Coroutine[Any, Any, FuncRetVal]]:
         if iscoroutinefunction(func):
-            return t.cast(
+            return cast(
                 Callable[..., FuncRetVal], partial(func, *args, **kwargs)
             )
         else:

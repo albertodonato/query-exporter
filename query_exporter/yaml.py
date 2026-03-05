@@ -1,11 +1,11 @@
 import os
 from pathlib import Path
-import typing as t
+from typing import Any, ClassVar
 
 import yaml
 
 
-def load_yaml(path: Path) -> t.Any:
+def load_yaml(path: Path) -> Any:
     """Load a YAML document from a file."""
 
     with path.open() as fd:
@@ -15,7 +15,7 @@ def load_yaml(path: Path) -> t.Any:
 class _ConfigLoader(yaml.SafeLoader):
     """YAML loader supporting tags."""
 
-    base_path: t.ClassVar[Path]
+    base_path: ClassVar[Path]
 
 
 def _config_loader(path: Path) -> type[_ConfigLoader]:
@@ -25,7 +25,7 @@ def _config_loader(path: Path) -> type[_ConfigLoader]:
     return ConfigLoaderWithPath
 
 
-def _tag_env(loader: _ConfigLoader, node: yaml.nodes.ScalarNode) -> t.Any:
+def _tag_env(loader: _ConfigLoader, node: yaml.nodes.ScalarNode) -> Any:
     env = loader.construct_scalar(node)
     value = os.getenv(env)
     if value is None:
@@ -50,7 +50,7 @@ def _tag_file(loader: _ConfigLoader, node: yaml.nodes.ScalarNode) -> str:
     return path.read_text().strip()
 
 
-def _tag_include(loader: _ConfigLoader, node: yaml.nodes.ScalarNode) -> t.Any:
+def _tag_include(loader: _ConfigLoader, node: yaml.nodes.ScalarNode) -> Any:
     path = loader.base_path / loader.construct_scalar(node)
     if not path.is_file():
         raise yaml.scanner.ScannerError(

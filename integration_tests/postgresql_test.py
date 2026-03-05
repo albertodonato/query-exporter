@@ -1,5 +1,6 @@
+from collections.abc import Iterator
 from pathlib import Path
-import typing as t
+from typing import Any
 
 import pytest
 
@@ -16,7 +17,7 @@ EXAMPLE_CONFIGS_DIR = Path("examples")
 @pytest.fixture
 def pg_stats_config(
     monkeypatch: pytest.MonkeyPatch, db_server: DatabaseServer
-) -> t.Iterator[dict[str, t.Any]]:
+) -> Iterator[dict[str, Any]]:
     monkeypatch.setenv("PG_DATABASE_DSN", db_server.dsn)
     yield load_yaml(EXAMPLE_CONFIGS_DIR / "postgresql-stats" / "config.yaml")
 
@@ -25,7 +26,7 @@ def test_postgresql_stats_metrics(
     db_server: DatabaseServer,
     exporter: Exporter,
     service_handler: ServiceHandler,
-    pg_stats_config: dict[str, t.Any],
+    pg_stats_config: dict[str, Any],
 ) -> None:
     exporter.import_config_dir(EXAMPLE_CONFIGS_DIR / "postgresql-stats")
     exporter.write_dotenv({"PG_DATABASE_DSN": db_server.dsn})

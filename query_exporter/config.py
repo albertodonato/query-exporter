@@ -1,9 +1,10 @@
 """Configuration management functions."""
 
 from collections import defaultdict
+from collections.abc import Iterable, Sequence
 import dataclasses
 from pathlib import Path
-import typing as t
+from typing import Any, cast
 
 from prometheus_aioexporter import MetricConfig
 from pydantic import ValidationError
@@ -24,7 +25,7 @@ class ConfigError(Exception):
     Optionally, a list of dicts can be provided with error details.
     """
 
-    def __init__(self, message: str, details: t.Sequence[dict[str, str]] = ()):
+    def __init__(self, message: str, details: Sequence[dict[str, str]] = ()):
         super().__init__(message)
         self.details = details
 
@@ -93,9 +94,9 @@ def load_config(
     return config
 
 
-def _load_config(paths: list[Path]) -> dict[str, t.Any]:
+def _load_config(paths: list[Path]) -> dict[str, Any]:
     """Return the combined configuration from provided files."""
-    config: dict[str, t.Any] = defaultdict(dict)
+    config: dict[str, Any] = defaultdict(dict)
     for path in paths:
         conf = load_yaml(path)
         if not isinstance(conf, dict):
@@ -138,7 +139,7 @@ def _validate_databases(dbs: dict[str, schema.Database]) -> frozenset[str]:
 
 def _get_metrics(
     metrics: dict[str, schema.Metric],
-    builtin_metrics_config: dict[str, dict[str, t.Any]],
+    builtin_metrics_config: dict[str, dict[str, Any]],
     extra_labels: frozenset[str],
 ) -> dict[str, MetricConfig]:
     """Return a dict mapping metric names to their configuration."""
@@ -182,7 +183,7 @@ def _get_queries(
     for name, config in configs.items():
         _validate_query_config(name, config, database_names, metric_names)
         query_metrics = _get_query_metrics(config, metrics, extra_labels)
-        parameter_sets = t.cast(list[dict[str, t.Any]], config.parameters)
+        parameter_sets = cast(list[dict[str, Any]], config.parameters)
         try:
             queries[name] = db.Query(
                 name=name,
@@ -206,7 +207,7 @@ def _get_query_metrics(
 ) -> list[db.QueryMetric]:
     """Return QueryMetrics for a query."""
 
-    def _metric_labels(labels: t.Iterable[str]) -> list[str]:
+    def _metric_labels(labels: Iterable[str]) -> list[str]:
         return sorted(set(labels) - extra_labels)
 
     return [
@@ -235,7 +236,7 @@ def _validate_query_config(
             f'Unknown metrics for query "{name}": {unknown_list}'
         )
     if query.parameters:
-        params = t.cast(list[dict[str, t.Any]], query.parameters)
+        params = cast(list[dict[str, Any]], query.parameters)
         keys = {frozenset(param.keys()) for param in params}
         if len(keys) > 1:
             raise ConfigError(

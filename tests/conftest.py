@@ -1,9 +1,9 @@
 import asyncio
 from collections import defaultdict
-from collections.abc import AsyncIterator, Iterator
+from collections.abc import AsyncIterator, Awaitable, Callable, Iterator
 from contextlib import contextmanager
 from pathlib import Path
-import typing as t
+from typing import Any, cast
 from unittest.mock import MagicMock, patch
 import uuid
 
@@ -39,7 +39,7 @@ class Clocker:
     def patch_loop_time(self) -> Iterator[MagicMock]:
         "Patch the loop `time` method, returning the mock."
         with patch.object(self.loop, "time", lambda: self.time) as mock_time:
-            yield t.cast(MagicMock, mock_time)
+            yield cast(MagicMock, mock_time)
 
     async def advance(self, seconds: float) -> None:
         await self._drain_loop()
@@ -72,7 +72,7 @@ class Clocker:
             await asyncio.sleep(0)
 
 
-AdvanceTime = t.Callable[[float], t.Awaitable[None]]
+AdvanceTime = Callable[[float], Awaitable[None]]
 
 
 @pytest.fixture
@@ -134,7 +134,7 @@ async def query_tracker(
 
 
 @pytest.fixture
-def sample_config() -> Iterator[dict[str, t.Any]]:
+def sample_config() -> Iterator[dict[str, Any]]:
     yield {
         "databases": {"db": {"dsn": "sqlite:///:memory:"}},
         "metrics": {"m": {"type": "gauge", "labels": ["l1", "l2"]}},
@@ -149,12 +149,12 @@ def sample_config() -> Iterator[dict[str, t.Any]]:
     }
 
 
-ConfigWriter = t.Callable[[t.Any], Path]
+ConfigWriter = Callable[[Any], Path]
 
 
 @pytest.fixture
 def write_config(tmp_path: Path) -> Iterator[ConfigWriter]:
-    def write(data: t.Any) -> Path:
+    def write(data: Any) -> Path:
         path = tmp_path / f"{uuid.uuid4()}.yaml"
         path.write_text(yaml.dump(data), "utf-8")
         return path

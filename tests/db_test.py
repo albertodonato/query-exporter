@@ -1,7 +1,7 @@
 from collections.abc import Iterator
 from contextlib import closing
 import time
-import typing as t
+from typing import Any, cast
 
 import pytest
 from pytest_mock import MockerFixture
@@ -153,7 +153,7 @@ class TestQuery:
             ({"schedule": "1 * * * *"}, True),
         ],
     )
-    def test_timed(self, kwargs: dict[str, t.Any], is_timed: bool) -> None:
+    def test_timed(self, kwargs: dict[str, Any], is_timed: bool) -> None:
         query = Query(
             "query",
             ["db1", "db2"],
@@ -260,7 +260,7 @@ class TestQueryResults:
         assert query_results.keys == ["a", "b"]
         assert query_results.rows == [(1, 2)]
         assert query_results.latency is None
-        assert t.cast(float, query_results.timestamp) < time.time()
+        assert cast(float, query_results.timestamp) < time.time()
 
     def test_from_empty(self) -> None:
         engine = create_engine("sqlite:///:memory:")
@@ -281,7 +281,7 @@ class TestQueryResults:
         assert query_results.keys == ["a", "b"]
         assert query_results.rows == [(1, 2)]
         assert query_results.latency == 1.2
-        assert t.cast(float, query_results.timestamp) < time.time()
+        assert cast(float, query_results.timestamp) < time.time()
 
 
 @pytest.fixture
@@ -532,9 +532,9 @@ class TestDatabase:
         [query_execution] = query.executions
 
         def execute_sync(
-            self: t.Any,
+            self: Any,
             sql: str,
-            parameters: dict[str, t.Any] | None = None,
+            parameters: dict[str, Any] | None = None,
         ) -> None:
             time.sleep(1)  # longer than timeout
 
