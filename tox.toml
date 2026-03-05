@@ -1,0 +1,64 @@
+requires = [ "tox>=4.6" ]
+
+[env_run_base]
+package = "wheel"
+extras = [ "testing" ]
+commands = [ [ "pytest", { replace = "posargs", default = [], extend = true } ] ]
+
+[env.check]
+package = "wheel"
+deps = [ "mypy" ]
+extras = [ "testing" ]
+commands = [
+  [
+    "mypy",
+    "integration_tests",
+    "query_exporter",
+    "tests",
+    { replace = "posargs", default = [], extend = true }
+  ]
+]
+
+[env.coverage]
+deps = [ "pytest-cov" ]
+commands = [ [ "pytest", "--cov", "query_exporter/", { replace = "posargs", default = [], extend = true } ] ]
+
+[env.format]
+package = "skip"
+deps = [
+  "pyproject-fmt",
+  "ruff",
+  "tox-toml-fmt",
+]
+commands = [
+  [ "ruff", "format", "integration_tests", "query_exporter", "tests" ],
+  [ "ruff", "check", "--fix", "integration_tests", "query_exporter", "tests" ],
+  [ "-", "pyproject-fmt", "pyproject.toml" ],
+  [ "-", "tox-toml-fmt", "tox.toml" ],
+]
+
+[env.integration-tests]
+extras = [ "integration-tests" ]
+commands = [ [ "pytest", "-o", "testpaths=integration_tests", { replace = "posargs", default = [], extend = true } ] ]
+
+[env.lint]
+package = "skip"
+deps = [
+  "pyproject-fmt",
+  "ruff",
+  "tox-toml-fmt",
+]
+commands = [
+  [ "ruff", "check", "integration_tests", "query_exporter", "tests" ],
+  [ "pyproject-fmt", "--check", "pyproject.toml" ],
+  [ "tox-toml-fmt", "--check", "tox.toml" ],
+]
+
+[env.run]
+package = "editable"
+commands = [ [ "{envbindir}/query-exporter", { replace = "posargs", default = [], extend = true } ] ]
+
+[env.update-dependencies]
+package = "skip"
+deps = [ "pip-tools" ]
+commands = [ [ "pip-compile", "--output-file", "requirements.txt", "pyproject.toml" ] ]
