@@ -50,15 +50,15 @@ python-dateutil==2.9.0.post0
     # via
     #   croniter
     #   query-exporter (pyproject.toml)
-python-dotenv==1.2.1
+python-dotenv==1.2.2
     # via prometheus-aioexporter
-pytz==2025.2
+pytz==2026.1.post1
     # via croniter
 pyyaml==6.0.3
     # via query-exporter (pyproject.toml)
 six==1.17.0
     # via python-dateutil
-sqlalchemy==2.0.46
+sqlalchemy==2.0.48
     # via query-exporter (pyproject.toml)
 structlog==25.5.0
     # via
@@ -73,5 +73,5 @@ typing-extensions==4.15.0
     #   typing-inspection
 typing-inspection==0.4.2
     # via pydantic
-yarl==1.22.0
+yarl==1.23.0
     # via aiohttp
