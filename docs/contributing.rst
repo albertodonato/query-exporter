@@ -47,13 +47,13 @@ Tests
 
 Changes must have full test coverage.  The full suite can be run via::
 
-  tox run -e coverage
+  tox
 
 which will include the coverage report.
 
 To just run the tests, possibly limiting to a subset of them, run::
 
-  tox run -e py -- <pytest args>
+  tox -- <pytest args>
 
 Type checking
 -------------
