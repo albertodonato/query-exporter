@@ -1,16 +1,19 @@
 requires = [ "tox>=4.6" ]
 
 [env_run_base]
+runner = "uv-venv-lock-runner"
 package = "wheel"
-dependency_groups = [ "dev", "tests" ]
-commands = [ [ "pytest", { replace = "posargs", default = [ "--cov", "query_exporter/" ], extend = true } ] ]
+dependency_groups = [ "tests" ]
+commands = [
+  [ "uv", "run", "pytest", { replace = "posargs", default = [ "--cov", "query_exporter/" ], extend = true } ]
+]
 
 [env.check]
-package = "wheel"
-deps = [ "mypy" ]
 dependency_groups = [ "tests", "types" ]
 commands = [
   [
+    "uv",
+    "run",
     "mypy",
     "integration_tests",
     "query_exporter",
@@ -21,16 +24,11 @@ commands = [
 
 [env.format]
 package = "skip"
-deps = [
-  "pyproject-fmt",
-  "ruff",
-  "tox-toml-fmt",
-]
 commands = [
-  [ "ruff", "format", "integration_tests", "query_exporter", "tests" ],
-  [ "ruff", "check", "--fix", "integration_tests", "query_exporter", "tests" ],
-  [ "-", "pyproject-fmt", "pyproject.toml" ],
-  [ "-", "tox-toml-fmt", "tox.toml" ],
+  [ "uv", "tool", "run", "ruff", "format", "integration_tests", "query_exporter", "tests" ],
+  [ "uv", "tool", "run", "ruff", "check", "--fix", "integration_tests", "query_exporter", "tests" ],
+  [ "-", "uv", "tool", "run", "pyproject-fmt", "pyproject.toml" ],
+  [ "-", "uv", "tool", "run", "tox-toml-fmt", "tox.toml" ],
 ]
 
 [env.integration-tests]
@@ -39,22 +37,12 @@ commands = [ [ "pytest", "-o", "testpaths=integration_tests", { replace = "posar
 
 [env.lint]
 package = "skip"
-deps = [
-  "pyproject-fmt",
-  "ruff",
-  "tox-toml-fmt",
-]
 commands = [
-  [ "ruff", "check", "integration_tests", "query_exporter", "tests" ],
-  [ "pyproject-fmt", "--check", "pyproject.toml" ],
-  [ "tox-toml-fmt", "--check", "tox.toml" ],
+  [ "uv", "tool", "run", "ruff", "check", "integration_tests", "query_exporter", "tests" ],
+  [ "uv", "tool", "run", "pyproject-fmt", "--check", "pyproject.toml" ],
+  [ "uv", "tool", "run", "tox-toml-fmt", "--check", "tox.toml" ],
 ]
 
 [env.run]
 package = "editable"
-commands = [ [ "{envbindir}/query-exporter", { replace = "posargs", default = [], extend = true } ] ]
-
-[env.update-dependencies]
-package = "skip"
-deps = [ "pip-tools" ]
-commands = [ [ "pip-compile", "--output-file", "requirements.txt", "pyproject.toml" ] ]
+commands = [ [ "uv", "run", "query-exporter", { replace = "posargs", default = [], extend = true } ] ]

@@ -27,7 +27,10 @@ description: |
     - SQLite (`sqlite://`)
     - Microsoft SQL Server (`mssql://`)
     - IBM DB2 (`db2://`) (on x86_64 architecture)
+    - Oracle (`oracle://`)
     - ClickHouse (`clickhouse+native://`)
+    - Teradata (`teradatasql://`)
+
 icon: logo.svg
 license: GPL-3.0+
 website: https://github.com/albertodonato/query-exporter
@@ -59,18 +62,13 @@ apps:
 
 parts:
   query-exporter:
-    plugin: python
+    plugin: uv
     source: .
     source-type: git
-    python-requirements:
-      - requirements.txt
-    python-packages:
-      - .
-      - clickhouse-sqlalchemy
-      - ibm-db-sa; platform_machine == 'x86_64'
-      - mysqlclient
-      - psycopg2
-      - pymssql
+    uv-groups:
+      - docker-dbs
+    build-snaps:
+      - astral-uv
     build-packages:
       - libmysqlclient-dev
       - libpq-dev
