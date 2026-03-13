@@ -51,25 +51,6 @@ dependencies = [
   "sqlalchemy>=2",
   "structlog",
 ]
-optional-dependencies.dbs = [
-  "mysqlclient",
-  "oracledb",
-  "psycopg2-binary",
-  "pymssql",
-]
-optional-dependencies.integration-tests = [
-  "pytest",
-  "pytest-asyncio",
-  "pytest-docker",
-  "query-exporter[dbs]",
-  "requests",
-]
-optional-dependencies.testing = [
-  "pytest",
-  "pytest-asyncio",
-  "pytest-mock",
-  "pytest-structlog",
-]
 urls."Issue Tracker" = "https://github.com/albertodonato/query-exporter/issues"
 urls."Release Notes" = "https://github.com/albertodonato/query-exporter/blob/main/CHANGES.rst"
 urls."Source Code" = "https://github.com/albertodonato/query-exporter"
@@ -77,6 +58,25 @@ urls.Changelog = "https://github.com/albertodonato/query-exporter/blob/main/CHAN
 urls.Documentation = "https://github.com/albertodonato/query-exporter"
 urls.Homepage = "https://github.com/albertodonato/query-exporter"
 scripts.query-exporter = "query_exporter.main:script"
+
+[dependency-groups]
+dev = [
+  "mypy",
+  "pytest",
+  "pytest-cov",
+]
+dbs = [
+  "mysqlclient",
+  "oracledb",
+  "psycopg2-binary",
+  "pymssql",
+]
+integration-tests = [ "pytest", "pytest-asyncio", "pytest-docker", "requests", { include-group = "dbs" } ]
+tests = [
+  "pytest-asyncio",
+  "pytest-mock",
+  "pytest-structlog",
+]
 
 [tool.setuptools]
 dynamic.version = { attr = "query_exporter.__version__" }

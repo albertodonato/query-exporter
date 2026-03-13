@@ -37,7 +37,7 @@ jobs:
     uses: albertodonato/github-workflows/.github/workflows/run-tox.yaml@a66638ef339967bc8099ab93e648f85852de2c28 # v.0.0.2
     with:
       python-version: ${{ matrix.python-version }}
-      tox-env: coverage
+      tox-env: py
 
     strategy:
       matrix:

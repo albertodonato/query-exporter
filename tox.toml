@@ -2,13 +2,17 @@ requires = [ "tox>=4.6" ]
 
 [env_run_base]
 package = "wheel"
-extras = [ "testing" ]
-commands = [ [ "pytest", { replace = "posargs", default = [], extend = true } ] ]
+deps = [
+  "pytest",
+  "pytest-cov",
+]
+dependency_groups = [ "tests" ]
+commands = [ [ "pytest", { replace = "posargs", default = [ "--cov", "query_exporter/" ], extend = true } ] ]
 
 [env.check]
 package = "wheel"
 deps = [ "mypy" ]
-extras = [ "testing" ]
+dependency_groups = [ "tests" ]
 commands = [
   [
     "mypy",
@@ -18,10 +22,6 @@ commands = [
     { replace = "posargs", default = [], extend = true }
   ]
 ]
-
-[env.coverage]
-deps = [ "pytest-cov" ]
-commands = [ [ "pytest", "--cov", "query_exporter/", { replace = "posargs", default = [], extend = true } ] ]
 
 [env.format]
 package = "skip"
@@ -38,7 +38,7 @@ commands = [
 ]
 
 [env.integration-tests]
-extras = [ "integration-tests" ]
+dependency_groups = [ "integration-tests" ]
 commands = [ [ "pytest", "-o", "testpaths=integration_tests", { replace = "posargs", default = [], extend = true } ] ]
 
 [env.lint]
