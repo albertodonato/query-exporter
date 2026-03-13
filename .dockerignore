@@ -2,4 +2,4 @@
 
 !pyproject.toml
 !query_exporter/
-!requirements*.txt
+!uv.lock
