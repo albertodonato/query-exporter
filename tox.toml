@@ -2,17 +2,13 @@ requires = [ "tox>=4.6" ]
 
 [env_run_base]
 package = "wheel"
-deps = [
-  "pytest",
-  "pytest-cov",
-]
-dependency_groups = [ "tests" ]
+dependency_groups = [ "dev", "tests" ]
 commands = [ [ "pytest", { replace = "posargs", default = [ "--cov", "query_exporter/" ], extend = true } ] ]
 
 [env.check]
 package = "wheel"
 deps = [ "mypy" ]
-dependency_groups = [ "tests" ]
+dependency_groups = [ "tests", "types" ]
 commands = [
   [
     "mypy",

@@ -65,17 +65,38 @@ dev = [
   "pytest",
   "pytest-cov",
 ]
-dbs = [
+docker-dbs = [
+  "clickhouse-sqlalchemy",
+  "ibm-db-sa; platform_machine=='x86_64'",
+  "mysqlclient",
+  "oracledb",
+  "psycopg2",
+  "pymssql",
+  "teradatasqlalchemy",
+]
+integration-tests = [
+  "pytest",
+  "pytest-asyncio",
+  "pytest-docker",
+  "requests",
+  { include-group = "integration-tests-dbs" }
+]
+integration-tests-dbs = [
   "mysqlclient",
   "oracledb",
   "psycopg2-binary",
   "pymssql",
 ]
-integration-tests = [ "pytest", "pytest-asyncio", "pytest-docker", "requests", { include-group = "dbs" } ]
 tests = [
   "pytest-asyncio",
   "pytest-mock",
   "pytest-structlog",
+]
+types = [
+  "types-croniter",
+  "types-python-dateutil",
+  "types-pyyaml",
+  "types-requests",
 ]
 
 [tool.setuptools]
@@ -108,8 +129,6 @@ report.skip_covered = true
 
 [tool.mypy]
 ignore_missing_imports = true
-install_types = true
-non_interactive = true
 strict = true
 
 [tool.pip-tools]
