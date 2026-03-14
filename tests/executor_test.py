@@ -7,6 +7,8 @@ import time
 from typing import Any
 from unittest.mock import ANY
 
+from apscheduler.job import Job
+from apscheduler.triggers.cron import CronTrigger
 from prometheus_aioexporter import MetricsRegistry
 import pytest
 from pytest_mock import MockerFixture
@@ -76,6 +78,20 @@ async def query_executor(
     yield make_query_executor()
 
 
+GetJob = Callable[[str], Job]
+
+
+@pytest.fixture
+def get_job(
+    query_executor: QueryExecutor,
+) -> Iterator[GetJob]:
+
+    def get(query_execution_name: str) -> Job:
+        return query_executor._scheduler.get_job(query_execution_name)
+
+    yield get
+
+
 async def run_queries(db_file: Path, *queries: str) -> None:
     config = schema.Database(dsn=f"sqlite:///{db_file}")
     with closing(Database("db", config)) as db:
@@ -137,17 +153,20 @@ class TestQueryExecutor:
         self,
         query_tracker: QueryTracker,
         query_executor: QueryExecutor,
+        get_job: GetJob,
     ) -> None:
         await query_executor.start()
-        timed_call = query_executor._timed_calls["q"]
-        assert timed_call.running
-        await query_tracker.wait_results()
+        assert not get_job("q").pending
 
-    async def test_stop(self, query_executor: QueryExecutor) -> None:
+    async def test_stop(
+        self,
+        query_executor: QueryExecutor,
+        get_job: GetJob,
+    ) -> None:
         await query_executor.start()
-        timed_call = query_executor._timed_calls["q"]
+        job = get_job("q")
         await query_executor.stop()
-        assert not timed_call.running
+        assert not job.pending
 
     async def test_run_query(
         self,
@@ -168,33 +187,15 @@ class TestQueryExecutor:
 
     async def test_run_scheduled_query(
         self,
-        mocker: MockerFixture,
-        advance_time: AdvanceTime,
-        query_tracker: QueryTracker,
-        registry: MetricsRegistry,
         config_data: dict[str, Any],
         make_query_executor: MakeQueryExecutor,
     ) -> None:
-        event_loop = asyncio.get_running_loop()
-
-        def croniter(*args: Any) -> Iterator[float]:
-            while True:
-                # sync croniter time with the loop one
-                yield event_loop.time() + 60
-
-        mock_croniter = mocker.patch("query_exporter.executor.croniter")
-        mock_croniter.side_effect = croniter
-        # ensure that both clocks advance in sync
-        mocker.patch(
-            "query_exporter.executor.time.time",
-            lambda: event_loop.time(),
-        )
-
         del config_data["queries"]["q"]["interval"]
         config_data["queries"]["q"]["schedule"] = "*/2 * * * *"
         query_executor = make_query_executor()
         await query_executor.start()
-        mock_croniter.assert_called_once()
+        job = query_executor._scheduler.get_job("q")
+        assert isinstance(job.trigger, CronTrigger)
 
     async def test_run_query_with_parameters(
         self,
@@ -467,13 +468,10 @@ class TestQueryExecutor:
         query_executor: QueryExecutor,
     ) -> None:
         await query_executor.start()
-        await advance_time(0)  # kick the first run
-        # the query has been run once
+        await advance_time(0)  # drain pending callbacks so first run fires
         assert len(query_tracker.queries) == 1
         await advance_time(5)
-        # no more runs yet
         assert len(query_tracker.queries) == 1
-        # now the query runs again
         await advance_time(5)
         assert len(query_tracker.queries) == 2
 
@@ -487,15 +485,13 @@ class TestQueryExecutor:
         config_data["queries"]["q"]["interval"] = 1.0
         query_executor = make_query_executor()
         await query_executor.start()
-        timed_call = query_executor._timed_calls["q"]
         await asyncio.sleep(1.1)
         await query_tracker.wait_failures()
         assert len(query_tracker.failures) == 1
         assert len(query_tracker.results) == 0
-        # the query has been stopped and removed
-        assert not timed_call.running
+        # the second trigger removes the job from the scheduler
         await asyncio.sleep(1.1)
-        await query_tracker.wait_failures()
+        assert query_executor._scheduler.get_job("q") is None
         assert len(query_tracker.failures) == 1
         assert len(query_tracker.results) == 0
 
@@ -509,12 +505,11 @@ class TestQueryExecutor:
         config_data["queries"]["q"]["interval"] = 1.0
         query_executor = make_query_executor()
         await query_executor.start()
-        timed_call = query_executor._timed_calls["q"]
         await asyncio.sleep(1.1)
         await query_tracker.wait_failures()
-        # the query has been stopped and removed
-        assert not timed_call.running
-        assert query_executor._timed_calls == {}
+        # the second trigger removes the job from the scheduler
+        await asyncio.sleep(1.1)
+        assert query_executor._scheduler.get_job("q") is None
 
     async def test_run_timed_queries_not_removed_if_not_failing_on_all_dbs(
         self,
@@ -567,6 +562,7 @@ class TestQueryExecutor:
     ) -> None:
         del config_data["queries"]["q"]["interval"]
         query_executor = make_query_executor()
+        await query_executor.start()
         await query_executor.run_aperiodic_queries()
         assert len(query_tracker.queries) == 1
         await query_executor.run_aperiodic_queries()
@@ -581,6 +577,7 @@ class TestQueryExecutor:
         config_data["queries"]["q"]["sql"] = "SELECT 100.0 AS a, 200.0 AS b"
         del config_data["queries"]["q"]["interval"]
         query_executor = make_query_executor()
+        await query_executor.start()
         await query_executor.run_aperiodic_queries()
         assert len(query_tracker.queries) == 1
         # the query is not run again
@@ -620,6 +617,7 @@ class TestQueryExecutor:
             "INSERT INTO test VALUES (10, 20)",
         )
         query_executor = make_query_executor()
+        await query_executor.start()
         await query_executor.run_aperiodic_queries()
         await query_tracker.wait_failures()
         assert len(query_tracker.queries) == 2
@@ -657,6 +655,7 @@ class TestQueryExecutor:
             'INSERT INTO test VALUES (20, "bar")',
         )
         query_executor = make_query_executor()
+        await query_executor.start()
         await query_executor.run_aperiodic_queries()
         await query_tracker.wait_results()
         queries_metric = registry.get_metric("m")

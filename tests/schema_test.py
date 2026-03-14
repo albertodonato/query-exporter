@@ -111,8 +111,8 @@ class TestTimeSchedule:
         ("1 2 3 4 5", "1 2 3 4 5"),
     )
     test_invalid = invalid_inputs(
-        ("1 2 3", "Exactly 5, 6 or 7 columns"),
-        ("-20 * * * *", "is not acceptable"),
+        ("1 2 3", "Wrong number of fields; got 3, expected 5"),
+        ("-20 * * * *", 'Unrecognized expression "-20"'),
     )
 
 
