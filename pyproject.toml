@@ -129,7 +129,3 @@ report.skip_covered = true
 [tool.mypy]
 ignore_missing_imports = true
 strict = true
-
-[tool.pip-tools]
-upgrade = true
-quiet = true
