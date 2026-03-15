@@ -4,7 +4,7 @@ from itertools import product
 import re
 from typing import Annotated, Any, Self
 
-from croniter import croniter
+from apscheduler.triggers.cron import CronTrigger
 from pydantic import (
     AfterValidator,
     AliasGenerator,
@@ -54,7 +54,7 @@ def _validate_interval(interval: int | str) -> int:
 
 def _validate_schedule(schedule: str) -> str:
     """Check that the schedule is a valid Cron expression."""
-    croniter(schedule)
+    CronTrigger.from_crontab(schedule)
     return schedule
 
 

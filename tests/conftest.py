@@ -1,16 +1,17 @@
 import asyncio
 from collections import defaultdict
 from collections.abc import AsyncIterator, Awaitable, Callable, Iterator
-from contextlib import contextmanager
+from datetime import timedelta
 from pathlib import Path
-from typing import Any, cast
-from unittest.mock import MagicMock, patch
+import time as time_module
+from typing import Any
 import uuid
 
 from prometheus_client.metrics import MetricWrapperBase
 import pytest
 from pytest_mock import MockerFixture
 from pytest_structlog import StructuredLogCapture
+import time_machine
 import yaml
 
 from query_exporter.db import Database, MetricResults, QueryExecution
@@ -24,63 +25,67 @@ def _autouse(log: StructuredLogCapture) -> Iterator[None]:
     yield None
 
 
-class Clocker:
-    """Wrapper to provide a fake asyncio loop clock for tests.
-
-    Code is taken from `asynctest.ClockedTestCase`.
-    """
-
-    time: float = 0.0
-
-    def __init__(self, loop: asyncio.AbstractEventLoop) -> None:
-        self.loop = loop
-
-    @contextmanager
-    def patch_loop_time(self) -> Iterator[MagicMock]:
-        "Patch the loop `time` method, returning the mock."
-        with patch.object(self.loop, "time", lambda: self.time) as mock_time:
-            yield cast(MagicMock, mock_time)
-
-    async def advance(self, seconds: float) -> None:
-        await self._drain_loop()
-
-        target_time = self.time + seconds
-        while True:
-            next_time = self._next_scheduled()
-            if next_time is None or next_time > target_time:
-                break
-
-            self.time = next_time
-            await self._drain_loop()
-
-        self.time = target_time
-        await self._drain_loop()
-
-    def _next_scheduled(self) -> int | None:
-        try:
-            return self.loop._scheduled[0]._when  # type: ignore
-        except IndexError:
-            return None
-
-    async def _drain_loop(self) -> None:
-        while True:
-            next_time = self._next_scheduled()
-            if not self.loop._ready and (  # type: ignore
-                next_time is None or next_time > self.time
-            ):
-                break
-            await asyncio.sleep(0)
+@pytest.fixture
+def traveler() -> Iterator[time_machine.Traveller]:
+    """Freeze wall-clock time at the current instant."""
+    with time_machine.travel(time_module.time(), tick=False) as traveler:
+        yield traveler
 
 
 AdvanceTime = Callable[[float], Awaitable[None]]
 
 
 @pytest.fixture
-async def advance_time() -> AsyncIterator[AdvanceTime]:
-    """Replace the loop clock with a function to manually advance the clock."""
-    clocker = Clocker(asyncio.get_event_loop())
-    with clocker.patch_loop_time():
-        yield clocker.advance
+async def advance_time(
+    traveler: time_machine.Traveller,
+) -> AsyncIterator[AdvanceTime]:
+    """Return a function to manually advance time in tests.
+
+    Freezes both the asyncio loop clock and the wall clock, advancing them in
+    sync so that both asyncio-scheduled callbacks and APScheduler jobs fire at
+    the right simulated time.
+    """
+    loop = asyncio.get_event_loop()
+    fake_time: float = 0.0
+
+    def _next_scheduled() -> float | None:
+        try:
+            return loop._scheduled[0]._when  # type: ignore
+        except IndexError:
+            return None
+
+    async def _drain_loop() -> None:
+        while True:
+            next_time = _next_scheduled()
+            if not loop._ready and (  # type: ignore
+                next_time is None or next_time > fake_time
+            ):
+                break
+            await asyncio.sleep(0)
+
+    async def advance(seconds: float) -> None:
+        nonlocal fake_time
+        await _drain_loop()
+        target_time = fake_time + seconds
+        while True:
+            next_time = _next_scheduled()
+            if next_time is None or next_time > target_time:
+                break
+            delta = next_time - fake_time
+            fake_time = next_time
+            traveler.shift(timedelta(seconds=delta))
+            await _drain_loop()
+        delta = target_time - fake_time
+        fake_time = target_time
+        traveler.shift(timedelta(seconds=delta))
+        await _drain_loop()
+
+    original_loop_time = loop.time
+    loop.time = lambda: fake_time  # type: ignore
+    try:
+        yield advance
+    finally:
+        loop.time = original_loop_time  # type: ignore
 
 
 class QueryTracker:
