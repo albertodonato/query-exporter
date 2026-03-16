@@ -61,8 +61,11 @@ scripts.query-exporter = "query_exporter.main:script"
 [dependency-groups]
 dev = [
   "mypy",
+  "pyproject-fmt",
   "pytest",
   "pytest-cov",
+  "ruff",
+  "tox-toml-fmt",
 ]
 docker-dbs = [
   "clickhouse-sqlalchemy",
@@ -109,6 +112,10 @@ lint.select = [ "F", "I", "RUF", "UP" ]
 lint.isort.combine-as-imports = true
 lint.isort.force-sort-within-sections = true
 
+[tool.mypy]
+ignore_missing_imports = true
+strict = true
+
 [tool.pytest]
 ini_options.asyncio_mode = "auto"
 ini_options.asyncio_default_fixture_loop_scope = "function"
@@ -125,7 +132,3 @@ run.source = [ "query_exporter" ]
 report.fail_under = 100.0
 report.show_missing = true
 report.skip_covered = true
-
-[tool.mypy]
-ignore_missing_imports = true
-strict = true
