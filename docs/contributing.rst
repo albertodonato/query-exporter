@@ -58,19 +58,15 @@ To just run the tests, possibly limiting to a subset of them, run::
 Type checking
 -------------
 
-The project uses ``mypy`` for type checking. Please make sure types are added correctly to new/changed code.
-To verify, run::
+The project uses ``mypy`` for type checking. Please make sure types are added
+correctly to new/changed code.  To verify, run::
 
   tox run -e check
 
 Linting and formatting
 ----------------------
 
-Formatting can be applied automatically with::
-
-  tox run -e format
-
-Linting is checked on pull requests, and can be verified with::
+Formatting and linting is checked on pull requests, and can be verified with::
 
   tox run -e lint
 
