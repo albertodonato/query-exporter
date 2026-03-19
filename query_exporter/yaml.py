@@ -36,7 +36,7 @@ def _tag_env(loader: _ConfigLoader, node: yaml.nodes.ScalarNode) -> Any:
             "while processing 'env' tag",
             None,
             f"variable {env} undefined",
-            loader.get_mark(),  # type: ignore
+            loader.get_mark(),
         )
     return yaml.safe_load(value)
 
@@ -48,7 +48,7 @@ def _tag_file(loader: _ConfigLoader, node: yaml.nodes.ScalarNode) -> str:
             "while processing 'file' tag",
             None,
             f"file {path} not found",
-            loader.get_mark(),  # type: ignore
+            loader.get_mark(),
         )
     return path.read_text().strip()
 
@@ -60,7 +60,7 @@ def _tag_include(loader: _ConfigLoader, node: yaml.nodes.ScalarNode) -> Any:
             "while processing 'include' tag",
             None,
             f"file {path} not found",
-            loader.get_mark(),  # type: ignore
+            loader.get_mark(),
         )
     with path.open() as fd:
         return yaml.load(fd, _config_loader(path.parent))

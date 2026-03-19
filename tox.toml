@@ -8,15 +8,7 @@ commands = [ [ "pytest", { replace = "posargs", default = [ "--cov", "query_expo
 
 [env.check]
 dependency_groups = [ "dev", "tests", "types" ]
-commands = [
-  [
-    "mypy",
-    "integration_tests",
-    "query_exporter",
-    "tests",
-    { replace = "posargs", default = [], extend = true }
-  ]
-]
+commands = [ [ "ty", "check", { replace = "posargs", default = [], extend = true } ] ]
 
 [env.integration-tests]
 dependency_groups = [ "integration-tests" ]
