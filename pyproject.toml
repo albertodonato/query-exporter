@@ -60,13 +60,13 @@ scripts.query-exporter = "query_exporter.main:script"
 
 [dependency-groups]
 dev = [
-  "mypy",
   "pre-commit",
   "pyproject-fmt",
   "pytest",
   "pytest-cov",
   "ruff",
   "tox-toml-fmt",
+  "ty",
 ]
 docker-dbs = [
   "clickhouse-sqlalchemy",
@@ -116,9 +116,8 @@ lint.isort.force-sort-within-sections = true
 [tool.codespell]
 ignore-words-list = "timeschedule"
 
-[tool.mypy]
-ignore_missing_imports = true
-strict = true
+[tool.ty]
+rules.unresolved-import = "ignore"
 
 [tool.pytest]
 ini_options.asyncio_mode = "auto"
