@@ -235,10 +235,10 @@ class Metric(Model):
         )
 
 
-def _validate_query_paramters(
+def _validate_query_parameters(
     parameters: list[dict[str, Any]] | dict[str, list[dict[str, Any]]],
 ) -> list[dict[str, Any]]:
-    """Return an sequence of set of paramters with their values."""
+    """Return an sequence of set of parameters with their values."""
     if isinstance(parameters, list):
         return parameters
 
@@ -273,7 +273,7 @@ def _validate_query_paramters(
 QueryParameters = Annotated[
     Annotated[list[dict[str, Any]], Field(min_length=1)]
     | Annotated[dict[str, list[dict[str, Any]]], Field(min_length=1)],
-    AfterValidator(_validate_query_paramters),
+    AfterValidator(_validate_query_parameters),
 ]
 
 

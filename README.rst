@@ -93,7 +93,7 @@ A sample configuration file for the application looks like this:
 
 
 See the `configuration file format`_ documentation for complete details on
-availble configuration options.
+available configuration options.
 
 
 Exporter options
@@ -143,7 +143,7 @@ The exporter listens on port ``9560`` providing the standard ``/metrics``
 endpoint.
 
 By default, the port is bound on ``localhost``. Note that if the name resolves
-both IPv4 and IPv6 addressses, the exporter will bind on both.
+both IPv4 and IPv6 addresses, the exporter will bind on both.
 
 
 Builtin metrics

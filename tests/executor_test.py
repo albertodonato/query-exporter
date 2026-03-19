@@ -539,7 +539,7 @@ class TestQueryExecutor:
         # the query on the second database returns more columns
         await run_queries(
             db2,
-            "CREATE TABLE test (m INTEGER, other INTERGER)",
+            "CREATE TABLE test (m INTEGER, other INTEGER)",
             "INSERT INTO test VALUES (10, 20)",
         )
         query_executor = make_query_executor()
@@ -613,7 +613,7 @@ class TestQueryExecutor:
         # the query on the second database returns more columns
         await run_queries(
             db2,
-            "CREATE TABLE test (m INTEGER, other INTERGER)",
+            "CREATE TABLE test (m INTEGER, other INTEGER)",
             "INSERT INTO test VALUES (10, 20)",
         )
         query_executor = make_query_executor()

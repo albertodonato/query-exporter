@@ -95,7 +95,7 @@ v3.0.0 - 2024-12-30
 
 **NOTE**:
   This release introduces a few breaking changes from the 2.x series,
-  specificially:
+  specifically:
 
   - The ``--log-level`` option now takes lowercase names for levels.
   - The configuration file is no longer a required option, since
@@ -365,7 +365,7 @@ v1.8.0 - 2019-05-25
 ===================
 
 - Support custom labels in metrics, setting values from queries result (#7).
-- Suport matching metrics by query result column name instead of order.
+- Support matching metrics by query result column name instead of order.
 - Disable queries that will certainly always fail (e.g. because of invalid.
   returned column names/number) (#6).
 - Support disconnecting from after each query (#8).

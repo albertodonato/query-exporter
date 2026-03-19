@@ -215,7 +215,7 @@ class Query:
         return bool(self.interval or self.schedule)
 
     def labels(self) -> frozenset[str]:
-        """Resturn all labels for metrics in the query."""
+        """Return all labels for metrics in the query."""
         return frozenset(chain(*(metric.labels for metric in self.metrics)))
 
     def results(self, query_results: QueryResults) -> MetricResults:

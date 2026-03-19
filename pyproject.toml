@@ -113,6 +113,9 @@ lint.select = [ "F", "I", "RUF", "UP" ]
 lint.isort.combine-as-imports = true
 lint.isort.force-sort-within-sections = true
 
+[tool.codespell]
+ignore-words-list = "timeschedule"
+
 [tool.mypy]
 ignore_missing_imports = true
 strict = true
