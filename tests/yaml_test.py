@@ -5,7 +5,7 @@ from typing import Any
 import pytest
 import yaml
 
-from query_exporter.yaml import load_yaml
+from query_exporter.yaml import ScannerError, load_yaml
 
 
 class TestLoadYAML:
@@ -33,7 +33,7 @@ class TestLoadYAML:
     def test_load_env_not_found(self, tmp_path: Path) -> None:
         config = tmp_path / "config.yaml"
         config.write_text("x: !env FOO")
-        with pytest.raises(yaml.scanner.ScannerError) as err:
+        with pytest.raises(ScannerError) as err:
             load_yaml(config)
         assert "variable FOO undefined" in str(err.value)
 
@@ -53,7 +53,7 @@ class TestLoadYAML:
     def test_load_file_not_found(self, tmp_path: Path) -> None:
         config = tmp_path / "config.yaml"
         config.write_text("x: !file not-here.txt")
-        with pytest.raises(yaml.scanner.ScannerError) as err:
+        with pytest.raises(ScannerError) as err:
             load_yaml(config)
         assert f"file {tmp_path / 'not-here.txt'} not found" in str(err.value)
 
@@ -82,6 +82,6 @@ class TestLoadYAML:
     def test_load_include_not_found(self, tmp_path: Path) -> None:
         config = tmp_path / "config.yaml"
         config.write_text("x: !include not-here.yaml")
-        with pytest.raises(yaml.scanner.ScannerError) as err:
+        with pytest.raises(ScannerError) as err:
             load_yaml(config)
         assert f"file {tmp_path / 'not-here.yaml'} not found" in str(err.value)

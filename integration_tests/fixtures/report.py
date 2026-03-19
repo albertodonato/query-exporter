@@ -9,7 +9,8 @@ class ReportCollector:
 
     def collect(self, report: TestReport) -> None:
         """Collect a test report."""
-        self.reports[report.when] = report
+        if report.when:
+            self.reports[report.when] = report
 
     @property
     def test_failed(self) -> bool:

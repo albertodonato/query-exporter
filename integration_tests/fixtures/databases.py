@@ -3,6 +3,7 @@ from functools import cached_property
 from typing import Any
 
 import sqlalchemy as sa
+from sqlalchemy.exc import DatabaseError, OperationalError
 
 from .docker import DockerService
 
@@ -48,7 +49,7 @@ class DatabaseServer(DockerService):
         """Check if the database accepts queries."""
         try:
             self.execute(self.check_query)
-        except (sa.exc.OperationalError, sa.exc.DatabaseError):
+        except (DatabaseError, OperationalError):
             return False
 
         return True

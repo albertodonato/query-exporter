@@ -9,11 +9,10 @@ from typing import Any, cast
 from prometheus_aioexporter import MetricConfig
 from pydantic import ValidationError
 import structlog
-import yaml
 
 from . import db, schema
 from .metrics import BUILTIN_METRICS, get_builtin_metric_configs
-from .yaml import load_yaml
+from .yaml import ScannerError, load_yaml
 
 # Label used to tag metrics by database
 DATABASE_LABEL = "database"
@@ -49,7 +48,7 @@ def load_config(
 
     try:
         data = _load_config(paths)
-    except yaml.scanner.ScannerError as e:
+    except ScannerError as e:
         raise ConfigError(str(e))
     try:
         configuration = schema.ExporterConfig(**data)

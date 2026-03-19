@@ -3,6 +3,9 @@ from pathlib import Path
 from typing import Any, ClassVar
 
 import yaml
+from yaml.scanner import ScannerError
+
+__all__ = ["ScannerError"]
 
 
 def load_yaml(path: Path) -> Any:
@@ -29,7 +32,7 @@ def _tag_env(loader: _ConfigLoader, node: yaml.nodes.ScalarNode) -> Any:
     env = loader.construct_scalar(node)
     value = os.getenv(env)
     if value is None:
-        raise yaml.scanner.ScannerError(
+        raise ScannerError(
             "while processing 'env' tag",
             None,
             f"variable {env} undefined",
@@ -41,7 +44,7 @@ def _tag_env(loader: _ConfigLoader, node: yaml.nodes.ScalarNode) -> Any:
 def _tag_file(loader: _ConfigLoader, node: yaml.nodes.ScalarNode) -> str:
     path = loader.base_path / loader.construct_scalar(node)
     if not path.is_file():
-        raise yaml.scanner.ScannerError(
+        raise ScannerError(
             "while processing 'file' tag",
             None,
             f"file {path} not found",
@@ -53,7 +56,7 @@ def _tag_file(loader: _ConfigLoader, node: yaml.nodes.ScalarNode) -> str:
 def _tag_include(loader: _ConfigLoader, node: yaml.nodes.ScalarNode) -> Any:
     path = loader.base_path / loader.construct_scalar(node)
     if not path.is_file():
-        raise yaml.scanner.ScannerError(
+        raise ScannerError(
             "while processing 'include' tag",
             None,
             f"file {path} not found",
