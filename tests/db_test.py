@@ -362,6 +362,7 @@ class TestDatabase:
         # connect SQL is executed in a committed transaction
         result = await db.execute_sql("SELECT n FROM test ORDER BY n")
         assert result.rows == [(10,), (20,), (30,)]
+        db.close()
 
     async def test_connect_sql_fail(self, log: StructuredLogCapture) -> None:
         config = schema.Database.model_validate(

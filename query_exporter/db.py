@@ -293,8 +293,8 @@ class Database:
         )
 
     def close(self) -> None:
-        self._engine.dispose()
         self._executor.shutdown(wait=True, cancel_futures=True)
+        self._engine.dispose()
 
     async def execute(self, query_execution: QueryExecution) -> MetricResults:
         """Execute a query."""
@@ -350,6 +350,7 @@ class Database:
                         for sql in self.config.connect_sql:
                             cursor.execute(sql)
                 except Exception as error:
+                    dbapi_conn.close()
                     raise self._db_error(
                         f"failed executing connect SQL: {error}",
                         exc_class=DatabaseQueryError,
