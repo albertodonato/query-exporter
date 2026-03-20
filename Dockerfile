@@ -2,7 +2,7 @@ FROM python:3.14-slim AS base
 
 RUN apt-get update && apt-get full-upgrade -y
 
-COPY --from=docker.io/astral/uv:latest /uv /uvx /bin/
+COPY --from=docker.io/astral/uv:latest /uv /bin/
 
 COPY . /src
 
