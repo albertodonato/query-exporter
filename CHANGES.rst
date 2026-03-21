@@ -1,3 +1,32 @@
+v5.0.0 - 2026-03-20
+===================
+
+- Support disabling database connection pooling (by settings ``size: 0`` for
+  the pool).
+- Use ``apscheduler`` for scheduling periodic queries.
+- Use ``uv`` for dependencies pinning and installation.
+- [snap] Drop support for snap package.
+
+**Note**:
+ This release introduces a few breaking changes from the 4.x series,
+ specifically:
+
+ - [docker] Since ``uv`` is used in place of plain pip for installing,
+   containers built on top of the base image should use
+
+   .. code:: shell
+
+       uv pip install [<package>...|-r <requirements_file>]
+
+   for installing extra dependencies in the application virtualenv.
+ - Since ``apscheduler`` is used in place of ``croniter`` for parsing cron-like
+   schedule expressions, there might be difference in the format. Please refer
+   to the `apscheduler documentation`_ for details.
+   This switch was required since ``croniter`` is no longer maintained.
+
+.. _`apscheduler documentation`: https://apscheduler.readthedocs.io/en/latest/modules/triggers/cron.html
+
+
 v4.0.2 - 2026-03-04
 ===================
 
