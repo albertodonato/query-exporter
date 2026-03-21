@@ -24,6 +24,7 @@ jobs:
     uses: albertodonato/github-workflows/.github/workflows/docker-build-publish.yaml@2f91268eb6ce8e14f52a69e1925bab45d3e240c2 # v0.0.6
     with:
       image-name: ${{ github.repository }}
+      suffix: base
       target: base
       dockerhub-image-name: query-exporter
       dockerhub-username: ${{ vars.DOCKERHUB_USERNAME }}
@@ -39,7 +40,6 @@ jobs:
     with:
       image-name: ${{ github.repository }}
       target: full
-      suffix: full
       dockerhub-image-name: query-exporter
       dockerhub-username: ${{ vars.DOCKERHUB_USERNAME }}
       platforms: linux/amd64,linux/arm64
