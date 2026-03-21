@@ -21,9 +21,10 @@ jobs:
   build-base:
     name: Build base image
     if: github.actor == github.repository_owner
-    uses: albertodonato/github-workflows/.github/workflows/docker-build-publish.yaml@3228e5616e857e12f3c1b6731436ae0a6e2f573c # v0.0.5
+    uses: albertodonato/github-workflows/.github/workflows/docker-build-publish.yaml@2f91268eb6ce8e14f52a69e1925bab45d3e240c2 # v0.0.6
     with:
       image-name: ${{ github.repository }}
+      target: base
       dockerhub-image-name: query-exporter
       dockerhub-username: ${{ vars.DOCKERHUB_USERNAME }}
       platforms: linux/amd64,linux/arm64
@@ -32,11 +33,12 @@ jobs:
   build-full:
     name: Build full image
     if: github.actor == github.repository_owner
-    uses: albertodonato/github-workflows/.github/workflows/docker-build-publish.yaml@3228e5616e857e12f3c1b6731436ae0a6e2f573c # v0.0.5
+    uses: albertodonato/github-workflows/.github/workflows/docker-build-publish.yaml@2f91268eb6ce8e14f52a69e1925bab45d3e240c2 # v0.0.6
     needs:
       - build-base
     with:
       image-name: ${{ github.repository }}
+      target: full
       suffix: full
       dockerhub-image-name: query-exporter
       dockerhub-username: ${{ vars.DOCKERHUB_USERNAME }}
