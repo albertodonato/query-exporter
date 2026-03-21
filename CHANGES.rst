@@ -1,7 +1,14 @@
+v5.0.2 - 2026-03-21
+===================
+
+- [docker] Correctly build and tag base and full images.
+- [docker] Remove unnecessary ``dev`` group dependencies from image.
+
+
 v5.0.1 - 2026-03-21
 ===================
 
-- [docker] fix build/release action
+- [docker] Fix build/release action.
 
 
 v5.0.0 - 2026-03-20
