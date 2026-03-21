@@ -12,14 +12,14 @@ on:
 jobs:
   lint:
     name: Lint
-    uses: albertodonato/github-workflows/.github/workflows/run-tox.yaml@db4826b991f4a96242e1662e806ffd3bd2fc1b0c # v0.0.4
+    uses: albertodonato/github-workflows/.github/workflows/run-tox.yaml@3228e5616e857e12f3c1b6731436ae0a6e2f573c # v0.0.5
     with:
       python-version: "3.14"
       tox-env: lint
 
   check:
     name: Check
-    uses: albertodonato/github-workflows/.github/workflows/run-tox.yaml@db4826b991f4a96242e1662e806ffd3bd2fc1b0c # v0.0.4
+    uses: albertodonato/github-workflows/.github/workflows/run-tox.yaml@3228e5616e857e12f3c1b6731436ae0a6e2f573c # v0.0.5
     with:
       python-version: ${{ matrix.python-version }}
       tox-env: check
@@ -34,7 +34,7 @@ jobs:
 
   test:
     name: Unit tests
-    uses: albertodonato/github-workflows/.github/workflows/run-tox.yaml@db4826b991f4a96242e1662e806ffd3bd2fc1b0c # v0.0.4
+    uses: albertodonato/github-workflows/.github/workflows/run-tox.yaml@3228e5616e857e12f3c1b6731436ae0a6e2f573c # v0.0.5
     with:
       python-version: ${{ matrix.python-version }}
       tox-env: py
@@ -49,7 +49,7 @@ jobs:
 
   integration-test:
     name: Integration tests
-    uses: albertodonato/github-workflows/.github/workflows/run-tox.yaml@db4826b991f4a96242e1662e806ffd3bd2fc1b0c # v0.0.4
+    uses: albertodonato/github-workflows/.github/workflows/run-tox.yaml@3228e5616e857e12f3c1b6731436ae0a6e2f573c # v0.0.5
     with:
       python-version: "3.14"
       tox-env: integration-tests
