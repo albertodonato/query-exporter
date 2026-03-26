@@ -1,6 +1,6 @@
 version: 2
 updates:
-  - package-ecosystem: uv
+  - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
@@ -24,7 +24,7 @@ updates:
           - "*"
     commit-message:
       prefix: chore
-  - package-ecosystem: github-actions
+  - package-ecosystem: uv
     directory: /
     schedule:
       interval: weekly
