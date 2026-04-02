@@ -16,11 +16,6 @@ repos:
     hooks:
       - id: tox-toml-fmt
 
-  - repo: https://github.com/asottile/pyupgrade
-    rev: v3.21.2
-    hooks:
-      - id: pyupgrade
-
   - repo: https://github.com/codespell-project/codespell
     rev: v2.4.2
     hooks:
