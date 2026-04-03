@@ -14,6 +14,7 @@ from dataclasses import (
     field,
 )
 from itertools import chain
+from threading import Lock
 from time import (
     perf_counter,
     time,
@@ -27,6 +28,7 @@ from sqlalchemy import (
     text,
 )
 from sqlalchemy.engine import (
+    Connection,
     CursorResult,
     Engine,
 )
@@ -267,6 +269,26 @@ class QueryExecution:
             raise InvalidQueryParameters(self.name)
 
 
+class ConnectionTracker:
+    """Tracks the active connection for a query so it can be invalidated on timeout."""
+
+    def __init__(self) -> None:
+        self._lock = Lock()
+        self._conn: Connection | None = None
+        self._invalidated = False
+
+    def set_conn(self, conn: Connection) -> None:
+        with self._lock:
+            self._conn = conn
+            self._invalidated = False
+
+    def invalidate(self) -> None:
+        with self._lock:
+            self._invalidated = True
+            if self._conn is not None:
+                self._conn.invalidate()
+
+
 class Database:
     """A database to perform Queries."""
 
@@ -330,12 +352,17 @@ class Database:
             parameters = {}
 
         loop = asyncio.get_event_loop()
-        return await asyncio.wait_for(
-            loop.run_in_executor(
-                self._executor, self._execute_sync, sql, parameters
-            ),
-            timeout=timeout,
+        tracker = ConnectionTracker()
+        future = loop.run_in_executor(
+            self._executor, self._execute_sync, sql, parameters, tracker
         )
+        try:
+            return await asyncio.wait_for(
+                asyncio.shield(future), timeout=timeout
+            )
+        except TimeoutError:
+            tracker.invalidate()
+            raise
 
     def _setup_engine(self) -> Engine:
         engine = create_db_engine(self.config)
@@ -394,9 +421,11 @@ class Database:
         self,
         sql: str,
         parameters: dict[str, Any],
+        tracker: ConnectionTracker,
     ) -> QueryResults:
         try:
             with self._engine.begin() as conn:
+                tracker.set_conn(conn)
                 try:
                     result = conn.execute(text(sql), parameters)
                     return QueryResults.from_result(result)
