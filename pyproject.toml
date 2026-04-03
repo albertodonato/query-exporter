@@ -64,7 +64,6 @@ dev = [
   "pytest",
   "pytest-cov",
   "ruff",
-  "tox-toml-fmt",
   "ty",
 ]
 docker-dbs = [
@@ -115,6 +114,9 @@ lint.isort.force-sort-within-sections = true
 [tool.codespell]
 ignore-words-list = "timeschedule"
 
+[tool.pyproject-fmt]
+expand_tables = [ "tool.tox" ]
+
 [tool.ty]
 rules.unresolved-import = "ignore"
 
@@ -134,3 +136,26 @@ run.source = [ "query_exporter" ]
 report.fail_under = 100.0
 report.show_missing = true
 report.skip_covered = true
+
+[tool.tox.env.check]
+dependency_groups = [ "dev", "tests", "types" ]
+commands = [ [ "ty", "check", { replace = "posargs", default = [], extend = true } ] ]
+
+[tool.tox.env.integration-tests]
+dependency_groups = [ "integration-tests" ]
+commands = [ [ "pytest", "-o", "testpaths=integration_tests", { replace = "posargs", default = [], extend = true } ] ]
+
+[tool.tox.env.lint]
+package = "skip"
+dependency_groups = [ "dev" ]
+commands = [ [ "pre-commit", "run", "--all-files" ] ]
+
+[tool.tox.env.run]
+package = "editable"
+commands = [ [ "query-exporter", { replace = "posargs", default = [], extend = true } ] ]
+
+[tool.tox.env_run_base]
+runner = "uv-venv-lock-runner"
+package = "wheel"
+dependency_groups = [ "dev", "tests" ]
+commands = [ [ "pytest", { replace = "posargs", default = [ "--cov", "query_exporter/" ], extend = true } ] ]
