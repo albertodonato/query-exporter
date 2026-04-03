@@ -11,11 +11,6 @@ repos:
     hooks:
       - id: pyproject-fmt
 
-  - repo: https://github.com/tox-dev/tox-toml-fmt
-    rev: v1.9.1
-    hooks:
-      - id: tox-toml-fmt
-
   - repo: https://github.com/codespell-project/codespell
     rev: v2.4.2
     hooks:
