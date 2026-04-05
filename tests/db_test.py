@@ -1,5 +1,7 @@
+import asyncio
 from collections.abc import Iterator
 from contextlib import closing
+import threading
 import time
 from typing import Any, cast
 
@@ -14,6 +16,7 @@ from sqlalchemy.pool import NullPool, QueuePool
 
 from query_exporter import schema
 from query_exporter.db import (
+    ConnectionTracker,
     Database,
     DatabaseConnectError,
     DatabaseError,
@@ -558,9 +561,9 @@ class TestDatabase:
         [query_execution] = query.executions
 
         def execute_sync(
-            self: Any,
             sql: str,
-            parameters: dict[str, Any] | None = None,
+            parameters: dict[str, Any],
+            tracker: ConnectionTracker,
         ) -> None:
             time.sleep(1)  # longer than timeout
 
@@ -574,6 +577,37 @@ class TestDatabase:
             database="db",
             level="warning",
         )
+
+    async def test_execute_sql_timeout_closes_connection(
+        self, mocker: MockerFixture, db: Database
+    ) -> None:
+        mock_conn = mocker.MagicMock()
+        thread_running = threading.Event()
+        stop = threading.Event()
+
+        def slow_execute(
+            sql: str,
+            parameters: dict[str, Any],
+            tracker: ConnectionTracker,
+        ) -> None:
+            if tracker is not None:
+                tracker.set_conn(mock_conn)
+            thread_running.set()
+            stop.wait(10)
+
+        mocker.patch.object(db, "_execute_sync", slow_execute)
+
+        task = asyncio.create_task(db.execute_sql("SELECT 1", timeout=0.5))
+        # Wait for the thread to populate conn_ref before letting the timeout fire
+        await asyncio.get_running_loop().run_in_executor(
+            None, thread_running.wait
+        )
+
+        with pytest.raises(TimeoutError):
+            await task
+
+        mock_conn.invalidate.assert_called_once()
+        stop.set()  # unblock the thread so the executor can shut down
 
     async def test_execute_sql(self, db: Database) -> None:
         result = await db.execute_sql("SELECT 10, 20")
