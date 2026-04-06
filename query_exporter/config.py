@@ -183,19 +183,16 @@ def _get_queries(
         _validate_query_config(name, config, database_names, metric_names)
         query_metrics = _get_query_metrics(config, metrics, extra_labels)
         parameter_sets = cast(list[dict[str, Any]], config.parameters)
-        try:
-            queries[name] = db.Query(
-                name=name,
-                databases=config.databases,
-                metrics=query_metrics,
-                sql=config.sql.strip(),
-                timeout=config.timeout,
-                interval=config.interval,
-                schedule=config.schedule,
-                parameter_sets=parameter_sets,
-            )
-        except db.InvalidQueryParameters as e:
-            raise ConfigError(str(e))
+        queries[name] = db.Query(
+            name=name,
+            databases=config.databases,
+            metrics=query_metrics,
+            sql=config.sql.strip(),
+            timeout=config.timeout,
+            interval=config.interval,
+            schedule=config.schedule,
+            parameter_sets=parameter_sets,
+        )
     return queries
 
 
@@ -234,14 +231,6 @@ def _validate_query_config(
         raise ConfigError(
             f'Unknown metrics for query "{name}": {unknown_list}'
         )
-    if query.parameters:
-        params = cast(list[dict[str, Any]], query.parameters)
-        keys = {frozenset(param.keys()) for param in params}
-        if len(keys) > 1:
-            raise ConfigError(
-                f'Invalid parameters definition for query "{name}": '
-                "parameters dictionaries must all have the same keys"
-            )
 
 
 def _warn_if_unused(

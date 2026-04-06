@@ -21,7 +21,6 @@ from query_exporter.db import (
     DatabaseConnectError,
     DatabaseError,
     DatabaseQueryError,
-    InvalidQueryParameters,
     InvalidResultColumnNames,
     InvalidResultCount,
     MetricResult,
@@ -117,20 +116,6 @@ class TestQuery:
         assert qe_exec1.parameters == {"param1": 1, "param2": 2}
         assert qe_exec2.name == "query[params2]"
         assert qe_exec2.parameters == {"param1": 3, "param2": 4}
-
-    def test_instantiate_parameters_not_matching(self) -> None:
-        with pytest.raises(InvalidQueryParameters):
-            Query(
-                "query",
-                ["db1", "db2"],
-                [
-                    QueryMetric("metric1", ["label1", "label2"]),
-                    QueryMetric("metric2", ["label2"]),
-                ],
-                "SELECT metric1, metric2, label1, label2 FROM table"
-                " WHERE x < :param1 AND  y > :param3",
-                parameter_sets=[{"param1": 1, "param2": 2}],
-            )
 
     def test_instantiate_with_interval(self) -> None:
         query = Query(

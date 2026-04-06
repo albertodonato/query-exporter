@@ -92,15 +92,6 @@ class InvalidResultColumnNames(Exception):
         return f"({names_list})"
 
 
-class InvalidQueryParameters(Exception):
-    """Query parameter names don't match those in query SQL."""
-
-    def __init__(self, query_name: str) -> None:
-        super().__init__(
-            f'Parameters for query "{query_name}" don\'t match those from SQL'
-        )
-
-
 # Database errors that mean the query won't ever succeed.  Not all possible
 # fatal errors are tracked here, because some DBAPI errors can happen in
 # circumstances which can be fatal or not.  Since there doesn't seem to be a
@@ -258,15 +249,6 @@ class QueryExecution:
     name: str
     query: Query
     parameters: dict[str, Any] = field(default_factory=dict)
-
-    def __post_init__(self) -> None:
-        self._check_query_parameters()
-
-    def _check_query_parameters(self) -> None:
-        expr = text(self.query.sql)
-        query_params = set(expr.compile().params)
-        if set(self.parameters) != query_params:
-            raise InvalidQueryParameters(self.name)
 
 
 class ConnectionTracker:

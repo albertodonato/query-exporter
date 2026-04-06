@@ -308,10 +308,35 @@ class TestLoadConfig:
             "item__status": "inactive",
         }
 
-    def test_load_queries_section_with_wrong_parameters(
-        self, write_config: ConfigWriter
+    @pytest.mark.parametrize(
+        "query_config,location,error_message",
+        [
+            (
+                {
+                    "sql": "SELECT :param1 AS l, :param2 AS m",
+                    "parameters": [
+                        {"param1": "label1", "param2": 10},
+                        {"param1": "label2", "param3": 20},
+                    ],
+                },
+                "queries.q.parameters",
+                "Not all parameter sets define the same names",
+            ),
+            (
+                {},
+                "queries.q.sql",
+                "Field required",
+            ),
+        ],
+    )
+    def test_validation_error(
+        self,
+        write_config: ConfigWriter,
+        query_config: dict[str, Any],
+        location: str,
+        error_message: str,
     ) -> None:
-        cfg = {
+        config = {
             "databases": {"db": {"dsn": "sqlite:///:memory:"}},
             "metrics": {"m": {"type": "summary", "labels": ["l"]}},
             "queries": {
@@ -319,21 +344,16 @@ class TestLoadConfig:
                     "interval": 10,
                     "databases": ["db"],
                     "metrics": ["m"],
-                    "sql": "SELECT :param1 AS l, :param3 AS m",
-                    "parameters": [
-                        {"param1": "label1", "param2": 10},
-                        {"param1": "label2", "param2": 20},
-                    ],
-                },
+                }
+                | query_config,
             },
         }
-        config_file = write_config(cfg)
+        config_file = write_config(config)
         with pytest.raises(ConfigError) as err:
             load_config([config_file])
-        assert (
-            str(err.value)
-            == 'Parameters for query "q[params1]" don\'t match those from SQL'
-        )
+        [error] = err.value.details
+        assert error["location"] == location
+        assert error_message in error["error"]
 
     def test_load_queries_section_timeout(
         self,
@@ -378,40 +398,6 @@ class TestLoadConfig:
                     },
                 },
                 'Unknown metrics for query "q": m1, m2',
-            ),
-            (
-                {
-                    "databases": {"db": {"dsn": "sqlite:///:memory:"}},
-                    "metrics": {"m": {"type": "gauge"}},
-                    "queries": {
-                        "q": {
-                            "interval": 10,
-                            "databases": ["db"],
-                            "metrics": ["m"],
-                            "sql": "SELECT :param AS m",
-                            "parameters": [{"foo": 1}, {"bar": 2}],
-                        },
-                    },
-                },
-                'Invalid parameters definition for query "q": '
-                "parameters dictionaries must all have the same keys",
-            ),
-            (
-                {
-                    "databases": {"db": {"dsn": "sqlite:///:memory:"}},
-                    "metrics": {"m": {"type": "gauge"}},
-                    "queries": {
-                        "q": {
-                            "interval": 10,
-                            "databases": ["db"],
-                            "metrics": ["m"],
-                            "sql": "SELECT :param AS m",
-                            "parameters": {"a": [{"foo": 1}, {"bar": 2}]},
-                        },
-                    },
-                },
-                'Invalid parameters definition for query "q": '
-                "parameters dictionaries must all have the same keys",
             ),
         ],
     )

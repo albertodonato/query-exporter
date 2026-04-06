@@ -2,7 +2,7 @@ from enum import StrEnum
 from functools import reduce
 from itertools import product
 import re
-from typing import Annotated, Any, Self
+from typing import Annotated, Any, Self, cast
 
 from apscheduler.triggers.cron import CronTrigger
 from pydantic import (
@@ -12,23 +12,24 @@ from pydantic import (
     BeforeValidator,
     ConfigDict,
     Field,
+    PrivateAttr,
     model_validator,
 )
-from sqlalchemy import exc
+from sqlalchemy import TextClause, exc, text
 from sqlalchemy.engine import URL, make_url
 
 
 def _validate_unique_items(items: list[Any]) -> list[Any]:
     """Validate that there are no duplicate items in the list."""
-    assert sorted(items) == sorted(set(items)), (
-        "must not contain duplicate items"
-    )
+    if sorted(items) != sorted(set(items)):
+        raise ValueError("Must not contain duplicate items")
     return items
 
 
 def _validate_sorted(items: list[Any]) -> list[Any]:
     """Validate that items in the list are sorted."""
-    assert items == sorted(items), "items must be sorted"
+    if items != sorted(items):
+        raise ValueError("Items must be sorted")
     return items
 
 
@@ -39,7 +40,8 @@ def _validate_interval(interval: int | str) -> int:
     """Convert a time interval to seconds."""
     multiplier = 1
     if isinstance(interval, str):
-        assert _INTERVAL_RE.match(interval), "invalid interval definition"
+        if not _INTERVAL_RE.match(interval):
+            raise ValueError("Invalid interval definition")
         # convert to seconds
         multipliers = {"s": 1, "m": 60, "h": 3600, "d": 3600 * 24}
         suffix = interval[-1]
@@ -48,7 +50,8 @@ def _validate_interval(interval: int | str) -> int:
             multiplier = multipliers[suffix]
 
     value = int(interval) * multiplier
-    assert value > 0, "must be a positive number"
+    if value <= 0:
+        raise ValueError("Must be a positive number")
     return value
 
 
@@ -157,7 +160,6 @@ class BuiltinMetric(Model):
 
     def config(self) -> dict[str, Any]:
         """The metric configuration."""
-
         return self.model_dump()
 
 
@@ -186,7 +188,7 @@ class ConnectionPool(Model):
     @model_validator(mode="after")
     def validate_all(self) -> Self:
         if self.max_overflow > 0 and self.size == 0:
-            raise ValueError("overflow can't be set with no connection pool")
+            raise ValueError("Overflow can't be set with no connection pool")
         return self
 
 
@@ -220,9 +222,9 @@ class Metric(Model):
     @model_validator(mode="after")
     def validate_all(self) -> Self:
         if self.states and not self.type == MetricType.ENUM:
-            raise ValueError("states can only be set for enum metrics")
+            raise ValueError("States can only be set for enum metrics")
         if self.increment and not self.type == MetricType.COUNTER:
-            raise ValueError("increment can only be set for counter metrics")
+            raise ValueError("Increment can only be set for counter metrics")
         return self
 
     @property
@@ -235,44 +237,52 @@ class Metric(Model):
         )
 
 
-def _validate_query_parameters(
-    parameters: list[dict[str, Any]] | dict[str, list[dict[str, Any]]],
-) -> list[dict[str, Any]]:
-    """Return an sequence of set of parameters with their values."""
-    if isinstance(parameters, list):
-        return parameters
+QueryParametersList = list[dict[str, Any]]
 
-    # first, flatten dict like
-    #
-    # {
-    #     'a': [{'arg1': 1, 'arg2': 1}],
-    #     'b': [{'arg1': 1, 'arg2': 1}],
-    # }
-    #
-    # into a sequence like
-    #
-    # (
-    #     [{'a__arg1': 1, 'a__arg2': 2}],
-    #     [{'b__arg1': 1, 'b__arg2': 2}],
-    # )
-    flattened_params = (
-        [
-            {f"{top_key}__{key}": value for key, value in arg_set.items()}
-            for arg_set in arg_sets
-        ]
-        for top_key, arg_sets in parameters.items()
-    )
-    # return a list of merged dictionaries from each combination of the two
-    # sets
-    return list(
-        reduce(lambda p1, p2: {**p1, **p2}, params)
-        for params in product(*flattened_params)
-    )
+
+def _validate_query_parameters(
+    parameters: QueryParametersList | dict[str, QueryParametersList],
+) -> QueryParametersList:
+    """Return each set of parameters with their values."""
+    if isinstance(parameters, list):
+        params_list = parameters
+    else:
+        # first, flatten dict like
+        #
+        # {
+        #     'a': [{'arg1': 1, 'arg2': 1}],
+        #     'b': [{'arg1': 1, 'arg2': 1}],
+        # }
+        #
+        # into a sequence like
+        #
+        # (
+        #     [{'a__arg1': 1, 'a__arg2': 2}],
+        #     [{'b__arg1': 1, 'b__arg2': 2}],
+        # )
+        flattened_params = (
+            [
+                {f"{top_key}__{key}": value for key, value in arg_set.items()}
+                for arg_set in arg_sets
+            ]
+            for top_key, arg_sets in parameters.items()
+        )
+        # make a list of merged dictionaries from each combination of the two
+        # sets
+        params_list = list(
+            reduce(lambda p1, p2: {**p1, **p2}, params)
+            for params in product(*flattened_params)
+        )
+
+    param_sets = {tuple(sorted(param_set)) for param_set in params_list}
+    if len(param_sets) > 1:
+        raise ValueError("Not all parameter sets define the same names")
+    return params_list
 
 
 QueryParameters = Annotated[
-    Annotated[list[dict[str, Any]], Field(min_length=1)]
-    | Annotated[dict[str, list[dict[str, Any]]], Field(min_length=1)],
+    Annotated[QueryParametersList, Field(min_length=1)]
+    | Annotated[dict[str, QueryParametersList], Field(min_length=1)],
     AfterValidator(_validate_query_parameters),
 ]
 
@@ -292,10 +302,25 @@ class Query(Model):
     schedule: TimeSchedule | None = None
     timeout: Timeout | None = None
 
+    _statement: TextClause = PrivateAttr()
+
     @model_validator(mode="after")
-    def validate_all(self) -> Self:
+    def validate_periodic(self) -> Self:
         if self.interval and self.schedule:
-            raise ValueError("can't set both interval and schedule")
+            raise ValueError("Can't set both interval and schedule")
+        return self
+
+    @model_validator(mode="after")
+    def validate_parameters(self) -> Self:
+        self._statement = text(self.sql)
+        stmt_params = set(self._statement.compile().params)
+        params = set(
+            cast(QueryParametersList, self.parameters)[0]
+            if self.parameters
+            else ()
+        )
+        if params != stmt_params:
+            raise ValueError("Query parameters don't match parameter set")
         return self
 
 
