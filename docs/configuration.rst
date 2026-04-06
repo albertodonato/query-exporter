@@ -212,11 +212,8 @@ Each query definition can have the following keys:
             param2: 40
 
   If specified as a dictionary, it's used as a multidimensional matrix of
-  parameters lists to run the query with.
-  The query will be run once for each permutation of parameters.
-
-  If a query is specified with parameters as matrix in its ``sql``, it will be run once
-  for every permutation in matrix of parameters, for every interval.
+  parameters lists to run the query with.  The query will be run once for each
+  permutation of parameters.
 
   Variable format in sql query: ``:{top_level_key}__{inner_key}``
 
