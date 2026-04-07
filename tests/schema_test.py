@@ -66,8 +66,8 @@ class TestBuckets:
         ([0.1, 0.2, 0.5], [0.1, 0.2, 0.5]),
     )
     test_invalid = invalid_inputs(
-        ([0.1, 0.2, 0.2, 0.5], "must not contain duplicate items"),
-        ([0.1, 0.5, 0.2], "items must be sorted"),
+        ([0.1, 0.2, 0.2, 0.5], "Must not contain duplicate items"),
+        ([0.1, 0.5, 0.2], "Items must be sorted"),
     )
 
 
@@ -96,10 +96,10 @@ class TestTimeInterval:
         ("1d", 3600 * 24),
     )
     test_invalid = invalid_inputs(
-        ("foo", "invalid interval definition"),
-        ("123g", "invalid interval definition"),
-        (0, "must be a positive number"),
-        (-10, "must be a positive number"),
+        ("foo", "Invalid interval definition"),
+        ("123g", "Invalid interval definition"),
+        (0, "Must be a positive number"),
+        (-10, "Must be a positive number"),
     )
 
 
@@ -125,9 +125,9 @@ class TestTimeout:
         (2.0, 2.0),
     )
     test_invalid = invalid_inputs(
-        (0.24, "should be a multiple of 0.1"),
-        (0, "should be greater than 0"),
-        (-1.2, "should be greater than 0"),
+        (0.24, "Input should be a multiple of 0.1"),
+        (0, "Input should be greater than 0"),
+        (-1.2, "Input should be greater than 0"),
     )
 
 
@@ -139,8 +139,8 @@ class TestPort:
         (65535, 65535),
     )
     test_invalid = invalid_inputs(
-        (-10, "should be greater than or equal to 1"),
-        (70000, "should be less than or equal to 65535"),
+        (-10, "Input should be greater than or equal to 1"),
+        (70000, "Input should be less than or equal to 65535"),
     )
 
 
@@ -207,7 +207,7 @@ class TestDSN:
     )
     test_invalid = invalid_inputs(
         ("wrong", "Invalid DSN format"),
-        (None, "should be a valid string"),
+        (None, "Input should be a valid string"),
     )
 
 
@@ -215,6 +215,11 @@ class TestBuiltinMetric:
     def test_buckets(self) -> None:
         metric = BuiltinMetric(buckets=[0.1, 0.5, 1.0])
         assert metric.buckets == [0.1, 0.5, 1.0]
+
+    def test_config(self) -> None:
+        buckets = [0.1, 0.5, 1.0]
+        metric = BuiltinMetric(buckets=buckets)
+        assert metric.config() == {"buckets": buckets}
 
 
 class TestBuiltinMetrics:
@@ -241,7 +246,7 @@ class TestConnectionPool:
     def test_zero_with_overflow_invalid(self) -> None:
         with pytest.raises(ValueError) as err:
             ConnectionPool.model_validate({"size": 0, "max-overflow": 1})
-        assert "overflow can't be set with no connection pool" in str(
+        assert "Overflow can't be set with no connection pool" in str(
             err.value
         )
 
@@ -350,7 +355,7 @@ class TestMetric:
             Metric.model_validate(
                 {"type": "histogram", "states": ["on", "off"]}
             )
-        assert "states can only be set for enum metrics" in str(err.value)
+        assert "States can only be set for enum metrics" in str(err.value)
 
     def test_increment_counter(self) -> None:
         metric = Metric.model_validate({"type": "counter", "increment": True})
@@ -359,7 +364,7 @@ class TestMetric:
     def test_increment_not_counter(self) -> None:
         with pytest.raises(ValueError) as err:
             Metric.model_validate({"type": "histogram", "increment": True})
-        assert "increment can only be set for counter metrics" in str(
+        assert "Increment can only be set for counter metrics" in str(
             err.value
         )
 
@@ -415,7 +420,35 @@ class TestQuery:
                     "schedule": "*/30 * * * *",
                 }
             )
-        assert "can't set both interval and schedule" in str(err.value)
+        assert "Can't set both interval and schedule" in str(err.value)
+
+    @pytest.mark.parametrize(
+        "parameters",
+        [
+            [{"foo": 1, "bar": 2}],
+            {
+                "param": [
+                    {
+                        "sub1": 100,
+                    },
+                    {
+                        "sub1": 200,
+                    },
+                ],
+            },
+        ],
+    )
+    def test_parameters_not_matching(self, parameters: QueryParameters):
+        with pytest.raises(ValueError) as err:
+            Query.model_validate(
+                {
+                    "databases": ["db"],
+                    "metrics": ["m"],
+                    "sql": "SELECT 1 AS m WHERE name = :name",
+                    "parameters": parameters,
+                }
+            )
+        assert "Query parameters don't match parameter set" in str(err)
 
 
 class TestQueryParameters:
@@ -550,6 +583,25 @@ class TestQueryParameters:
     test_invalid = invalid_inputs(
         ([], "List should have at least 1 item"),
         ({}, "Dictionary should have at least 1 item"),
+        (
+            [{"foo": 1, "bar": 2}, {"foo": 3, "baz": 4}],
+            "Not all parameter sets define the same names",
+        ),
+        (
+            {
+                "param": [
+                    {
+                        "sub1": 100,
+                        "sub2": "foo",
+                    },
+                    {
+                        "sub1": 200,
+                        "sub3": "bar",
+                    },
+                ],
+            },
+            "Not all parameter sets define the same names",
+        ),
     )
 
 
