@@ -9,6 +9,7 @@ import pytest
 from pytest_mock import MockerFixture
 from pytest_structlog import StructuredLogCapture
 from sqlalchemy import (
+    TextClause,
     create_engine,
     text,
 )
@@ -348,7 +349,9 @@ class TestDatabase:
         db = Database("db", config)
 
         # connect SQL is executed in a committed transaction
-        result = await db.execute_sql("SELECT n FROM test ORDER BY n")
+        result = await db.execute_statement(
+            text("SELECT n FROM test ORDER BY n")
+        )
         assert result.rows == [(10,), (20,), (30,)]
         db.close()
 
@@ -361,14 +364,14 @@ class TestDatabase:
         )
         db = Database("db", config)
         with pytest.raises(DatabaseQueryError) as error:
-            await db.execute_sql("SELECT 100")
+            await db.execute_statement(text("SELECT 100"))
         assert "failed executing connect SQL" in str(error.value)
         db.close()
 
     async def test_close(
         self, log: StructuredLogCapture, db: Database
     ) -> None:
-        await db.execute_sql("SELECT 100")
+        await db.execute_statement(text("SELECT 100"))
         db.close()
         assert log.has("disconnected", database="db")
 
@@ -519,7 +522,7 @@ class TestDatabase:
         )
         [query_execution] = query.executions
         exception = Exception("boom!")
-        mocker.patch.object(db, "execute_sql", side_effect=exception)
+        mocker.patch.object(db, "execute_statement", side_effect=exception)
 
         with pytest.raises(DatabaseQueryError) as error:
             await db.execute(query_execution)
@@ -546,7 +549,7 @@ class TestDatabase:
         [query_execution] = query.executions
 
         def execute_sync(
-            sql: str,
+            statement: TextClause,
             parameters: dict[str, Any],
             tracker: ConnectionTracker,
         ) -> None:
@@ -563,7 +566,7 @@ class TestDatabase:
             level="warning",
         )
 
-    async def test_execute_sql_timeout_closes_connection(
+    async def test_execute_statement_timeout_closes_connection(
         self, mocker: MockerFixture, db: Database
     ) -> None:
         mock_conn = mocker.MagicMock()
@@ -571,7 +574,7 @@ class TestDatabase:
         stop = threading.Event()
 
         def slow_execute(
-            sql: str,
+            statement: TextClause,
             parameters: dict[str, Any],
             tracker: ConnectionTracker,
         ) -> None:
@@ -582,7 +585,9 @@ class TestDatabase:
 
         mocker.patch.object(db, "_execute_sync", slow_execute)
 
-        task = asyncio.create_task(db.execute_sql("SELECT 1", timeout=0.5))
+        task = asyncio.create_task(
+            db.execute_statement(text("SELECT 1"), timeout=0.5)
+        )
         # Wait for the thread to populate conn_ref before letting the timeout fire
         await asyncio.get_running_loop().run_in_executor(
             None, thread_running.wait
@@ -594,8 +599,8 @@ class TestDatabase:
         mock_conn.invalidate.assert_called_once()
         stop.set()  # unblock the thread so the executor can shut down
 
-    async def test_execute_sql(self, db: Database) -> None:
-        result = await db.execute_sql("SELECT 10, 20")
+    async def test_execute_statement(self, db: Database) -> None:
+        result = await db.execute_statement(text("SELECT 10, 20"))
         assert result.rows == [(10, 20)]
 
     @pytest.mark.parametrize(

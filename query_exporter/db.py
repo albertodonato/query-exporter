@@ -13,6 +13,7 @@ from dataclasses import (
     dataclass,
     field,
 )
+from functools import cached_property
 from itertools import chain
 from threading import Lock
 from time import (
@@ -22,10 +23,11 @@ from time import (
 from typing import Any, NamedTuple, Self
 
 from sqlalchemy import (
+    TextClause,
+    bindparam,
     create_engine,
     event,
     make_url,
-    text,
 )
 from sqlalchemy.engine import (
     Connection,
@@ -250,6 +252,15 @@ class QueryExecution:
     query: Query
     parameters: dict[str, Any] = field(default_factory=dict)
 
+    @cached_property
+    def statement(self) -> TextClause:
+        return TextClause(self.query.sql).bindparams(
+            *(
+                bindparam(name, value=value)
+                for name, value in self.parameters.items()
+            ),
+        )
+
 
 class ConnectionTracker:
     """Tracks the active connection for a query so it can be invalidated on timeout."""
@@ -305,8 +316,8 @@ class Database:
         self.logger.debug("run query", query=query_execution.name)
         query = query_execution.query
         try:
-            query_results = await self.execute_sql(
-                query.sql,
+            query_results = await self.execute_statement(
+                query_execution.statement,
                 parameters=query_execution.parameters,
                 timeout=query.timeout,
             )
@@ -323,9 +334,9 @@ class Database:
                 fatal=isinstance(error, FATAL_ERRORS),
             )
 
-    async def execute_sql(
+    async def execute_statement(
         self,
-        sql: str,
+        statement: TextClause,
         parameters: dict[str, Any] | None = None,
         timeout: QueryTimeout | None = None,
     ) -> QueryResults:
@@ -336,7 +347,7 @@ class Database:
         loop = asyncio.get_event_loop()
         tracker = ConnectionTracker()
         future = loop.run_in_executor(
-            self._executor, self._execute_sync, sql, parameters, tracker
+            self._executor, self._execute_sync, statement, parameters, tracker
         )
         try:
             return await asyncio.wait_for(
@@ -401,7 +412,7 @@ class Database:
 
     def _execute_sync(
         self,
-        sql: str,
+        statement: TextClause,
         parameters: dict[str, Any],
         tracker: ConnectionTracker,
     ) -> QueryResults:
@@ -409,7 +420,7 @@ class Database:
             with self._engine.begin() as conn:
                 tracker.set_conn(conn)
                 try:
-                    result = conn.execute(text(sql), parameters)
+                    result = conn.execute(statement, parameters)
                     return QueryResults.from_result(result)
                 except Exception as error:
                     raise self._db_error(error, exc_class=DatabaseQueryError)
