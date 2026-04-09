@@ -13,6 +13,7 @@ from prometheus_aioexporter import MetricsRegistry
 import pytest
 from pytest_mock import MockerFixture
 from pytest_structlog import StructuredLogCapture
+from sqlalchemy import TextClause
 import yaml
 
 from query_exporter import schema
@@ -96,7 +97,7 @@ async def run_queries(db_file: Path, *queries: str) -> None:
     config = schema.Database(dsn=f"sqlite:///{db_file}")
     with closing(Database("db", config)) as db:
         for query in queries:
-            await db.execute_sql(query)
+            await db.execute_statement(TextClause(query))
 
 
 class TestMetricsLastSeen:
@@ -447,7 +448,7 @@ class TestQueryExecutor:
         db = query_executor._databases["db"]
 
         def execute_sync(
-            sql: str,
+            statement: TextClause,
             parameters: dict[str, Any],
             tracker: ConnectionTracker,
         ) -> None:
