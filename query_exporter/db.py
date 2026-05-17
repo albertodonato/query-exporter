@@ -168,6 +168,7 @@ class MetricResult(NamedTuple):
     metric: str
     value: Any
     labels: dict[str, str]
+    timestamp: float | None = None
 
 
 class MetricResults(NamedTuple):
@@ -221,19 +222,33 @@ class Query:
         result_keys = sorted(query_results.keys)
         labels = self.labels()
         metrics = [metric.name for metric in self.metrics]
-        expected_keys = sorted(set(metrics) | labels)
+        expected_keys = set(metrics) | labels
+        has_timestamp = (
+            "__ts" in query_results.keys
+            and "__ts" not in expected_keys
+        )
+        if has_timestamp:
+            expected_keys.add("__ts")
+
         if len(expected_keys) != len(result_keys):
             raise InvalidResultCount(len(expected_keys), len(result_keys))
-        if result_keys != expected_keys:
-            raise InvalidResultColumnNames(expected_keys, result_keys)
+        if sorted(expected_keys) != result_keys:
+            raise InvalidResultColumnNames(sorted(expected_keys), result_keys)
+
         results = []
         for row in query_results.rows:
             values = dict(zip(query_results.keys, row))
+            timestamp = values.get("__ts")
+            if hasattr(timestamp, "timestamp"):
+                # convert datetime to unix timestamp
+                timestamp = timestamp.timestamp()
+
             for metric in self.metrics:
                 metric_result = MetricResult(
                     metric.name,
                     values[metric.name],
                     {label: values[label] for label in metric.labels},
+                    timestamp=timestamp,
                 )
                 results.append(metric_result)
 
