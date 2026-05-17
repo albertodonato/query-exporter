@@ -119,6 +119,8 @@ class QueryExecutor:
         self._aperiodic_executions: list[QueryExecution] = []
         # map query names to list of database names
         self._doomed_queries: dict[str, set[str]] = defaultdict(set)
+        # map (metric_name, label_values) to timestamp
+        self._timestamps: dict[tuple[str, tuple[str, ...]], float] = {}
         self._loop = loop
         self._last_seen = MetricsLastSeen(
             {
@@ -175,6 +177,7 @@ class QueryExecutor:
             metric = self._registry.get_metric(name)
             for values in label_values:
                 metric.remove(*values)
+                self._timestamps.pop((name, values), None)
 
     async def run_aperiodic_queries(self) -> None:
         """Run queries on request."""
@@ -262,7 +265,11 @@ class QueryExecutor:
         for result in results:
             try:
                 self._update_metric(
-                    database, result.metric, result.value, labels=result.labels
+                    database,
+                    result.metric,
+                    result.value,
+                    labels=result.labels,
+                    timestamp=result.timestamp,
                 )
             except ValueError as e:
                 self._logger.debug(
@@ -283,6 +290,7 @@ class QueryExecutor:
         name: str,
         value: Any,
         labels: Mapping[str, str] | None = None,
+        timestamp: float | None = None,
     ) -> None:
         """Update value for a metric."""
         if value is None:
@@ -300,10 +308,57 @@ class QueryExecutor:
             method=method,
             value=value,
             labels=all_labels,
+            timestamp=timestamp,
         )
         metric = self._registry.get_metric(name, labels=all_labels)
         self._update_metric_value(metric, method, value)
         self._last_seen.update(name, all_labels, self._loop.time())
+
+        # update explicit timestamp
+        if timestamp is not None:
+            label_values = tuple(
+                value for _, value in sorted(all_labels.items())
+            )
+            self._timestamps[(name, label_values)] = timestamp
+            self._patch_metric(name)
+        else:
+            # clear any previous explicit timestamp
+            label_values = tuple(
+                value for _, value in sorted(all_labels.items())
+            )
+            self._timestamps.pop((name, label_values), None)
+
+    def _patch_metric(self, name: str) -> None:
+        """Patch a metric to support explicit timestamps.
+
+        It works by wrapping the collect() method of the underlying prometheus
+        metric object.
+        """
+        metric = self._registry.get_metric(name)
+        # some MetricsRegistry might return a wrapper, we need the prometheus
+        # metric
+        p_metric = getattr(metric, "_metric", metric)
+
+        if hasattr(p_metric, "_original_collect"):
+            return
+
+        original_collect = p_metric.collect
+
+        def patched_collect():
+            for m in original_collect():
+                for i, s in enumerate(m.samples):
+                    label_values = tuple(
+                        value for _, value in sorted(s.labels.items())
+                    )
+                    ts = self._timestamps.get((name, label_values))
+                    if ts is not None:
+                        # Prometheus exposition format expects milliseconds
+                        # for timestamps
+                        m.samples[i] = s._replace(timestamp=int(ts * 1000))
+                yield m
+
+        p_metric.collect = patched_collect
+        p_metric._original_collect = original_collect
 
     def _get_metric_method(self, metric: MetricConfig) -> str:
         if metric.type == "counter" and not metric.config.get(
