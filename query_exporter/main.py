@@ -10,10 +10,9 @@ from prometheus_aioexporter import (
     EXPORTER_APP_KEY,
     Arguments,
     InvalidMetricType,
-    MetricConfig,
     PrometheusExporterScript,
 )
-from prometheus_client.metrics import Gauge
+from prometheus_client.metrics import Gauge, MetricWrapperBase
 
 from .config import (
     Config,
@@ -83,7 +82,9 @@ class QueryExporterScript(PrometheusExporterScript):
         await application[QUERY_EXECUTOR_APP_KEY].stop()
 
     async def _update_handler(
-        self, query_executor: QueryExecutor, metrics: list[MetricConfig]
+        self,
+        query_executor: QueryExecutor,
+        metrics: dict[str, MetricWrapperBase],
     ) -> None:  # pragma: nocover
         """Run queries with no specified schedule on each request."""
         await query_executor.run_aperiodic_queries()
