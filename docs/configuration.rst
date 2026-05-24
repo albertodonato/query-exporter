@@ -293,6 +293,12 @@ metric:
       query_latency:
         buckets: [0.1, 0.5, 1.0, 5.0]
 
+Builtin metrics can be disabled by specifying
+
+.. code:: yaml
+
+    builtin-metrics: false
+
 
 .. _`database-specific options`: databases.rst
 .. _`SQLAlchemy documentation`:

@@ -31,12 +31,7 @@ from .db import (
     QueryExecution,
     QueryTimeoutExpired,
 )
-from .metrics import (
-    DB_ERRORS_METRIC_NAME,
-    QUERIES_METRIC_NAME,
-    QUERY_LATENCY_METRIC_NAME,
-    QUERY_TIMESTAMP_METRIC_NAME,
-)
+from .metrics import BuiltinMetric
 
 
 class InvalidMetricValue(Exception):
@@ -329,28 +324,39 @@ class QueryExecutor:
         else:
             getattr(metric, method)(value)
 
+    def _update_builtin_metric(
+        self,
+        database: Database,
+        name: BuiltinMetric,
+        value: Any,
+        labels: Mapping[str, str] | None = None,
+    ) -> None:
+        """Update value for a builtin metric."""
+        if self._config.with_builtin_metrics:
+            self._update_metric(database, name, value, labels=labels)
+
     def _increment_queries_count(
         self, database: Database, query: Query, status: str
     ) -> None:
         """Increment count of queries in a status for a database."""
-        self._update_metric(
+        self._update_builtin_metric(
             database,
-            QUERIES_METRIC_NAME,
+            BuiltinMetric.QUERIES,
             1,
             labels={"query": query.name, "status": status},
         )
 
     def _increment_db_error_count(self, database: Database) -> None:
         """Increment number of errors for a database."""
-        self._update_metric(database, DB_ERRORS_METRIC_NAME, 1)
+        self._update_builtin_metric(database, BuiltinMetric.DATABASE_ERRORS, 1)
 
     def _update_query_latency_metric(
         self, database: Database, query: Query, latency: float
     ) -> None:
         """Update latency metric for a query on a database."""
-        self._update_metric(
+        self._update_builtin_metric(
             database,
-            QUERY_LATENCY_METRIC_NAME,
+            BuiltinMetric.QUERY_LATENCY,
             latency,
             labels={"query": query.name},
         )
@@ -359,9 +365,9 @@ class QueryExecutor:
         self, database: Database, query: Query, timestamp: float
     ) -> None:
         """Update timestamp metric for a query on a database."""
-        self._update_metric(
+        self._update_builtin_metric(
             database,
-            QUERY_TIMESTAMP_METRIC_NAME,
+            BuiltinMetric.QUERY_TIMESTAMP,
             timestamp,
             labels={"query": query.name},
         )

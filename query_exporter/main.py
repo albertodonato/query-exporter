@@ -20,7 +20,7 @@ from .config import (
     load_config,
 )
 from .executor import QueryExecutor
-from .metrics import QUERY_INTERVAL_METRIC_NAME
+from .metrics import BuiltinMetric
 
 # The application key to track the QueryExecutor
 QUERY_EXECUTOR_APP_KEY: AppKey[QueryExecutor] = AppKey("query-executor")
@@ -102,8 +102,11 @@ class QueryExporterScript(PrometheusExporterScript):
             raise SystemExit(1)
 
     def _set_static_metrics(self) -> None:
+        if not self.config.with_builtin_metrics:
+            return
+
         query_interval_metric = cast(
-            Gauge, self.registry.get_metric(QUERY_INTERVAL_METRIC_NAME)
+            Gauge, self.registry.get_metric(BuiltinMetric.QUERY_INTERVAL)
         )
         for query in self.config.queries.values():
             if query.interval:

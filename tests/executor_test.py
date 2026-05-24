@@ -186,7 +186,7 @@ class TestQueryExecutor:
             ("success",): 1.0
         }
 
-    async def test_run_scheduled_query(
+    async def test_run_query_scheduled(
         self,
         config_data: dict[str, Any],
         make_query_executor: MakeQueryExecutor,
@@ -309,30 +309,6 @@ class TestQueryExecutor:
             ("db1", "v1", "v2"): 100.0,
             ("db2", "v3", "v4"): 100.0,
         }
-
-    @pytest.mark.parametrize(
-        "result,metric_value",
-        [
-            (Decimal("100.123"), 100.123),
-            (23, 23.0),
-            ("100.123", 100.123),
-            (None, 0),
-        ],
-    )
-    async def test_update_metric_valid_not_float(
-        self,
-        registry: MetricsRegistry,
-        make_query_executor: MakeQueryExecutor,
-        result: Any,
-        metric_value: float,
-    ) -> None:
-        db = Database("db", schema.Database(dsn="sqlite:///:memory:"))
-        query_executor = make_query_executor()
-        query_executor._update_metric(db, "m", result)
-        metric = registry.get_metric("m")
-        [value] = metric_values(metric)
-        assert value == metric_value
-        assert isinstance(value, float)
 
     async def test_run_query_log(
         self,
@@ -475,6 +451,19 @@ class TestQueryExecutor:
         assert len(query_tracker.queries) == 1
         await advance_time(5)
         assert len(query_tracker.queries) == 2
+
+    async def test_run_query_no_builtin_metrics(
+        self,
+        query_tracker: QueryTracker,
+        config_data: dict[str, Any],
+        make_query_executor: MakeQueryExecutor,
+        registry: MetricsRegistry,
+    ) -> None:
+        config_data["builtin-metrics"] = False
+        query_executor = make_query_executor()
+        await query_executor.start()
+        await query_tracker.wait_results()
+        assert list(registry.get_metrics()) == ["m"]
 
     async def test_run_timed_queries_invalid_result_count(
         self,
@@ -628,6 +617,30 @@ class TestQueryExecutor:
         # succeeding query is run again, failing one is not
         assert len(query_tracker.results) == 2
         assert len(query_tracker.failures) == 1
+
+    @pytest.mark.parametrize(
+        "result,metric_value",
+        [
+            (Decimal("100.123"), 100.123),
+            (23, 23.0),
+            ("100.123", 100.123),
+            (None, 0),
+        ],
+    )
+    async def test_update_metric_valid_not_float(
+        self,
+        registry: MetricsRegistry,
+        make_query_executor: MakeQueryExecutor,
+        result: Any,
+        metric_value: float,
+    ) -> None:
+        db = Database("db", schema.Database(dsn="sqlite:///:memory:"))
+        query_executor = make_query_executor()
+        query_executor._update_metric(db, "m", result)
+        metric = registry.get_metric("m")
+        [value] = metric_values(metric)
+        assert value == metric_value
+        assert isinstance(value, float)
 
     async def test_clear_expired_series(
         self,

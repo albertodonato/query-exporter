@@ -4,14 +4,14 @@ from collections import defaultdict
 from collections.abc import Iterable, Sequence
 import dataclasses
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, Literal, cast
 
 from prometheus_aioexporter import MetricConfig
 from pydantic import ValidationError
 import structlog
 
 from . import db, schema
-from .metrics import BUILTIN_METRICS, get_builtin_metric_configs
+from .metrics import BuiltinMetrics
 from .yaml import ScannerError, load_yaml
 
 # Label used to tag metrics by database
@@ -36,6 +36,7 @@ class Config:
     databases: dict[str, schema.Database]
     metrics: dict[str, MetricConfig]
     queries: dict[str, db.Query]
+    with_builtin_metrics: bool
 
 
 def load_config(
@@ -71,16 +72,8 @@ def load_config(
         )
     database_labels = _validate_databases(configuration.databases)
     extra_labels = frozenset([DATABASE_LABEL]) | database_labels
-    builtin_metrics_config = (
-        {
-            name: metric.config()
-            for name, metric in configuration.builtin_metrics.as_dict().items()
-        }
-        if configuration.builtin_metrics
-        else {}
-    )
     metrics = _get_metrics(
-        configuration.metrics, builtin_metrics_config, extra_labels
+        configuration.metrics, configuration.builtin_metrics, extra_labels
     )
     queries = _get_queries(
         configuration.queries,
@@ -88,7 +81,12 @@ def load_config(
         metrics,
         extra_labels,
     )
-    config = Config(configuration.databases, metrics, queries)
+    config = Config(
+        databases=configuration.databases,
+        metrics=metrics,
+        queries=queries,
+        with_builtin_metrics=configuration.builtin_metrics is not False,
+    )
     _warn_if_unused(config, logger)
     return config
 
@@ -138,11 +136,12 @@ def _validate_databases(dbs: dict[str, schema.Database]) -> frozenset[str]:
 
 def _get_metrics(
     metrics: dict[str, schema.Metric],
-    builtin_metrics_config: dict[str, dict[str, Any]],
+    builtin_metrics: schema.BuiltinMetrics | Literal[False],
     extra_labels: frozenset[str],
 ) -> dict[str, MetricConfig]:
     """Return a dict mapping metric names to their configuration."""
-    configs = get_builtin_metric_configs(extra_labels, builtin_metrics_config)
+    configs: dict[str, MetricConfig] = {}
+
     for name, metric in metrics.items():
         _validate_metric_config(name, metric, extra_labels)
         configs[name] = MetricConfig(
@@ -152,6 +151,14 @@ def _get_metrics(
             labels=list(set(metric.labels) | extra_labels),
             config=metric.config,
         )
+
+    if builtin_metrics:
+        overrides = {
+            name: metric.config()
+            for name, metric in builtin_metrics.as_dict().items()
+        }
+        configs.update(BuiltinMetrics.get_configs(extra_labels, overrides))
+
     return configs
 
 
@@ -159,7 +166,7 @@ def _validate_metric_config(
     name: str, metric: schema.Metric, extra_labels: frozenset[str]
 ) -> None:
     """Validate a metric configuration stanza."""
-    if name in BUILTIN_METRICS:
+    if name in BuiltinMetrics.names():
         raise ConfigError(f'Label name "{name} is reserved for builtin metric')
     labels = set(metric.labels)
     overlap_labels = labels & extra_labels
@@ -250,7 +257,7 @@ def _warn_if_unused(
             entries=unused_dbs,
         )
     if unused_metrics := sorted(
-        set(config.metrics) - BUILTIN_METRICS - used_metrics
+        set(config.metrics) - BuiltinMetrics.names() - used_metrics
     ):
         logger.warning(
             "unused config entries",

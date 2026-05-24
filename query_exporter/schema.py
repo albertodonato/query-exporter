@@ -2,7 +2,7 @@ from enum import StrEnum
 from functools import reduce
 from itertools import product
 import re
-from typing import Annotated, Any, Self, cast
+from typing import Annotated, Any, Literal, Self, cast
 
 from apscheduler.triggers.cron import CronTrigger
 from pydantic import (
@@ -154,21 +154,25 @@ DSN = Annotated[str | DSNDetails, AfterValidator(_validate_dsn)]
 
 
 class BuiltinMetric(Model):
-    """Configuration for a builtin metric"""
-
-    buckets: Buckets
+    """Configuration a builtin metric."""
 
     def config(self) -> dict[str, Any]:
         """The metric configuration."""
         return self.model_dump()
 
 
+class BuiltinMetricQueryLatency(BuiltinMetric):
+    """Configuration for the query_latency builtin metric."""
+
+    buckets: Buckets
+
+
 class BuiltinMetrics(BaseModel):
-    """Configuration for builtin metrics"""
+    """Configuration for builtin metrics."""
 
     model_config = ConfigDict(extra="forbid")
 
-    query_latency: BuiltinMetric | None = None
+    query_latency: BuiltinMetricQueryLatency | None = None
 
     def as_dict(self) -> dict[str, BuiltinMetric]:
         """Return builtin metrics as a dictionary keyed by metric name."""
@@ -327,7 +331,9 @@ class Query(Model):
 class ExporterConfig(Model):
     """Exporter configuration."""
 
-    builtin_metrics: BuiltinMetrics | None = None
+    builtin_metrics: BuiltinMetrics | Literal[False] = Field(
+        default_factory=BuiltinMetrics
+    )
     databases: dict[str, Database]
     metrics: dict[Label, Metric]
     queries: dict[str, Query]

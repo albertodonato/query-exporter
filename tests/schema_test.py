@@ -8,6 +8,7 @@ from query_exporter.schema import (
     DSN,
     Buckets,
     BuiltinMetric,
+    BuiltinMetricQueryLatency,
     BuiltinMetrics,
     ConnectionPool,
     Database,
@@ -212,14 +213,20 @@ class TestDSN:
 
 
 class TestBuiltinMetric:
-    def test_buckets(self) -> None:
-        metric = BuiltinMetric(buckets=[0.1, 0.5, 1.0])
-        assert metric.buckets == [0.1, 0.5, 1.0]
-
     def test_config(self) -> None:
-        buckets = [0.1, 0.5, 1.0]
-        metric = BuiltinMetric(buckets=buckets)
-        assert metric.config() == {"buckets": buckets}
+
+        class MyMetric(BuiltinMetric):
+            foo: int
+            bar: str
+
+        metric = MyMetric(foo=3, bar="x")
+        assert metric.config() == {"foo": 3, "bar": "x"}
+
+
+class TestBuiltinMetricQueryLatency:
+    def test_buckets(self) -> None:
+        metric = BuiltinMetricQueryLatency(buckets=[0.1, 0.5, 1.0])
+        assert metric.buckets == [0.1, 0.5, 1.0]
 
 
 class TestBuiltinMetrics:
@@ -227,9 +234,14 @@ class TestBuiltinMetrics:
         assert BuiltinMetrics().as_dict() == {}
 
     def test_with_values(self) -> None:
-        query_latency = BuiltinMetric(buckets=[0.1, 0.5, 1.0])
+        query_latency = BuiltinMetricQueryLatency(buckets=[0.1, 0.5, 1.0])
         metrics = BuiltinMetrics(query_latency=query_latency)
         assert metrics.as_dict() == {"query_latency": query_latency}
+
+    def test_no_extra_fields(self) -> None:
+        with pytest.raises(ValidationError) as err:
+            BuiltinMetrics(unknown="foo")  # ty: ignore[unknown-argument]
+        assert "Extra inputs" in str(err)
 
 
 class TestConnectionPool:
@@ -727,3 +739,22 @@ class TestExporterConfig:
         assert query2.databases == ["db2"]
         assert query2.metrics == ["m2"]
         assert query2.sql == "SELECT 2"
+
+    def test_builtin_metrics_empty(
+        self, sample_config: dict[str, Any]
+    ) -> None:
+        config = ExporterConfig.model_validate(sample_config)
+        assert isinstance(config.builtin_metrics, BuiltinMetrics)
+        assert config.builtin_metrics.query_latency is None
+
+    def test_builtin_metrics_override(
+        self, sample_config: dict[str, Any]
+    ) -> None:
+        sample_config["builtin-metrics"] = {
+            "query_latency": {"buckets": [1, 10, 20]}
+        }
+        config = ExporterConfig.model_validate(sample_config)
+        assert config.builtin_metrics is not False
+        assert config.builtin_metrics.as_dict() == {
+            "query_latency": BuiltinMetricQueryLatency(buckets=[1, 10, 20]),
+        }

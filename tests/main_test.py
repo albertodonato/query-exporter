@@ -90,3 +90,18 @@ class TestQureyExporterScript:
             ("q",): 10.0,
             ("q2",): 20.0,
         }
+
+    def test_static_metrics_no_builtin(
+        self,
+        mock_run_app: mock.MagicMock,
+        script: QueryExporterScript,
+        sample_config: dict[str, Any],
+        write_config: ConfigWriter,
+        invoke_cli: Callable[..., Result],
+    ) -> None:
+        sample_config["builtin-metrics"] = False
+        config_file = write_config(sample_config)
+        result = invoke_cli("--config", str(config_file))
+        assert result.exit_code == 0
+        # no builtin metrics
+        assert list(script.registry.get_metrics()) == ["m"]
