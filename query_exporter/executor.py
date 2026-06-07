@@ -32,6 +32,7 @@ from .db import (
     QueryExecution,
     QueryTimeoutExpired,
 )
+from .metrics import TimestampedMixin
 
 
 class InvalidMetricValue(Exception):
@@ -257,7 +258,11 @@ class QueryExecutor:
         for result in results:
             try:
                 self._update_metric(
-                    database, result.metric, result.value, labels=result.labels
+                    database,
+                    result.metric,
+                    result.value,
+                    labels=result.labels,
+                    timestamp=result.timestamp,
                 )
             except ValueError as e:
                 self._logger.debug(
@@ -278,6 +283,7 @@ class QueryExecutor:
         name: str,
         value: SupportsFloat | str | None,
         labels: Mapping[str, str] | None = None,
+        timestamp: float | None = None,
     ) -> None:
         """Update value for a metric."""
         metric_config = self._config.metrics[name]
@@ -299,8 +305,10 @@ class QueryExecutor:
             method=method,
             value=value,
             labels=all_labels,
+            ts=timestamp,
         )
         metric = self._registry.get_metric(name, labels=all_labels)
+        cast(TimestampedMixin, metric).set_timestamp(timestamp)
         self._update_metric_value(metric, method, value)
         self._last_seen.update(name, all_labels, self._loop.time())
 

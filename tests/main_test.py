@@ -4,10 +4,12 @@ from typing import Any
 from unittest import mock
 
 from click.testing import CliRunner, Result
+from prometheus_aioexporter import DEFAULT_METRIC_TYPES
 import pytest
 from pytest_mock import MockerFixture
 
 from query_exporter.main import QueryExporterScript
+from query_exporter.metrics import TimestampedMixin
 
 from .conftest import ConfigWriter, metric_values
 
@@ -34,6 +36,15 @@ def invoke_cli(
 
 
 class TestQureyExporterScript:
+    def test_metric_types_timestamped(
+        self, script: QueryExporterScript
+    ) -> None:
+        metric_types = script.metric_types()
+        assert [mt.name for mt in metric_types] == [
+            mt.name for mt in DEFAULT_METRIC_TYPES
+        ]
+        assert all(issubclass(mt.cls, TimestampedMixin) for mt in metric_types)
+
     def test_run(
         self,
         mock_run_app: mock.MagicMock,

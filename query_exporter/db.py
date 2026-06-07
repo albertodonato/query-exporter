@@ -13,6 +13,7 @@ from dataclasses import (
     dataclass,
     field,
 )
+from datetime import UTC, datetime
 from functools import cached_property
 from itertools import chain
 from threading import Lock
@@ -105,6 +106,18 @@ class InvalidResultColumnNames(Exception):
 FATAL_ERRORS = (InvalidResultCount, InvalidResultColumnNames)
 
 
+def _to_timestamp(value: datetime | float | int | None) -> float | None:
+    """Convert a value from a query result to a Unix timestamp."""
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        # naive datetimes are assumed to be in UTC
+        if value.tzinfo is None:
+            value = value.replace(tzinfo=UTC)
+        return value.timestamp()
+    return float(value)
+
+
 def create_db_engine(config: schema.Database) -> Engine:
     """Create the database engine, validating the configuration."""
     try:
@@ -143,6 +156,7 @@ class QueryMetric(NamedTuple):
 
     name: str
     labels: Iterable[str]
+    timestamp_column: str | None = None
 
 
 class QueryResults(NamedTuple):
@@ -170,6 +184,7 @@ class MetricResult(NamedTuple):
     metric: str
     value: Any
     labels: dict[str, str]
+    timestamp: float | None = None
 
 
 class MetricResults(NamedTuple):
@@ -188,6 +203,7 @@ class Query:
     databases: list[str]
     metrics: list[QueryMetric]
     sql: str
+    timestamp_column: str | None = None
     timeout: QueryTimeout | None = None
     interval: int | None = None
     schedule: str | None = None
@@ -214,7 +230,9 @@ class Query:
     def result_columns(self) -> list[str]:
         """Expected column names in query results."""
         return sorted(
-            set(metric.name for metric in self.metrics) | self.labels()
+            set(metric.name for metric in self.metrics)
+            | self.labels()
+            | ({self.timestamp_column} if self.timestamp_column else set())
         )
 
     def labels(self) -> frozenset[str]:
@@ -236,10 +254,16 @@ class Query:
         for row in query_results.rows:
             values = dict(zip(query_results.keys, row))
             for metric in self.metrics:
+                timestamp = (
+                    _to_timestamp(values[metric.timestamp_column])
+                    if metric.timestamp_column
+                    else None
+                )
                 metric_result = MetricResult(
                     metric.name,
                     values[metric.name],
                     {label: values[label] for label in metric.labels},
+                    timestamp=timestamp,
                 )
                 results.append(metric_result)
 

@@ -43,7 +43,7 @@ dynamic = [
 dependencies = [
   "aiohttp",
   "apscheduler",
-  "prometheus-aioexporter>=3.1",
+  "prometheus-aioexporter>=3.3",
   "prometheus-client",
   "pydantic",
   "pyyaml",

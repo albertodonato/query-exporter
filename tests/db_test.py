@@ -1,6 +1,7 @@
 import asyncio
 from collections.abc import Iterator
 from contextlib import closing
+from datetime import datetime, timedelta, timezone
 import threading
 import time
 from typing import Any, cast
@@ -201,6 +202,16 @@ class TestQuery:
             "metric2",
         ]
 
+    def test_result_columns_with_timestamp_column(self) -> None:
+        query = Query(
+            "query",
+            ["db"],
+            [QueryMetric("metric", ["label"], timestamp_column="ts")],
+            "SELECT 1",
+            timestamp_column="ts",
+        )
+        assert query.result_columns() == ["label", "metric", "ts"]
+
     def test_labels(self) -> None:
         query = Query(
             "query",
@@ -257,6 +268,49 @@ class TestQuery:
             MetricResult("metric2", 11, {"label2": "foo"}),
             MetricResult("metric1", 44, {"label1": "bza", "label2": "baz"}),
             MetricResult("metric2", 33, {"label2": "baz"}),
+        ]
+
+    @pytest.mark.parametrize(
+        "value,timestamp",
+        [
+            (1700000000, 1700000000.0),
+            (1700000000.123, 1700000000.123),
+            (datetime(2023, 11, 14, 22, 13, 20), 1700000000.0),
+            (
+                datetime(
+                    2023,
+                    11,
+                    15,
+                    0,
+                    13,
+                    20,
+                    tzinfo=timezone(timedelta(hours=2)),
+                ),
+                1700000000.0,
+            ),
+            (None, None),
+        ],
+    )
+    def test_results_metrics_with_timestamp(
+        self, value: datetime | float | int | None, timestamp: float | None
+    ) -> None:
+        query = Query(
+            "query",
+            ["db"],
+            [
+                QueryMetric("metric1", ["label"], timestamp_column="ts"),
+                QueryMetric("metric2", [], timestamp_column="ts"),
+            ],
+            "",
+            timestamp_column="ts",
+        )
+        query_results = QueryResults(
+            ["label", "metric1", "metric2", "ts"], [("foo", 11, 22, value)]
+        )
+        metrics_results = query.results(query_results)
+        assert metrics_results.results == [
+            MetricResult("metric1", 11, {"label": "foo"}, timestamp=timestamp),
+            MetricResult("metric2", 22, {}, timestamp=timestamp),
         ]
 
     def test_results_wrong_result_count(self) -> None:

@@ -278,6 +278,12 @@ Each query definition can have the following keys:
 
   If specified, it must be a multiple of 0.1.
 
+``timestamp-column``:
+  name of the column from the query result to be used as metric timestamp.
+
+  This is not needed in general, but can be useful to precisely align metrics
+  value with their generation timestamp.
+
 
 ``builtin-metrics`` section
 ---------------------------
