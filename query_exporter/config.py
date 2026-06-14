@@ -11,7 +11,7 @@ from pydantic import ValidationError
 import structlog
 
 from . import db, schema
-from .metrics import BuiltinMetrics
+from .builtin_metrics import BuiltinMetrics
 from .yaml import ScannerError, load_yaml
 
 # Label used to tag metrics by database

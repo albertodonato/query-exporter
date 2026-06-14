@@ -18,6 +18,7 @@ from prometheus_client import Counter
 from prometheus_client.metrics import MetricWrapperBase
 import structlog
 
+from .builtin_metrics import BuiltinMetric
 from .config import (
     DATABASE_LABEL,
     Config,
@@ -31,7 +32,6 @@ from .db import (
     QueryExecution,
     QueryTimeoutExpired,
 )
-from .metrics import BuiltinMetric
 
 
 class InvalidMetricValue(Exception):

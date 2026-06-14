@@ -1,4 +1,4 @@
-from query_exporter.metrics import BuiltinMetrics
+from query_exporter.builtin_metrics import BuiltinMetrics
 
 
 class TestBuiltinMetrics:
