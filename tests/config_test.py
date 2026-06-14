@@ -4,12 +4,12 @@ from typing import Any
 import pytest
 from pytest_structlog import StructuredLogCapture
 
+from query_exporter.builtin_metrics import BuiltinMetrics
 from query_exporter.config import (
     ConfigError,
     load_config,
 )
 from query_exporter.db import QueryMetric
-from query_exporter.metrics import BuiltinMetrics
 
 from .conftest import ConfigWriter
 

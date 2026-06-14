@@ -14,13 +14,13 @@ from prometheus_aioexporter import (
 )
 from prometheus_client.metrics import Gauge, MetricWrapperBase
 
+from .builtin_metrics import BuiltinMetric
 from .config import (
     Config,
     ConfigError,
     load_config,
 )
 from .executor import QueryExecutor
-from .metrics import BuiltinMetric
 
 # The application key to track the QueryExecutor
 QUERY_EXECUTOR_APP_KEY: AppKey[QueryExecutor] = AppKey("query-executor")
