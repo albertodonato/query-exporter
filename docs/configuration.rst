@@ -267,6 +267,17 @@ Each query definition can have the following keys:
 
   will update ``metric1`` to ``10.0`` and ``metric2`` to ``20.0``.
 
+  If the query returns a column named ``__ts``, its value is used as the
+  explicit timestamp for the metric in the Prometheus exposition format.
+  For example:
+
+  .. code:: yaml
+
+      sql: SELECT 10.0 AS metric1, created_at AS __ts FROM table
+
+  The value should be a Unix timestamp in seconds (float or integer) or a datetime
+  object.
+
   **Note**:
    since ``:`` is used for parameter markers (see ``parameters`` above),
    literal single ``:`` at the beginning of a word must be escaped with
