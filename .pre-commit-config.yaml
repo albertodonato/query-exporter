@@ -1,13 +1,13 @@
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: 22f0422809455ec89ffdcf5a00170ba816e42ddb  # frozen: v0.15.16
+    rev: 3b3f7c3f57fe9925356faf5fe6230835138be230  # frozen: v0.15.17
     hooks:
       - id: ruff-check
         args: [ --fix ]
       - id: ruff-format
 
   - repo: https://github.com/tox-dev/pyproject-fmt
-    rev: 3a8ef795727fa946dfcb21c5d07b1442c2362c09  # frozen: v2.23.0
+    rev: ca620e0df5ae9a02b7b81a6e4c954894f043ce42  # frozen: v2.24.1
     hooks:
       - id: pyproject-fmt
 
