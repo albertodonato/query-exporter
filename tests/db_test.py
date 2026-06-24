@@ -175,6 +175,25 @@ class TestQuery:
         )
         assert query.timed == is_timed
 
+    def test_result_columns(self) -> None:
+        query = Query(
+            "query",
+            ["db"],
+            [
+                QueryMetric("metric1", ["label1", "label2"]),
+                QueryMetric("metric2", ["label3", "label4"]),
+            ],
+            "SELECT 1",
+        )
+        assert query.result_columns() == [
+            "label1",
+            "label2",
+            "label3",
+            "label4",
+            "metric1",
+            "metric2",
+        ]
+
     def test_labels(self) -> None:
         query = Query(
             "query",

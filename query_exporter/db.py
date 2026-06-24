@@ -209,6 +209,12 @@ class Query:
         """Whether the query is run periodically via interval or schedule."""
         return bool(self.interval or self.schedule)
 
+    def result_columns(self) -> list[str]:
+        """Expected column names in query results."""
+        return sorted(
+            set(metric.name for metric in self.metrics) | self.labels()
+        )
+
     def labels(self) -> frozenset[str]:
         """Return all labels for metrics in the query."""
         return frozenset(chain(*(metric.labels for metric in self.metrics)))
@@ -219,9 +225,7 @@ class Query:
             return MetricResults([])
 
         result_keys = sorted(query_results.keys)
-        labels = self.labels()
-        metrics = [metric.name for metric in self.metrics]
-        expected_keys = sorted(set(metrics) | labels)
+        expected_keys = self.result_columns()
         if len(expected_keys) != len(result_keys):
             raise InvalidResultCount(len(expected_keys), len(result_keys))
         if result_keys != expected_keys:
@@ -263,7 +267,7 @@ class QueryExecution:
 
 
 class ConnectionTracker:
-    """Tracks the active connection for a query so it can be invalidated on timeout."""
+    """Track the active connection for a query so it can be invalidated on timeout."""
 
     def __init__(self) -> None:
         self._lock = Lock()
