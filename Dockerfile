@@ -1,6 +1,7 @@
 FROM python:3.14-slim AS base
 
-RUN apt-get update && apt-get full-upgrade -y && apt-get install -y --no-install-recommends curl
+RUN apt-get update && apt-get full-upgrade -y
+RUN apt-get install -y --no-install-recommends curl
 
 COPY --from=docker.io/astral/uv:latest /uv /bin/
 
