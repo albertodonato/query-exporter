@@ -26,7 +26,7 @@ VOLUME /config
 WORKDIR /config
 ENTRYPOINT ["query-exporter"]
 
-HEALTHCHECK --interval=3s --timeout=3s CMD curl --head -fsS http://localhost:9560/ || exit 1
+HEALTHCHECK --interval=3s --timeout=3s CMD curl -fsS http://localhost:9560/
 
 FROM base AS full
 
