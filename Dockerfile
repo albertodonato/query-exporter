@@ -9,6 +9,7 @@ COPY . /src
 ENV PATH="/virtualenv/bin:$PATH" \
     UV_COMPILE_BYTECODE="1" \
     UV_LOCKED="1" \
+    UV_NO_CACHE="1" \
     UV_NO_DEFAULT_GROUPS="1" \
     UV_PROJECT_ENVIRONMENT="/virtualenv" \
     UV_PYTHON_DOWNLOADS="never" \
@@ -39,7 +40,7 @@ RUN apt-get install -y --no-install-recommends $BUILD_DEPS
 RUN uv sync --group=docker-dbs
 
 RUN apt-get install -y --no-install-recommends \
-    libmariadb-dev-compat \
+    libmariadb3 \
     libpq5 \
     libxml2
 RUN apt-get purge -y $BUILD_DEPS && apt-get autoremove --purge -y
