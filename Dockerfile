@@ -25,6 +25,7 @@ VOLUME /config
 WORKDIR /config
 ENTRYPOINT ["query-exporter"]
 
+HEALTHCHECK --interval=3s --timeout=3s CMD curl --head -fsS http://localhost:9560/metrics || exit 1
 
 FROM base AS full
 
@@ -41,5 +42,6 @@ RUN uv sync --group=docker-dbs
 RUN apt-get install -y --no-install-recommends \
     libmariadb-dev-compat \
     libpq5 \
-    libxml2
+    libxml2 \
+    curl
 RUN apt-get purge -y $BUILD_DEPS && apt-get autoremove --purge -y
