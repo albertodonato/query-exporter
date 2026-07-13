@@ -1,6 +1,7 @@
 FROM python:3.14-slim AS base
 
 RUN apt-get update && apt-get full-upgrade -y
+RUN apt-get install -y --no-install-recommends curl
 
 COPY --from=docker.io/astral/uv:latest /uv /bin/
 
@@ -25,7 +26,7 @@ VOLUME /config
 WORKDIR /config
 ENTRYPOINT ["query-exporter"]
 
-HEALTHCHECK --interval=3s --timeout=3s CMD curl --head -fsS http://localhost:9560/metrics || exit 1
+HEALTHCHECK --interval=3s --timeout=3s CMD curl --head -fsS http://localhost:9560/ || exit 1
 
 FROM base AS full
 
@@ -42,6 +43,5 @@ RUN uv sync --group=docker-dbs
 RUN apt-get install -y --no-install-recommends \
     libmariadb-dev-compat \
     libpq5 \
-    libxml2 \
-    curl
+    libxml2
 RUN apt-get purge -y $BUILD_DEPS && apt-get autoremove --purge -y
