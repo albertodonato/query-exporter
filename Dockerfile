@@ -1,6 +1,7 @@
 FROM python:3.14-slim AS base
 
 RUN apt-get update && apt-get full-upgrade -y
+RUN apt-get install -y --no-install-recommends curl
 
 COPY --from=docker.io/astral/uv:latest /uv /bin/
 
@@ -25,6 +26,7 @@ VOLUME /config
 WORKDIR /config
 ENTRYPOINT ["query-exporter"]
 
+HEALTHCHECK --interval=3s --timeout=3s CMD curl -fsS http://localhost:9560/
 
 FROM base AS full
 
