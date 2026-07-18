@@ -177,7 +177,7 @@ SQLAlchemy_ doesn't depend on specific Python database modules at
 installation. This means additional modules might need to be installed for
 engines in use. These can be installed as follows::
 
-  pip install SQLAlchemy[postgresql] SQLAlchemy[mysql] ...
+  uv pip install SQLAlchemy[postgresql] SQLAlchemy[mysql] ...
 
 based on which database engines are needed.
 
