@@ -8,7 +8,7 @@ from yaml.scanner import ScannerError
 __all__ = ["ScannerError"]
 
 
-def load_yaml(path: Path) -> Any:
+def load_yaml(path: Path) -> Any:  # noqa: ANN401
     """Load a YAML document from a file."""
 
     with path.open() as fd:
@@ -28,7 +28,7 @@ def _config_loader(path: Path) -> type[_ConfigLoader]:
     return ConfigLoaderWithPath
 
 
-def _tag_env(loader: _ConfigLoader, node: yaml.nodes.ScalarNode) -> Any:
+def _tag_env(loader: _ConfigLoader, node: yaml.nodes.ScalarNode) -> Any:  # noqa: ANN401
     env = loader.construct_scalar(node)
     value = os.getenv(env)
     if value is None:
@@ -53,7 +53,7 @@ def _tag_file(loader: _ConfigLoader, node: yaml.nodes.ScalarNode) -> str:
     return path.read_text().strip()
 
 
-def _tag_include(loader: _ConfigLoader, node: yaml.nodes.ScalarNode) -> Any:
+def _tag_include(loader: _ConfigLoader, node: yaml.nodes.ScalarNode) -> Any:  # noqa: ANN401
     path = loader.base_path / loader.construct_scalar(node)
     if not path.is_file():
         raise ScannerError(

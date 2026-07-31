@@ -1,6 +1,5 @@
 from pathlib import Path
 from textwrap import dedent
-from typing import Any
 
 import pytest
 import yaml
@@ -23,7 +22,10 @@ class TestLoadYAML:
 
     @pytest.mark.parametrize("env_value", ["foo", 3, False, {"foo": "bar"}])
     def test_load_env(
-        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, env_value: Any
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+        env_value: str | int | bool | dict[str, str],
     ) -> None:
         monkeypatch.setenv("FOO", yaml.dump(env_value))
         config = tmp_path / "config.yaml"

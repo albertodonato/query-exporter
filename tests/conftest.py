@@ -159,7 +159,7 @@ ConfigWriter = Callable[[Any], Path]
 
 @pytest.fixture
 def write_config(tmp_path: Path) -> Iterator[ConfigWriter]:
-    def write(data: Any) -> Path:
+    def write(data: Any) -> Path:  # noqa: ANN401
         path = tmp_path / f"{uuid.uuid4()}.yaml"
         path.write_text(yaml.dump(data), "utf-8")
         return path
