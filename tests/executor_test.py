@@ -619,6 +619,15 @@ class TestQueryExecutor:
         assert len(query_tracker.failures) == 1
 
     @pytest.mark.parametrize(
+        "metric_type,metric_config",
+        [
+            ("gauge", {}),
+            ("counter", {"increment": True}),
+            ("histogram", {}),
+            ("summary", {}),
+        ],
+    )
+    @pytest.mark.parametrize(
         "result,metric_value",
         [
             (Decimal("100.123"), 100.123),
@@ -630,15 +639,28 @@ class TestQueryExecutor:
     async def test_update_metric_valid_not_float(
         self,
         registry: MetricsRegistry,
+        config_data: dict[str, Any],
         make_query_executor: MakeQueryExecutor,
         result: Any,
         metric_value: float,
+        metric_type: str,
+        metric_config: dict[str, Any],
     ) -> None:
+        config_data["metrics"]["m"] = {"type": metric_type, **metric_config}
         db = Database("db", schema.Database(dsn="sqlite:///:memory:"))
         query_executor = make_query_executor()
         query_executor._update_metric(db, "m", result)
         metric = registry.get_metric("m")
-        [value] = metric_values(metric)
+        suffix = {
+            "counter": "_total",
+            "histogram": "_sum",
+            "summary": "_sum",
+        }.get(metric_type, "")
+        [value] = (
+            value
+            for sample_suffix, _, value, *_ in metric._samples()
+            if sample_suffix == suffix
+        )
         assert value == metric_value
         assert isinstance(value, float)
 

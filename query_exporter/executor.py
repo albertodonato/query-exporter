@@ -280,10 +280,14 @@ class QueryExecutor:
         labels: Mapping[str, str] | None = None,
     ) -> None:
         """Update value for a metric."""
+        metric_config = self._config.metrics[name]
         if value is None:
             # count queries might return NULL, treat it as zero
             value = 0.0
-        metric_config = self._config.metrics[name]
+        elif metric_config.type != "enum":
+            # coerce numeric-like values (e.g. Decimal, str) to float, since
+            # not all prometheus_client metric methods do this internally
+            value = float(value)
         all_labels = {DATABASE_LABEL: database.name}
         all_labels.update(database.config.labels)
         if labels:
