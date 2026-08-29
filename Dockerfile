@@ -29,6 +29,7 @@ ENTRYPOINT ["query-exporter"]
 
 HEALTHCHECK --interval=3s --timeout=3s CMD curl -fsS http://localhost:9560/
 
+
 FROM base AS full
 
 ENV BUILD_DEPS=" \

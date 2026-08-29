@@ -1,3 +1,11 @@
+v5.2.1 - 2026-08-29
+===================
+
+- Fix handling of Decimal values properly for all kind of metrics (#441)
+- Dependencies updates.
+- Add missing typing.
+
+
 v5.2.0 - 2026-07-18
 ===================
 
