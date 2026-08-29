@@ -134,8 +134,8 @@ ini_options.asyncio_mode = "auto"
 [tool.coverage]
 run.source = [ "query_exporter" ]
 report.fail_under = 100.0
-report.show_missing = true
 report.skip_covered = true
+report.show_missing = true
 
 [tool.tox.env.check]
 dependency_groups = [ "dev", "tests", "types" ]
