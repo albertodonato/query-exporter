@@ -83,6 +83,7 @@ integration-tests = [
   { include-group = "integration-tests-dbs" }
 ]
 integration-tests-dbs = [
+  "ibm-db-sa",
   "mysqlclient",
   "oracledb",
   "psycopg2-binary",
