@@ -1,6 +1,4 @@
-from pytest import CollectReport, StashKey, TestReport
-
-PHASE_REPORT_KEY = StashKey[dict[str, CollectReport]]()
+from pytest import StashKey, TestReport
 
 
 class ReportCollector:
@@ -19,3 +17,6 @@ class ReportCollector:
         if not report:
             return False
         return report.failed
+
+
+PHASE_REPORT_KEY = StashKey[ReportCollector]()

@@ -641,7 +641,7 @@ class TestQueryExecutor:
         registry: MetricsRegistry,
         config_data: dict[str, Any],
         make_query_executor: MakeQueryExecutor,
-        result: Any,
+        result: Decimal | int | str | None,
         metric_value: float,
         metric_type: str,
         metric_config: dict[str, Any],

@@ -26,7 +26,7 @@ from query_exporter.schema import (
 from .conftest import ConfigWriter
 
 
-def validate_field(field: type, value: Any) -> Any:
+def validate_field(field: type, value: Any) -> Any:  # noqa: ANN401
     return TypeAdapter(field).validate_python(value)
 
 
@@ -39,7 +39,11 @@ def valid_inputs(
     fixtures: Iterable[str] = (),
 ) -> Callable[[InputsTest, Any, Any], None]:
     @pytest.mark.parametrize("value,converted", inputs)
-    def test(self: InputsTest, value: Any, converted: Any) -> None:
+    def test(
+        self: InputsTest,
+        value: Any,  # noqa: ANN401
+        converted: Any,  # noqa: ANN401
+    ) -> None:
         assert validate_field(self.field, value) == converted
 
     if fixtures:
@@ -52,7 +56,11 @@ def invalid_inputs(
     *inputs: tuple[Any, Any],
 ) -> Callable[[InputsTest, Any, str], None]:
     @pytest.mark.parametrize("value,message", inputs)
-    def test(self: InputsTest, value: Any, message: Any) -> None:
+    def test(
+        self: InputsTest,
+        value: Any,  # noqa: ANN401
+        message: Any,  # noqa: ANN401
+    ) -> None:
         with pytest.raises(ValidationError) as err:
             validate_field(self.field, value)
         assert message in str(err.value)
@@ -450,7 +458,9 @@ class TestQuery:
             },
         ],
     )
-    def test_parameters_not_matching(self, parameters: QueryParameters):
+    def test_parameters_not_matching(
+        self, parameters: QueryParameters
+    ) -> None:
         with pytest.raises(ValueError) as err:
             Query.model_validate(
                 {

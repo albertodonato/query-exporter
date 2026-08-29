@@ -24,7 +24,9 @@ class ConfigError(Exception):
     Optionally, a list of dicts can be provided with error details.
     """
 
-    def __init__(self, message: str, details: Sequence[dict[str, str]] = ()):
+    def __init__(
+        self, message: str, details: Sequence[dict[str, str]] = ()
+    ) -> None:
         super().__init__(message)
         self.details = details
 

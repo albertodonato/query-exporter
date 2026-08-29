@@ -5,7 +5,7 @@ from collections import defaultdict
 from collections.abc import Mapping
 from datetime import datetime
 from itertools import chain
-from typing import Any, cast
+from typing import SupportsFloat, cast
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
@@ -45,7 +45,7 @@ class MetricsLastSeen:
 
     """
 
-    def __init__(self, expirations: dict[str, int | None]):
+    def __init__(self, expirations: dict[str, int | None]) -> None:
         self._expirations = expirations
         self._last_seen: dict[str, dict[tuple[str, ...], float]] = defaultdict(
             dict
@@ -104,7 +104,7 @@ class QueryExecutor:
         config: Config,
         registry: MetricsRegistry,
         logger: structlog.stdlib.BoundLogger | None = None,
-    ):
+    ) -> None:
         loop = asyncio.get_event_loop()
 
         self._config = config
@@ -276,7 +276,7 @@ class QueryExecutor:
         self,
         database: Database,
         name: str,
-        value: Any,
+        value: SupportsFloat | str | None,
         labels: Mapping[str, str] | None = None,
     ) -> None:
         """Update value for a metric."""
@@ -320,7 +320,10 @@ class QueryExecutor:
         return method
 
     def _update_metric_value(
-        self, metric: MetricWrapperBase, method: str, value: Any
+        self,
+        metric: MetricWrapperBase,
+        method: str,
+        value: SupportsFloat | str,
     ) -> None:
         if metric._type == "counter" and method == "set":
             # counters can only be incremented, directly set the underlying value
@@ -332,7 +335,7 @@ class QueryExecutor:
         self,
         database: Database,
         name: BuiltinMetric,
-        value: Any,
+        value: SupportsFloat | str | None,
         labels: Mapping[str, str] | None = None,
     ) -> None:
         """Update value for a builtin metric."""

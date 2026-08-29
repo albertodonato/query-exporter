@@ -59,7 +59,9 @@ def docker_compose(
 class ServiceHandler:
     """Handler starting and stopping a Docker service."""
 
-    def __init__(self, executor: DockerComposeExecutor, services: Services):
+    def __init__(
+        self, executor: DockerComposeExecutor, services: Services
+    ) -> None:
         self._executor = executor
         self._services = services
 

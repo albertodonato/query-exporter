@@ -34,7 +34,11 @@ from sqlalchemy.engine import (
     CursorResult,
     Engine,
 )
-from sqlalchemy.engine.interfaces import DBAPIConnection, DBAPICursor
+from sqlalchemy.engine.interfaces import (
+    DBAPIConnection,
+    DBAPICursor,
+    ExecutionContext,
+)
 from sqlalchemy.exc import (
     ArgumentError,
     NoSuchModuleError,
@@ -391,10 +395,10 @@ class Database:
         @event.listens_for(engine, "before_cursor_execute")
         def before_cursor_execute(
             conn: ConnectionPoolEntry,
-            cursor: Any,
+            cursor: DBAPICursor,
             statement: str,
-            parameters: Any,
-            context: Any,
+            parameters: object,
+            context: ExecutionContext | None,
             executemany: bool,
         ) -> None:
             conn.info["query_start_time"] = perf_counter()
@@ -402,10 +406,10 @@ class Database:
         @event.listens_for(engine, "after_cursor_execute")
         def after_cursor_execute(
             conn: ConnectionPoolEntry,
-            cursor: Any,
+            cursor: DBAPICursor,
             statement: str,
-            parameters: Any,
-            context: Any,
+            parameters: object,
+            context: ExecutionContext | None,
             executemany: bool,
         ) -> None:
             conn.info["query_latency"] = perf_counter() - conn.info.pop(

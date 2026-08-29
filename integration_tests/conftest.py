@@ -44,8 +44,8 @@ def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
 
 @pytest.hookimpl(wrapper=True, tryfirst=True)
 def pytest_runtest_makereport(
-    item: Any, call: Any
-) -> Generator[None, None, None]:
+    item: pytest.Item, call: pytest.CallInfo[None]
+) -> Generator[None, pytest.TestReport, pytest.TestReport]:
     report = yield
     collector = item.stash.setdefault(PHASE_REPORT_KEY, ReportCollector())
     collector.collect(report)

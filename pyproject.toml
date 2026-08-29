@@ -107,7 +107,7 @@ dynamic.version = { attr = "query_exporter.__version__" }
 
 [tool.ruff]
 line-length = 79
-lint.select = [ "F", "I", "RUF", "UP" ]
+lint.select = [ "ANN", "F", "I", "RUF", "UP" ]
 lint.isort.combine-as-imports = true
 lint.isort.force-sort-within-sections = true
 
