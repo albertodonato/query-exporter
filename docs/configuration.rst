@@ -66,6 +66,15 @@ Each database definitions can have the following keys:
   **Note**: in the string form, username, password and options need to be
   URL-encoded, whereas this is done automatically for the key/value form.
 
+  OceanBase MySQL tenants can use the native ``oceanbase://`` scheme.  The
+  full Docker image includes the PyMySQL driver; for a local installation,
+  install ``query-exporter[oceanbase]`` (or the ``pymysql`` package)
+  separately.  The driver-specific forms ``oceanbase+pymysql://`` and
+  ``oceanbase+mysqldb://`` are also available.
+  The dialect handles OceanBase's server version format during SQLAlchemy
+  initialization, including older versions that otherwise result in a
+  ``server_version_info`` error.
+
 ``connection-pool``:
   configuration for the database connection pool.
 

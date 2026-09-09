@@ -58,6 +58,7 @@ jobs:
         database:
           - mssql
           - mysql
+          - oceanbase
           - oracle
           - postgresql
       fail-fast: false
