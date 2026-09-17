@@ -618,6 +618,48 @@ class TestDatabase:
         mock_conn.invalidate.assert_called_once()
         stop.set()  # unblock the thread so the executor can shut down
 
+    async def test_execute_statement_timeout_invalidates_off_event_loop(
+        self, mocker: MockerFixture, db: Database
+    ) -> None:
+        mock_conn = mocker.MagicMock()
+        thread_running = threading.Event()
+        invalidated = threading.Event()
+        stop = threading.Event()
+        invalidate_thread: list[int] = []
+
+        def record_thread() -> None:
+            invalidate_thread.append(threading.get_ident())
+            invalidated.set()
+
+        mock_conn.invalidate.side_effect = record_thread
+
+        def slow_execute(
+            statement: TextClause,
+            parameters: dict[str, Any],
+            tracker: ConnectionTracker,
+        ) -> None:
+            tracker.set_conn(mock_conn)
+            thread_running.set()
+            stop.wait(10)
+
+        mocker.patch.object(db, "_execute_sync", slow_execute)
+
+        loop_thread = threading.get_ident()
+        task = asyncio.create_task(
+            db.execute_statement(text("SELECT 1"), timeout=0.5)
+        )
+        await asyncio.get_running_loop().run_in_executor(
+            None, thread_running.wait
+        )
+
+        with pytest.raises(TimeoutError):
+            await task
+
+        assert invalidated.wait(10)
+        assert invalidate_thread == [mocker.ANY]
+        assert invalidate_thread[0] != loop_thread
+        stop.set()
+
     async def test_execute_statement(self, db: Database) -> None:
         result = await db.execute_statement(text("SELECT 10, 20"))
         assert result.rows == [(10, 20)]

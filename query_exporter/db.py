@@ -362,7 +362,7 @@ class Database:
                 asyncio.shield(future), timeout=timeout
             )
         except TimeoutError:
-            tracker.invalidate()
+            await loop.run_in_executor(None, tracker.invalidate)
             raise
 
     def _setup_engine(self) -> Engine:
