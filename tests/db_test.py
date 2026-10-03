@@ -590,33 +590,108 @@ class TestDatabase:
     ) -> None:
         mock_conn = mocker.MagicMock()
         thread_running = threading.Event()
+        invalidated = threading.Event()
+        invalidate_thread: list[int] = []
         stop = threading.Event()
+
+        def record_invalidate() -> None:
+            invalidate_thread.append(threading.get_ident())
+            invalidated.set()
+
+        mock_conn.invalidate.side_effect = record_invalidate
 
         def slow_execute(
             statement: TextClause,
             parameters: dict[str, Any],
             tracker: ConnectionTracker,
         ) -> None:
-            if tracker is not None:
-                tracker.set_conn(mock_conn)
-            thread_running.set()
-            stop.wait(10)
+            with tracker.track(mock_conn):
+                thread_running.set()
+                stop.wait(10)
 
         mocker.patch.object(db, "_execute_sync", slow_execute)
 
-        task = asyncio.create_task(
-            db.execute_statement(text("SELECT 1"), timeout=0.5)
-        )
-        # Wait for the thread to populate conn_ref before letting the timeout fire
-        await asyncio.get_running_loop().run_in_executor(
-            None, thread_running.wait
-        )
+        try:
+            task = asyncio.create_task(
+                db.execute_statement(text("SELECT 1"), timeout=0.5)
+            )
+            # Wait for the thread to track the connection before letting the
+            # timeout fire
+            await asyncio.get_running_loop().run_in_executor(
+                None, thread_running.wait
+            )
+
+            with pytest.raises(TimeoutError):
+                await task
+
+            assert invalidated.wait(10)
+            mock_conn.invalidate.assert_called_once()
+            # the connection is dropped off the event loop
+            assert invalidate_thread[0] != threading.get_ident()
+        finally:
+            stop.set()  # unblock the thread so the executor can shut down
+
+    async def test_execute_statement_timeout_reported_while_query_hangs(
+        self, mocker: MockerFixture, db: Database
+    ) -> None:
+        # dropping the connection can block for as long as the query itself,
+        # the timeout must be reported without waiting for it
+        mock_conn = mocker.MagicMock()
+        thread_running = threading.Event()
+        stop = threading.Event()
+        mock_conn.invalidate.side_effect = lambda: stop.wait(10)
+
+        def slow_execute(
+            statement: TextClause,
+            parameters: dict[str, Any],
+            tracker: ConnectionTracker,
+        ) -> None:
+            with tracker.track(mock_conn):
+                thread_running.set()
+                stop.wait(10)
+
+        mocker.patch.object(db, "_execute_sync", slow_execute)
+
+        try:
+            task = asyncio.create_task(
+                db.execute_statement(text("SELECT 1"), timeout=0.5)
+            )
+            await asyncio.get_running_loop().run_in_executor(
+                None, thread_running.wait
+            )
+
+            start = time.perf_counter()
+            with pytest.raises(TimeoutError):
+                await task
+            assert time.perf_counter() - start < 5
+        finally:
+            stop.set()
+
+    async def test_execute_statement_timeout_untracks_connection(
+        self, mocker: MockerFixture, db: Database
+    ) -> None:
+        # a query completing right after the timeout must not have its
+        # connection dropped, as the pool may have handed it to another query
+        mock_conn = mocker.MagicMock()
+        tracker_ref: list[ConnectionTracker] = []
+
+        def quick_execute(
+            statement: TextClause,
+            parameters: dict[str, Any],
+            tracker: ConnectionTracker,
+        ) -> None:
+            tracker_ref.append(tracker)
+            with tracker.track(mock_conn):
+                pass
+            time.sleep(1)  # longer than the timeout
+
+        mocker.patch.object(db, "_execute_sync", quick_execute)
 
         with pytest.raises(TimeoutError):
-            await task
+            await db.execute_statement(text("SELECT 1"), timeout=0.5)
 
-        mock_conn.invalidate.assert_called_once()
-        stop.set()  # unblock the thread so the executor can shut down
+        tracker_ref[0].invalidate()
+        mock_conn.invalidate.assert_not_called()
 
     async def test_execute_statement(self, db: Database) -> None:
         result = await db.execute_statement(text("SELECT 10, 20"))
