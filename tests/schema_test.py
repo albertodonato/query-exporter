@@ -1,4 +1,4 @@
-from collections.abc import Callable, Iterable
+from collections.abc import Callable
 from typing import Any, cast
 
 from pydantic import TypeAdapter, ValidationError
@@ -36,7 +36,7 @@ class InputsTest:
 
 def valid_inputs(
     *inputs: tuple[Any, Any],
-    fixtures: Iterable[str] = (),
+    fixtures: tuple[str, ...] = (),
 ) -> Callable[[InputsTest, Any, Any], None]:
     @pytest.mark.parametrize("value,converted", inputs)
     def test(
