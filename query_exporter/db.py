@@ -271,21 +271,35 @@ class QueryExecution:
 
 
 class ConnectionTracker:
-    """Track the active connection for a query so it can be invalidated on timeout."""
+    """Track the connection running a query so it can be dropped on timeout."""
 
     def __init__(self) -> None:
         self._lock = Lock()
         self._conn: Connection | None = None
-        self._invalidated = False
 
-    def set_conn(self, conn: Connection) -> None:
+    @contextmanager
+    def track(self, conn: Connection) -> Iterator[None]:
+        """Track `conn` for the duration of the statement.
+
+        The connection is untracked before it's returned to the pool, so that a
+        late invalidation can't drop a connection another query has since
+        checked out.
+        """
         with self._lock:
             self._conn = conn
-            self._invalidated = False
+        try:
+            yield
+        finally:
+            with self._lock:
+                self._conn = None
 
     def invalidate(self) -> None:
+        """Drop the connection running the statement, if any.
+
+        This performs I/O and, depending on the driver, can block until the
+        statement completes on its own, so it must never run on the event loop.
+        """
         with self._lock:
-            self._invalidated = True
             if self._conn is not None:
                 self._conn.invalidate()
 
@@ -314,9 +328,17 @@ class Database:
             max_workers=max_workers,
             thread_name_prefix=f"[Database-{self.name}]",
         )
+        # Timed out queries are dropped from a separate pool: the query
+        # executor is by definition saturated by the queries being dropped.  At
+        # most max_workers queries can be in flight, so the same size is enough.
+        self._timeout_executor = ThreadPoolExecutor(
+            max_workers=max_workers,
+            thread_name_prefix=f"[Database-{self.name}-timeout]",
+        )
 
     def close(self) -> None:
         self._executor.shutdown(wait=True, cancel_futures=True)
+        self._timeout_executor.shutdown(wait=False, cancel_futures=True)
         self._engine.dispose()
 
     async def execute(self, query_execution: QueryExecution) -> MetricResults:
@@ -362,8 +384,37 @@ class Database:
                 asyncio.shield(future), timeout=timeout
             )
         except TimeoutError:
-            tracker.invalidate()
+            self._on_timeout(future, tracker)
             raise
+
+    def _on_timeout(
+        self,
+        future: asyncio.Future[QueryResults],
+        tracker: ConnectionTracker,
+    ) -> None:
+        """Drop the connection of a query that timed out.
+
+        The result is deliberately not awaited: dropping the connection can
+        block for as long as the query itself, and the timeout must be reported
+        right away.
+        """
+        self._timeout_executor.submit(self._invalidate_sync, tracker)
+        # the shielded future outlives the timeout, consume its outcome so that
+        # asyncio doesn't report it as never retrieved
+        future.add_done_callback(self._discard_outcome)
+
+    def _invalidate_sync(self, tracker: ConnectionTracker) -> None:
+        try:
+            tracker.invalidate()
+        except Exception as error:
+            self.logger.warning(
+                "failed dropping connection for timed out query",
+                error=self._error_message(error),
+            )
+
+    def _discard_outcome(self, future: asyncio.Future[QueryResults]) -> None:
+        if not future.cancelled():
+            future.exception()
 
     def _setup_engine(self) -> Engine:
         engine = create_db_engine(self.config)
@@ -425,8 +476,7 @@ class Database:
         tracker: ConnectionTracker,
     ) -> QueryResults:
         try:
-            with self._engine.begin() as conn:
-                tracker.set_conn(conn)
+            with self._engine.begin() as conn, tracker.track(conn):
                 try:
                     result = conn.execute(statement, parameters)
                     return QueryResults.from_result(result)
