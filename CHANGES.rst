@@ -1,3 +1,9 @@
+Unreleased
+==========
+
+- Add a native SQLAlchemy dialect for OceanBase MySQL tenants, including
+  handling of OceanBase server version strings during connection setup.
+
 v5.2.1 - 2026-08-29
 ===================
 
