@@ -334,6 +334,26 @@ def make_query_execution() -> QueryExecution:
 
 
 class TestDatabase:
+    def test_after_cursor_execute_after_connection_close(
+        self, db: Database, mocker: MockerFixture
+    ) -> None:
+        conn = mocker.MagicMock()
+        conn.info = {}
+        event_args = (
+            conn,
+            mocker.sentinel.cursor,
+            "SELECT 1",
+            {},
+            None,
+            False,
+        )
+
+        db._engine.dispatch.before_cursor_execute(*event_args)
+        db._engine.pool.dispatch.close(mocker.sentinel.dbapi_conn, conn)
+        db._engine.dispatch.after_cursor_execute(*event_args)
+
+        assert "query_latency" not in conn.info
+
     async def test_connect_log(
         self, log: StructuredLogCapture, db: Database
     ) -> None:

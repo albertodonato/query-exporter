@@ -463,9 +463,9 @@ class Database:
             context: ExecutionContext | None,
             executemany: bool,
         ) -> None:
-            conn.info["query_latency"] = perf_counter() - conn.info.pop(
-                "query_start_time"
-            )
+            start_time = conn.info.pop("query_start_time", None)
+            if start_time is not None:
+                conn.info["query_latency"] = perf_counter() - start_time
 
         return engine
 
