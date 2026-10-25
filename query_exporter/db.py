@@ -2,8 +2,8 @@
 
 import asyncio
 from collections.abc import (
+    Generator,
     Iterable,
-    Iterator,
     Sequence,
 )
 from concurrent.futures import ThreadPoolExecutor
@@ -276,7 +276,7 @@ class ConnectionTracker:
         self._conn: Connection | None = None
 
     @contextmanager
-    def track(self, conn: Connection) -> Iterator[None]:
+    def track(self, conn: Connection) -> Generator[None]:
         """Track `conn` for the duration of the statement.
 
         The connection is untracked before it's returned to the pool, so that a
@@ -496,7 +496,7 @@ class Database:
     @contextmanager
     def _dbapi_transaction(
         self, dbapi_conn: DBAPIConnection
-    ) -> Iterator[DBAPICursor]:
+    ) -> Generator[DBAPICursor]:
         cursor = dbapi_conn.cursor()
         try:
             yield cursor
