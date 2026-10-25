@@ -1,7 +1,13 @@
+v5.2.2 - 2026-10-25
+===================
+
+- Fix error due race condition on query timeout.
+- Dependencies updates.
+
 v5.2.1 - 2026-08-29
 ===================
 
-- Fix handling of Decimal values properly for all kind of metrics (#441)
+- Fix handling of Decimal values properly for all kind of metrics (#441).
 - Dependencies updates.
 - Add missing typing.
 
