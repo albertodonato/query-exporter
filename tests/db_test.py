@@ -11,7 +11,13 @@ from pytest_structlog import StructuredLogCapture
 from sqlalchemy import (
     TextClause,
     create_engine,
+    event,
     text,
+)
+from sqlalchemy.engine.interfaces import (
+    DBAPICursor,
+    ExecutionContext,
+    _DBAPISingleExecuteParams,
 )
 from sqlalchemy.pool import NullPool, QueuePool
 
@@ -284,35 +290,22 @@ class TestQueryResults:
         engine = create_engine("sqlite:///:memory:")
         with engine.connect() as conn:
             result = conn.execute(text("SELECT 1 AS a, 2 AS b"))
-            query_results = QueryResults.from_result(result)
+            query_results = QueryResults.from_result(result, latency=1.2)
         engine.dispose()
         assert query_results.keys == ["a", "b"]
         assert query_results.rows == [(1, 2)]
-        assert query_results.latency is None
+        assert query_results.latency == 1.2
         assert cast(float, query_results.timestamp) < time.time()
 
     def test_from_empty(self) -> None:
         engine = create_engine("sqlite:///:memory:")
         with engine.connect() as conn:
             result = conn.execute(text("PRAGMA auto_vacuum = 1"))
-            query_results = QueryResults.from_result(result)
+            query_results = QueryResults.from_result(result, latency=1.2)
         engine.dispose()
         assert query_results.keys == []
         assert query_results.rows == []
-        assert query_results.latency is None
-
-    def test_from_result_with_latency(self) -> None:
-        engine = create_engine("sqlite:///:memory:")
-        with engine.connect() as conn:
-            result = conn.execute(text("SELECT 1 AS a, 2 AS b"))
-            # simulate latency tracking
-            conn.info["query_latency"] = 1.2
-            query_results = QueryResults.from_result(result)
-        engine.dispose()
-        assert query_results.keys == ["a", "b"]
-        assert query_results.rows == [(1, 2)]
         assert query_results.latency == 1.2
-        assert cast(float, query_results.timestamp) < time.time()
 
 
 @pytest.fixture
@@ -468,6 +461,28 @@ class TestDatabase:
         with pytest.raises(DatabaseQueryError) as error:
             await db.execute(query_execution)
         assert "syntax error" in str(error.value)
+
+    async def test_execute_connection_invalidated_after_cursor_execute(
+        self, db: Database
+    ) -> None:
+        # simulate a timed out query whose connection gets invalidated while
+        # the driver is executing it
+        @event.listens_for(db._engine, "do_execute")
+        def do_execute(
+            cursor: DBAPICursor,
+            statement: str,
+            parameters: _DBAPISingleExecuteParams,
+            context: ExecutionContext,
+        ) -> bool:
+            cursor.execute(statement, parameters)
+            context.root_connection.invalidate()
+            return True
+
+        query = Query("query", ["db"], [QueryMetric("metric", [])], "SELECT 1")
+        [query_execution] = query.executions
+        with pytest.raises(DatabaseQueryError) as error:
+            await db.execute(query_execution)
+        assert "Cannot operate on a closed database" in str(error.value)
 
     async def test_execute_query_invalid_count(
         self, log: StructuredLogCapture, db: Database
@@ -692,6 +707,21 @@ class TestDatabase:
 
         tracker_ref[0].invalidate()
         mock_conn.invalidate.assert_not_called()
+
+    def test_invalidate_sync_error(
+        self, mocker: MockerFixture, log: StructuredLogCapture, db: Database
+    ) -> None:
+        mock_conn = mocker.MagicMock()
+        mock_conn.invalidate.side_effect = Exception("boom")
+        tracker = ConnectionTracker()
+        with tracker.track(mock_conn):
+            db._invalidate_sync(tracker)
+        assert log.has(
+            "failed dropping connection for timed out query",
+            database="db",
+            error="boom",
+            level="warning",
+        )
 
     async def test_execute_statement(self, db: Database) -> None:
         result = await db.execute_statement(text("SELECT 10, 20"))

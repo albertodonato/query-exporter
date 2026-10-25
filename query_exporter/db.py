@@ -37,7 +37,6 @@ from sqlalchemy.engine import (
 from sqlalchemy.engine.interfaces import (
     DBAPIConnection,
     DBAPICursor,
-    ExecutionContext,
 )
 from sqlalchemy.exc import (
     ArgumentError,
@@ -155,14 +154,13 @@ class QueryResults(NamedTuple):
     latency: float | None = None
 
     @classmethod
-    def from_result(cls, result: CursorResult[Any]) -> Self:
+    def from_result(cls, result: CursorResult[Any], latency: float) -> Self:
         """Return a QueryResults from results for a query."""
         timestamp = time()
         keys: list[str] = []
         rows: Sequence[Sequence[Any]] = []
         if result.returns_rows:
             keys, rows = list(result.keys()), result.all()
-        latency = result.connection.info.get("query_latency", None)
         return cls(keys, rows, timestamp=timestamp, latency=latency)
 
 
@@ -440,32 +438,7 @@ class Database:
         def on_close(
             dbapi_conn: DBAPIConnection, conn: ConnectionPoolEntry
         ) -> None:
-            conn.info.clear()
             self.logger.debug("disconnected")
-
-        @event.listens_for(engine, "before_cursor_execute")
-        def before_cursor_execute(
-            conn: ConnectionPoolEntry,
-            cursor: DBAPICursor,
-            statement: str,
-            parameters: object,
-            context: ExecutionContext | None,
-            executemany: bool,
-        ) -> None:
-            conn.info["query_start_time"] = perf_counter()
-
-        @event.listens_for(engine, "after_cursor_execute")
-        def after_cursor_execute(
-            conn: ConnectionPoolEntry,
-            cursor: DBAPICursor,
-            statement: str,
-            parameters: object,
-            context: ExecutionContext | None,
-            executemany: bool,
-        ) -> None:
-            conn.info["query_latency"] = perf_counter() - conn.info.pop(
-                "query_start_time"
-            )
 
         return engine
 
@@ -478,8 +451,10 @@ class Database:
         try:
             with self._engine.begin() as conn, tracker.track(conn):
                 try:
+                    start_time = perf_counter()
                     result = conn.execute(statement, parameters)
-                    return QueryResults.from_result(result)
+                    latency = perf_counter() - start_time
+                    return QueryResults.from_result(result, latency=latency)
                 except Exception as error:
                     raise self._db_error(error, exc_class=DatabaseQueryError)
         except DatabaseQueryError:
