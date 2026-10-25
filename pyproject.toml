@@ -50,6 +50,9 @@ dependencies = [
   "sqlalchemy>=2",
   "structlog",
 ]
+optional-dependencies.oceanbase = [
+  "pymysql",
+]
 urls."Issue Tracker" = "https://github.com/albertodonato/query-exporter/issues"
 urls."Release Notes" = "https://github.com/albertodonato/query-exporter/blob/main/CHANGES.rst"
 urls."Source Code" = "https://github.com/albertodonato/query-exporter"
@@ -57,6 +60,10 @@ urls.Changelog = "https://github.com/albertodonato/query-exporter/blob/main/CHAN
 urls.Documentation = "https://github.com/albertodonato/query-exporter"
 urls.Homepage = "https://github.com/albertodonato/query-exporter"
 scripts.query-exporter = "query_exporter.main:script"
+entry-points."sqlalchemy.dialects"."mysql.oceanbase" = "query_exporter.oceanbase:OceanBaseDialect"
+entry-points."sqlalchemy.dialects"."oceanbase.mysqldb" = "query_exporter.oceanbase:OceanBaseDialectMySQLdb"
+entry-points."sqlalchemy.dialects"."oceanbase.pymysql" = "query_exporter.oceanbase:OceanBaseDialect"
+entry-points."sqlalchemy.dialects".oceanbase = "query_exporter.oceanbase:OceanBaseDialect"
 
 [dependency-groups]
 dev = [
@@ -74,6 +81,7 @@ docker-dbs = [
   "oracledb",
   "psycopg2",
   "pymssql",
+  "pymysql",
   "teradatasqlalchemy",
 ]
 integration-tests = [
@@ -88,8 +96,10 @@ integration-tests-dbs = [
   "oracledb",
   "psycopg2-binary",
   "pymssql",
+  "pymysql",
 ]
 tests = [
+  "pymysql",
   "pytest-asyncio",
   "pytest-mock",
   "pytest-structlog",

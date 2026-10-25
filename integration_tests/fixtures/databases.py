@@ -137,6 +137,26 @@ class MySQL(DatabaseServer):
         }
 
 
+class OceanBase(DatabaseServer):
+    name = "oceanbase"
+    image = "oceanbase/oceanbase-ce"
+    port = 2881
+
+    dialect = "oceanbase"
+    username = "root@test"
+    database = "query_exporter"
+    startup_wait_timeout = 300.0
+
+    def docker_config(self) -> dict[str, Any]:
+        return super().docker_config() | {
+            "environment": {
+                "MODE": "slim",
+                "OB_TENANT_NAME": "test",
+                "OB_DATABASE": self.database,
+            },
+        }
+
+
 class MSSQLServer(DatabaseServer):
     name = "mssql"
 
@@ -181,5 +201,6 @@ class Oracle(DatabaseServer):
 
 
 DATABASE_SERVERS = {
-    server.name: server for server in (PostgreSQL, MySQL, MSSQLServer, Oracle)
+    server.name: server
+    for server in (PostgreSQL, MySQL, OceanBase, MSSQLServer, Oracle)
 }

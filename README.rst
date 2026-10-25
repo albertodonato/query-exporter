@@ -205,6 +205,7 @@ The image has support for connecting the following databases:
 
 - PostgreSQL (``postgresql://``)
 - MySQL (``mysql://``)
+- OceanBase MySQL tenants (``oceanbase://``)
 - SQLite (``sqlite://``)
 - Microsoft SQL Server (``mssql+pymssql://``)
 - IBM DB2 (``db2://``) (on x86_64 architecture)

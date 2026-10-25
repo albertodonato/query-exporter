@@ -45,7 +45,9 @@ from sqlalchemy.exc import (
 from sqlalchemy.pool import ConnectionPoolEntry, NullPool, QueuePool
 import structlog
 
-from . import schema
+from . import oceanbase, schema
+
+oceanbase.register_dialects()
 
 # Timeout for a query
 QueryTimeout = int | float
