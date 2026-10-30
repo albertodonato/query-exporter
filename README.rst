@@ -212,8 +212,6 @@ The image has support for connecting the following databases:
 - ClickHouse (``clickhouse+native://``)
 - Teradata (``teradatasql://``)
 
-A `Helm chart`_ to run the container in Kubernetes is also available.
-
 Automated builds from the ``main`` branch are available on the `GitHub container registry`_ via::
 
   docker pull ghcr.io/albertodonato/query-exporter:main
@@ -256,7 +254,6 @@ For general purpose questions, you can use `Discussions`_ on GitHub.
 .. _`Docker Hub`: https://hub.docker.com/r/adonato/query-exporter
 .. _`configuration file format`: docs/configuration.rst
 .. _`contribution guide`: docs/contributing.rst
-.. _`Helm chart`: https://github.com/makezbs/helm-charts/tree/main/charts/query-exporter
 .. _`GitHub container registry`: https://github.com/albertodonato/query-exporter/pkgs/container/query-exporter
 .. _`Discussions`: https://github.com/albertodonato/query-exporter/discussions
 
