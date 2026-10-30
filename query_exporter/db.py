@@ -268,38 +268,54 @@ class QueryExecution:
         )
 
 
-class ConnectionTracker:
-    """Track the connection running a query so it can be dropped on timeout."""
+class StatementCanceller:
+    """Cancel the statement running on a connection from another thread.
+
+    The connection itself is never closed or invalidated from another thread,
+    as neither SQLAlchemy nor DBAPI connections are thread-safe.  Instead, the
+    driver's `cancel()` (e.g. oracledb, psycopg) or `interrupt()` (sqlite3)
+    method is used if available, since drivers providing them support calling
+    them while another thread is executing a statement.  The statement then
+    fails on the thread running it.
+    """
+
+    CANCEL_METHODS = ("cancel", "interrupt")
 
     def __init__(self) -> None:
         self._lock = Lock()
-        self._conn: Connection | None = None
+        self._dbapi_conn: DBAPIConnection | None = None
+        self.cancelled = False
 
     @contextmanager
     def track(self, conn: Connection) -> Generator[None]:
         """Track `conn` for the duration of the statement.
 
         The connection is untracked before it's returned to the pool, so that a
-        late invalidation can't drop a connection another query has since
-        checked out.
+        late cancel can't hit a statement from another query that has since
+        checked out the connection.
         """
         with self._lock:
-            self._conn = conn
+            self._dbapi_conn = conn.connection.dbapi_connection
         try:
             yield
         finally:
             with self._lock:
-                self._conn = None
+                self._dbapi_conn = None
 
-    def invalidate(self) -> None:
-        """Drop the connection running the statement, if any.
+    def cancel(self) -> bool:
+        """Cancel the running statement, if any.
 
-        This performs I/O and, depending on the driver, can block until the
-        statement completes on its own, so it must never run on the event loop.
+        Return whether the driver supports cancelling statements.
         """
         with self._lock:
-            if self._conn is not None:
-                self._conn.invalidate()
+            if self._dbapi_conn is None:
+                return True
+            for name in self.CANCEL_METHODS:
+                if cancel := getattr(self._dbapi_conn, name, None):
+                    self.cancelled = True
+                    cancel()
+                    return True
+            return False
 
 
 class Database:
@@ -326,17 +342,17 @@ class Database:
             max_workers=max_workers,
             thread_name_prefix=f"[Database-{self.name}]",
         )
-        # Timed out queries are dropped from a separate pool: the query
-        # executor is by definition saturated by the queries being dropped.  At
-        # most max_workers queries can be in flight, so the same size is enough.
-        self._timeout_executor = ThreadPoolExecutor(
+        # Cancelling a statement can perform I/O, so it's done off the event
+        # loop, in a separate pool since the query one is by definition
+        # saturated by the statements being cancelled.
+        self._cancel_executor = ThreadPoolExecutor(
             max_workers=max_workers,
-            thread_name_prefix=f"[Database-{self.name}-timeout]",
+            thread_name_prefix=f"[Database-{self.name}-cancel]",
         )
 
     def close(self) -> None:
         self._executor.shutdown(wait=True, cancel_futures=True)
-        self._timeout_executor.shutdown(wait=False, cancel_futures=True)
+        self._cancel_executor.shutdown(wait=False, cancel_futures=True)
         self._engine.dispose()
 
     async def execute(self, query_execution: QueryExecution) -> MetricResults:
@@ -373,46 +389,37 @@ class Database:
             parameters = {}
 
         loop = asyncio.get_event_loop()
-        tracker = ConnectionTracker()
+        canceller = StatementCanceller()
         future = loop.run_in_executor(
-            self._executor, self._execute_sync, statement, parameters, tracker
+            self._executor,
+            self._execute_sync,
+            statement,
+            parameters,
+            canceller,
         )
         try:
             return await asyncio.wait_for(
                 asyncio.shield(future), timeout=timeout
             )
         except TimeoutError:
-            self._on_timeout(future, tracker)
+            # a queued statement won't run at all, the outcome of a running one
+            # is discarded
+            future.cancel()
+            self._cancel_executor.submit(self._cancel_sync, canceller)
             raise
 
-    def _on_timeout(
-        self,
-        future: asyncio.Future[QueryResults],
-        tracker: ConnectionTracker,
-    ) -> None:
-        """Drop the connection of a query that timed out.
-
-        The result is deliberately not awaited: dropping the connection can
-        block for as long as the query itself, and the timeout must be reported
-        right away.
-        """
-        self._timeout_executor.submit(self._invalidate_sync, tracker)
-        # the shielded future outlives the timeout, consume its outcome so that
-        # asyncio doesn't report it as never retrieved
-        future.add_done_callback(self._discard_outcome)
-
-    def _invalidate_sync(self, tracker: ConnectionTracker) -> None:
+    def _cancel_sync(self, canceller: StatementCanceller) -> None:
         try:
-            tracker.invalidate()
+            if not canceller.cancel():
+                self.logger.debug(
+                    "driver doesn't support cancelling queries, "
+                    "waiting for timed out query to complete"
+                )
         except Exception as error:
             self.logger.warning(
-                "failed dropping connection for timed out query",
+                "failed cancelling timed out query",
                 error=self._error_message(error),
             )
-
-    def _discard_outcome(self, future: asyncio.Future[QueryResults]) -> None:
-        if not future.cancelled():
-            future.exception()
 
     def _setup_engine(self) -> Engine:
         engine = create_db_engine(self.config)
@@ -446,21 +453,40 @@ class Database:
         self,
         statement: TextClause,
         parameters: dict[str, Any],
-        tracker: ConnectionTracker,
+        canceller: StatementCanceller,
     ) -> QueryResults:
         try:
-            with self._engine.begin() as conn, tracker.track(conn):
+            with self._engine.begin() as conn, canceller.track(conn):
                 try:
                     start_time = perf_counter()
                     result = conn.execute(statement, parameters)
                     latency = perf_counter() - start_time
                     return QueryResults.from_result(result, latency=latency)
                 except Exception as error:
-                    raise self._db_error(error, exc_class=DatabaseQueryError)
+                    raise self._execute_error(
+                        error, DatabaseQueryError, canceller
+                    )
         except DatabaseQueryError:
             raise
         except Exception as error:
-            raise self._db_error(error, exc_class=DatabaseConnectError)
+            raise self._execute_error(error, DatabaseConnectError, canceller)
+
+    def _execute_error(
+        self,
+        error: Exception,
+        exc_class: type[DatabaseError],
+        canceller: StatementCanceller,
+    ) -> DatabaseError:
+        """Create a DatabaseError for a failed statement.
+
+        Errors from cancelled statements are expected, and the timeout has
+        already been reported, so they're not logged as errors.
+        """
+        if not canceller.cancelled:
+            return self._db_error(error, exc_class=exc_class)
+        message = self._error_message(error)
+        self.logger.debug("timed out query cancelled", error=message)
+        return exc_class(message)
 
     def _query_db_error(
         self,

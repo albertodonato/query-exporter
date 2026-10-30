@@ -18,7 +18,7 @@ import yaml
 
 from query_exporter import schema
 from query_exporter.config import load_config
-from query_exporter.db import ConnectionTracker, Database
+from query_exporter.db import Database, StatementCanceller
 from query_exporter.executor import MetricsLastSeen, QueryExecutor
 
 from .conftest import QueryTracker, metric_values
@@ -426,7 +426,7 @@ class TestQueryExecutor:
         def execute_sync(
             statement: TextClause,
             parameters: dict[str, Any],
-            tracker: ConnectionTracker,
+            canceller: StatementCanceller,
         ) -> None:
             time.sleep(1)  # longer than timeout
 
