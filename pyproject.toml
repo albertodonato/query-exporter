@@ -96,6 +96,7 @@ tests = [
   "time-machine",
 ]
 types = [
+  "pytest-docker",
   "types-python-dateutil",
   "types-pyyaml",
   "types-requests",
@@ -117,9 +118,6 @@ ignore-words-list = "timeschedule"
 
 [tool.pyproject-fmt]
 expand_tables = [ "tool.tox" ]
-
-[tool.ty]
-rules.unresolved-import = "ignore"
 
 [tool.pytest]
 ini_options.testpaths = [

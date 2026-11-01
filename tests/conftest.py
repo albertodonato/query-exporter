@@ -81,11 +81,11 @@ async def advance_time(
         await _drain_loop()
 
     original_loop_time = loop.time
-    loop.time = lambda: fake_time  # type: ignore
+    loop.time = lambda: fake_time
     try:
         yield advance
     finally:
-        loop.time = original_loop_time  # type: ignore
+        loop.time = original_loop_time
 
 
 class QueryTracker:
