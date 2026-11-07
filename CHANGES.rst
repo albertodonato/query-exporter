@@ -1,8 +1,16 @@
+v5.2.3 - 2026-11-07
+===================
+
+- Better handling of query cancellation on timeout (#449).
+- Dependencies updates.
+
+
 v5.2.2 - 2026-10-25
 ===================
 
 - Fix error due race condition on query timeout.
 - Dependencies updates.
+
 
 v5.2.1 - 2026-08-29
 ===================
