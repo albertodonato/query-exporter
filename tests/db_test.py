@@ -15,15 +15,15 @@ from sqlalchemy import (
     text,
 )
 from sqlalchemy.engine.interfaces import (
+    DBAPIConnection,
     DBAPICursor,
     ExecutionContext,
     _DBAPISingleExecuteParams,
 )
-from sqlalchemy.pool import NullPool, QueuePool
+from sqlalchemy.pool import ConnectionPoolEntry, NullPool, QueuePool
 
 from query_exporter import schema
 from query_exporter.db import (
-    ConnectionTracker,
     Database,
     DatabaseConnectError,
     DatabaseError,
@@ -36,6 +36,7 @@ from query_exporter.db import (
     QueryMetric,
     QueryResults,
     QueryTimeoutExpired,
+    StatementCanceller,
     create_db_engine,
 )
 
@@ -585,7 +586,7 @@ class TestDatabase:
         def execute_sync(
             statement: TextClause,
             parameters: dict[str, Any],
-            tracker: ConnectionTracker,
+            canceller: StatementCanceller,
         ) -> None:
             time.sleep(1)  # longer than timeout
 
@@ -600,27 +601,29 @@ class TestDatabase:
             level="warning",
         )
 
-    async def test_execute_statement_timeout_closes_connection(
+    async def test_execute_statement_timeout_cancels_statement(
         self, mocker: MockerFixture, db: Database
     ) -> None:
         mock_conn = mocker.MagicMock()
         thread_running = threading.Event()
-        invalidated = threading.Event()
-        invalidate_thread: list[int] = []
+        cancelled = threading.Event()
+        cancel_thread: list[int] = []
         stop = threading.Event()
 
-        def record_invalidate() -> None:
-            invalidate_thread.append(threading.get_ident())
-            invalidated.set()
+        def record_cancel() -> None:
+            cancel_thread.append(threading.get_ident())
+            cancelled.set()
 
-        mock_conn.invalidate.side_effect = record_invalidate
+        mock_conn.connection.dbapi_connection.cancel.side_effect = (
+            record_cancel
+        )
 
         def slow_execute(
             statement: TextClause,
             parameters: dict[str, Any],
-            tracker: ConnectionTracker,
+            canceller: StatementCanceller,
         ) -> None:
-            with tracker.track(mock_conn):
+            with canceller.track(mock_conn):
                 thread_running.set()
                 stop.wait(10)
 
@@ -639,29 +642,33 @@ class TestDatabase:
             with pytest.raises(TimeoutError):
                 await task
 
-            assert invalidated.wait(10)
-            mock_conn.invalidate.assert_called_once()
-            # the connection is dropped off the event loop
-            assert invalidate_thread[0] != threading.get_ident()
+            assert cancelled.wait(10)
+            mock_conn.connection.dbapi_connection.cancel.assert_called_once()
+            # the statement is cancelled off the event loop
+            assert cancel_thread[0] != threading.get_ident()
+            # the connection is never closed from another thread
+            mock_conn.invalidate.assert_not_called()
+            mock_conn.close.assert_not_called()
+            mock_conn.connection.dbapi_connection.close.assert_not_called()
         finally:
             stop.set()  # unblock the thread so the executor can shut down
 
-    async def test_execute_statement_timeout_reported_while_query_hangs(
+    async def test_execute_statement_timeout_reported_while_cancel_hangs(
         self, mocker: MockerFixture, db: Database
     ) -> None:
-        # dropping the connection can block for as long as the query itself,
-        # the timeout must be reported without waiting for it
         mock_conn = mocker.MagicMock()
         thread_running = threading.Event()
         stop = threading.Event()
-        mock_conn.invalidate.side_effect = lambda: stop.wait(10)
+        mock_conn.connection.dbapi_connection.cancel.side_effect = lambda: (
+            stop.wait(10)
+        )
 
         def slow_execute(
             statement: TextClause,
             parameters: dict[str, Any],
-            tracker: ConnectionTracker,
+            canceller: StatementCanceller,
         ) -> None:
-            with tracker.track(mock_conn):
+            with canceller.track(mock_conn):
                 thread_running.set()
                 stop.wait(10)
 
@@ -685,18 +692,19 @@ class TestDatabase:
     async def test_execute_statement_timeout_untracks_connection(
         self, mocker: MockerFixture, db: Database
     ) -> None:
-        # a query completing right after the timeout must not have its
-        # connection dropped, as the pool may have handed it to another query
+        # a statement completing right after the timeout must not be
+        # cancelled, as the pool may have handed the connection to another
+        # query
         mock_conn = mocker.MagicMock()
-        tracker_ref: list[ConnectionTracker] = []
+        canceller_ref: list[StatementCanceller] = []
 
         def quick_execute(
             statement: TextClause,
             parameters: dict[str, Any],
-            tracker: ConnectionTracker,
+            canceller: StatementCanceller,
         ) -> None:
-            tracker_ref.append(tracker)
-            with tracker.track(mock_conn):
+            canceller_ref.append(canceller)
+            with canceller.track(mock_conn):
                 pass
             time.sleep(1)  # longer than the timeout
 
@@ -705,19 +713,121 @@ class TestDatabase:
         with pytest.raises(TimeoutError):
             await db.execute_statement(text("SELECT 1"), timeout=0.5)
 
-        tracker_ref[0].invalidate()
-        mock_conn.invalidate.assert_not_called()
+        assert canceller_ref[0].cancel()
+        mock_conn.connection.dbapi_connection.cancel.assert_not_called()
 
-    def test_invalidate_sync_error(
+    async def test_execute_statement_timeout_queued_not_run(
+        self, mocker: MockerFixture, db: Database
+    ) -> None:
+        # the executor has a single worker, so the second statement is queued
+        # until the first one completes
+        thread_running = threading.Event()
+        stop = threading.Event()
+        executed: list[str] = []
+
+        def execute_sync(
+            statement: TextClause,
+            parameters: dict[str, Any],
+            canceller: StatementCanceller,
+        ) -> None:
+            executed.append(str(statement))
+            thread_running.set()
+            stop.wait(10)
+
+        mocker.patch.object(db, "_execute_sync", execute_sync)
+
+        try:
+            running = asyncio.create_task(
+                db.execute_statement(text("SELECT 1"))
+            )
+            await asyncio.get_running_loop().run_in_executor(
+                None, thread_running.wait
+            )
+            with pytest.raises(TimeoutError):
+                await db.execute_statement(text("SELECT 2"), timeout=0.1)
+        finally:
+            stop.set()
+        await running
+        assert executed == ["SELECT 1"]
+
+    async def test_execute_statement_timeout_real_connection(
+        self, log: StructuredLogCapture, db: Database
+    ) -> None:
+        # sqlite3 provides interrupt(), the timed out statement is cancelled
+        # and the connection is never closed from another thread
+        close_threads: list[int] = []
+
+        @event.listens_for(db._engine, "close")
+        def on_close(
+            dbapi_conn: DBAPIConnection, record: ConnectionPoolEntry
+        ) -> None:
+            close_threads.append(threading.get_ident())
+
+        endless = text(
+            "WITH RECURSIVE c(x) AS (SELECT 1 UNION ALL SELECT x + 1 FROM c) "
+            "SELECT max(x) FROM c"
+        )
+        with pytest.raises(TimeoutError):
+            await db.execute_statement(endless, timeout=0.5)
+        # the executor has a single worker, so this runs after the cancelled
+        # statement has completed, on the same connection
+        result = await db.execute_statement(text("SELECT 2"))
+        assert result.rows == [(2,)]
+        assert close_threads == []
+        [cancelled_log] = [
+            entry
+            for entry in log.events
+            if entry["event"] == "timed out query cancelled"
+        ]
+        assert cancelled_log["level"] == "debug"
+        assert "interrupted" in cancelled_log["error"]
+        assert not log.has("database error")
+
+    def test_cancel_interrupt(self, mocker: MockerFixture) -> None:
+        mock_conn = mocker.MagicMock()
+        dbapi_conn = mocker.MagicMock(spec=["interrupt"])
+        mock_conn.connection.dbapi_connection = dbapi_conn
+        canceller = StatementCanceller()
+        with canceller.track(mock_conn):
+            assert canceller.cancel()
+        dbapi_conn.interrupt.assert_called_once()
+        assert canceller.cancelled
+
+    def test_cancel_not_tracked(self) -> None:
+        canceller = StatementCanceller()
+        assert canceller.cancel()
+        assert not canceller.cancelled
+
+    def test_cancel_sync_not_supported(
         self, mocker: MockerFixture, log: StructuredLogCapture, db: Database
     ) -> None:
         mock_conn = mocker.MagicMock()
-        mock_conn.invalidate.side_effect = Exception("boom")
-        tracker = ConnectionTracker()
-        with tracker.track(mock_conn):
-            db._invalidate_sync(tracker)
+        mock_conn.connection.dbapi_connection = mocker.MagicMock(
+            spec=["close"]
+        )
+        canceller = StatementCanceller()
+        with canceller.track(mock_conn):
+            db._cancel_sync(canceller)
+        assert not canceller.cancelled
         assert log.has(
-            "failed dropping connection for timed out query",
+            "driver doesn't support cancelling queries, "
+            "waiting for timed out query to complete",
+            database="db",
+            level="debug",
+        )
+
+    def test_cancel_sync_error(
+        self, mocker: MockerFixture, log: StructuredLogCapture, db: Database
+    ) -> None:
+        mock_conn = mocker.MagicMock()
+        mock_conn.connection.dbapi_connection.cancel.side_effect = Exception(
+            "boom"
+        )
+        canceller = StatementCanceller()
+        with canceller.track(mock_conn):
+            db._cancel_sync(canceller)
+        assert log.has(
+            "failed cancelling timed out query",
             database="db",
             error="boom",
             level="warning",
