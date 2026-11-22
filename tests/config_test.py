@@ -234,6 +234,55 @@ class TestLoadConfig:
         assert query2.sql == "SELECT 2"
         assert len(query2.executions) == 1
 
+    def test_load_queries_section_timestamp_column(
+        self, write_config: ConfigWriter
+    ) -> None:
+        cfg = {
+            "databases": {"db": {"dsn": "sqlite:///foo"}},
+            "metrics": {
+                "m1": {"type": "gauge", "labels": ["l"]},
+                "m2": {"type": "counter"},
+            },
+            "queries": {
+                "q": {
+                    "interval": 10,
+                    "databases": ["db"],
+                    "metrics": ["m1", "m2"],
+                    "sql": "SELECT 1 AS m1, 2 AS m2, 'x' AS l, 3 AS ts",
+                    "timestamp-column": "ts",
+                },
+            },
+        }
+        config_file = write_config(cfg)
+        result = load_config([config_file])
+        query = result.queries["q"]
+        assert query.timestamp_column == "ts"
+        assert query.metrics == [
+            QueryMetric("m1", ["l"], timestamp_column="ts"),
+            QueryMetric("m2", [], timestamp_column="ts"),
+        ]
+
+    def test_load_queries_section_no_timestamp_column(
+        self, write_config: ConfigWriter
+    ) -> None:
+        cfg = {
+            "databases": {"db": {"dsn": "sqlite:///foo"}},
+            "metrics": {"m": {"type": "gauge"}},
+            "queries": {
+                "q": {
+                    "interval": 10,
+                    "databases": ["db"],
+                    "metrics": ["m"],
+                    "sql": "SELECT 1 AS m",
+                },
+            },
+        }
+        config_file = write_config(cfg)
+        result = load_config([config_file])
+        query = result.queries["q"]
+        assert query.timestamp_column is None
+        assert query.metrics == [QueryMetric("m", [])]
+
     def test_load_queries_section_with_parameters(
         self, write_config: ConfigWriter
     ) -> None:

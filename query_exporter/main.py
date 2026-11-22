@@ -10,6 +10,7 @@ from prometheus_aioexporter import (
     EXPORTER_APP_KEY,
     Arguments,
     InvalidMetricType,
+    MetricType,
     PrometheusExporterScript,
 )
 from prometheus_client.metrics import Gauge, MetricWrapperBase
@@ -21,6 +22,7 @@ from .config import (
     load_config,
 )
 from .executor import QueryExecutor
+from .metrics import timestamped_metric_types
 
 # The application key to track the QueryExecutor
 QUERY_EXECUTOR_APP_KEY: AppKey[QueryExecutor] = AppKey("query-executor")
@@ -32,6 +34,9 @@ class QueryExporterScript(PrometheusExporterScript):
     name = "query-exporter"
     default_port = 9560
     envvar_prefix = "QE"
+
+    def metric_types(self) -> list[MetricType]:
+        return timestamped_metric_types(super().metric_types())
 
     def command_line_parameters(self) -> list[click.Parameter]:
         return [

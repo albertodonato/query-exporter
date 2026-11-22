@@ -197,6 +197,7 @@ def _get_queries(
             databases=config.databases,
             metrics=query_metrics,
             sql=config.sql.strip(),
+            timestamp_column=config.timestamp_column,
             timeout=config.timeout,
             interval=config.interval,
             schedule=config.schedule,
@@ -216,7 +217,11 @@ def _get_query_metrics(
         return sorted(set(labels) - extra_labels)
 
     return [
-        db.QueryMetric(name, _metric_labels(metrics[name].labels))
+        db.QueryMetric(
+            name,
+            _metric_labels(metrics[name].labels),
+            timestamp_column=query.timestamp_column,
+        )
         for name in query.metrics
     ]
 

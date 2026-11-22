@@ -300,6 +300,7 @@ class Query(Model):
     metrics: Annotated[
         list[str], Field(min_length=1), AfterValidator(_validate_unique_items)
     ]
+    timestamp_column: str | None = None
     sql: str
     interval: TimeInterval | None = None
     parameters: QueryParameters | None = None

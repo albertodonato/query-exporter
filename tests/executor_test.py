@@ -20,6 +20,7 @@ from query_exporter import schema
 from query_exporter.config import load_config
 from query_exporter.db import Database, StatementCanceller
 from query_exporter.executor import MetricsLastSeen, QueryExecutor
+from query_exporter.metrics import timestamped_metric_types
 
 from .conftest import QueryTracker, metric_values
 
@@ -44,7 +45,7 @@ def config_data() -> Iterator[dict[str, Any]]:
 
 @pytest.fixture
 def registry() -> Iterator[MetricsRegistry]:
-    yield MetricsRegistry()
+    yield MetricsRegistry(timestamped_metric_types())
 
 
 MakeQueryExecutor = Callable[[], QueryExecutor]
@@ -186,6 +187,85 @@ class TestQueryExecutor:
             ("success",): 1.0
         }
 
+    @pytest.mark.parametrize(
+        "metric_config,value",
+        [
+            ({"type": "gauge"}, "100.0"),
+            ({"type": "counter"}, "100.0"),
+            ({"type": "counter", "increment": True}, "100.0"),
+            ({"type": "histogram"}, "100.0"),
+            ({"type": "summary"}, "100.0"),
+            ({"type": "enum", "states": ["foo", "bar"]}, "'foo'"),
+        ],
+    )
+    async def test_run_query_with_timestamp(
+        self,
+        query_tracker: QueryTracker,
+        config_data: dict[str, Any],
+        make_query_executor: MakeQueryExecutor,
+        registry: MetricsRegistry,
+        metric_config: dict[str, Any],
+        value: str,
+    ) -> None:
+        config_data["metrics"]["m"] = metric_config
+        config_data["queries"]["q"]["sql"] = (
+            f"SELECT {value} AS m, 1234.5 AS ts"
+        )
+        config_data["queries"]["q"]["timestamp-column"] = "ts"
+        query_executor = make_query_executor()
+        await query_executor.start()
+        await query_tracker.wait_results()
+        [family] = registry.get_metric("m").collect()
+        assert family.samples
+        assert all(sample.timestamp == 1234.5 for sample in family.samples)
+
+    async def test_run_query_without_timestamp(
+        self,
+        query_tracker: QueryTracker,
+        query_executor: QueryExecutor,
+        registry: MetricsRegistry,
+    ) -> None:
+        await query_executor.start()
+        await query_tracker.wait_results()
+        [family] = registry.get_metric("m").collect()
+        assert family.samples
+        assert all(sample.timestamp is None for sample in family.samples)
+
+    async def test_run_query_with_timestamp_log(
+        self,
+        log: StructuredLogCapture,
+        query_tracker: QueryTracker,
+        config_data: dict[str, Any],
+        make_query_executor: MakeQueryExecutor,
+    ) -> None:
+        config_data["queries"]["q"]["sql"] = "SELECT 100.0 AS m, 1234.5 AS ts"
+        config_data["queries"]["q"]["timestamp-column"] = "ts"
+        query_executor = make_query_executor()
+        await query_executor.start()
+        await query_tracker.wait_results()
+        assert log.has(
+            "updating metric",
+            level="debug",
+            metric="m",
+            method="set",
+            value=100.0,
+            labels={"database": "db"},
+            ts=1234.5,
+        )
+
+    async def test_run_query_updates_query_timestamp(
+        self,
+        query_tracker: QueryTracker,
+        query_executor: QueryExecutor,
+        registry: MetricsRegistry,
+    ) -> None:
+        await query_executor.start()
+        await query_tracker.wait_results()
+        [family] = registry.get_metric("query_timestamp").collect()
+        [sample] = family.samples
+        assert sample.labels == {"database": "db", "query": "q"}
+        assert sample.value > 0
+
     async def test_run_query_scheduled(
         self,
         config_data: dict[str, Any],
@@ -325,6 +405,7 @@ class TestQueryExecutor:
                 method="observe",
                 value=ANY,
                 labels={"database": "db", "query": "q"},
+                ts=None,
             ),
             log.debug(
                 "updating metric",
@@ -332,6 +413,7 @@ class TestQueryExecutor:
                 method="set",
                 value=100.0,
                 labels={"database": "db"},
+                ts=None,
             ),
             log.debug(
                 "updating metric",
@@ -339,6 +421,7 @@ class TestQueryExecutor:
                 method="inc",
                 value=1,
                 labels={"database": "db", "query": "q", "status": "success"},
+                ts=None,
             ),
         ] <= log.events
 

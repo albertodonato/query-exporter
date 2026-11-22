@@ -1,5 +1,5 @@
 version = 1
-revision = 5
+revision = 3
 requires-python = ">=3.12"
 
 [[package]]
@@ -1234,7 +1234,7 @@ wheels = [
 
 [[package]]
 name = "prometheus-aioexporter"
-version = "3.2.0"
+version = "3.3.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiohttp" },
@@ -1243,9 +1243,9 @@ dependencies = [
     { name = "python-dotenv" },
     { name = "structlog" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/86/71/34ac594db64b59f5760aaf73cad6b5098055b116f0d7c1a66e7df2aaba08/prometheus_aioexporter-3.2.0.tar.gz", hash = "sha256:06c10932b77684e7062688e8955d0bf360143037f6d31ef56d6b4e8349880d4f", size = 16040, upload-time = "2026-03-26T12:10:05.632Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/3d/34/ae4918cf28b7d4ae48c362635fdf3b04e231d0a41fc0616ebf55b441f156/prometheus_aioexporter-3.3.0.tar.gz", hash = "sha256:eaac86cb2885e71725a7c897440f0b7962957e6d05b01d501c805c6960d0356b", size = 16423, upload-time = "2026-11-21T16:30:26.06Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/15/79/9cdbd671d3aa747a7c58ff002136760a8ca1d9bc848568b1aae06c2d294c/prometheus_aioexporter-3.2.0-py3-none-any.whl", hash = "sha256:a5743c256089b38a76b94fe3173c3de617192ef14a5a4b288d2b43b9a15f6a3e", size = 15702, upload-time = "2026-03-26T12:10:04.324Z" },
+    { url = "https://files.pythonhosted.org/packages/3a/36/8a97a6be258b6b694688c748fe09ce54ee115fcd90b0c5d6c664a12a4020/prometheus_aioexporter-3.3.0-py3-none-any.whl", hash = "sha256:4e58902940c0b9dbe7fe298a9e30689511d3f3b4a0dd4692f5fd71490b22a029", size = 15756, upload-time = "2026-11-21T16:30:24.908Z" },
 ]
 
 [[package]]
@@ -1915,7 +1915,7 @@ types = [
 requires-dist = [
     { name = "aiohttp" },
     { name = "apscheduler" },
-    { name = "prometheus-aioexporter", specifier = ">=3.1" },
+    { name = "prometheus-aioexporter", specifier = ">=3.3" },
     { name = "prometheus-client" },
     { name = "pydantic" },
     { name = "pyyaml" },

@@ -429,6 +429,23 @@ class TestMetric:
 
 
 class TestQuery:
+    def test_timestamp_column(self) -> None:
+        query = Query.model_validate(
+            {
+                "databases": ["db"],
+                "metrics": ["m"],
+                "sql": "SELECT 1 AS m, 2 AS ts",
+                "timestamp-column": "ts",
+            }
+        )
+        assert query.timestamp_column == "ts"
+
+    def test_timestamp_column_default(self) -> None:
+        query = Query.model_validate(
+            {"databases": ["db"], "metrics": ["m"], "sql": "SELECT 1 AS m"}
+        )
+        assert query.timestamp_column is None
+
     def test_both_interval_and_schedule(self) -> None:
         with pytest.raises(ValueError) as err:
             Query.model_validate(
