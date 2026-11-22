@@ -928,13 +928,22 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/dc/9d/9f31efe9462a220d3e4e19dc96839b97a8dcd4203e9245a0497cfae6f683/ibm_db-3.3.0.tar.gz", hash = "sha256:75c6749957d202e0b6b37e1e823583bfc37b65293ee123fb287e409d7426b53d", size = 315316, upload-time = "2026-08-11T21:00:35.04Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/ef/75/d60e93559b1b0ff8684622ab54901416834a27a5ff11391d341523cbce0b/ibm_db-3.3.0-cp312-cp312-macosx_10_15_x86_64.whl", hash = "sha256:17335ee3f401f32c10db831a727ea365ca22c12a6ae1f97cab5357c85d8fda27", size = 24195236, upload-time = "2026-08-11T20:58:51.819Z" },
+    { url = "https://files.pythonhosted.org/packages/60/34/761cb391e31b952696a5756738aa14840d09e144d662c9d7a8f49f2c43c8/ibm_db-3.3.0-cp312-cp312-macosx_14_0_arm64.whl", hash = "sha256:b801774c68c303e5a53fbd982b79bbfa5905b789eb3476b8ae1db22ce6726c20", size = 20865076, upload-time = "2026-08-11T20:58:55.181Z" },
+    { url = "https://files.pythonhosted.org/packages/bb/3d/0832755c8d6e164f6b25a8dcee5408a497f80780a1f8044cee2896ef0113/ibm_db-3.3.0-cp312-cp312-manylinux_2_34_i686.whl", hash = "sha256:e15138cfeb6e2a0fa5c248bfae7ba9cee7b83856048c81b9e7e36f461df74f8c", size = 43810768, upload-time = "2026-08-11T20:59:00.559Z" },
     { url = "https://files.pythonhosted.org/packages/61/8a/6c57f4c4fcaa4eef419d5eae30f9b7ce620560c3cbd103324dcab5f1e9b1/ibm_db-3.3.0-cp312-cp312-manylinux_2_34_x86_64.whl", hash = "sha256:f282dcc731a33cd19bf310a6f0f28088fa9bd64fb42f28b955b38a5e8f240990", size = 48156737, upload-time = "2026-08-11T20:59:06.154Z" },
+    { url = "https://files.pythonhosted.org/packages/6d/4d/5d14c9ae0051879b4bd4aa6e16b3a8bc0f3ba638c3852d30a2ce77ec76a5/ibm_db-3.3.0-cp312-cp312-win32.whl", hash = "sha256:e3908f9af3e038797a95b60ee0ccfb1a10f35d01cfb623151f534461e9f2691f", size = 24601597, upload-time = "2026-08-11T20:59:10.363Z" },
     { url = "https://files.pythonhosted.org/packages/29/12/890970bbd9e1232ad8e612e133eb40032011a5a24b632d85b4d1d5a6bdbf/ibm_db-3.3.0-cp312-cp312-win_amd64.whl", hash = "sha256:70147f6885ae7b02f440e5a73be6cf44667d0d708ffec9695d2e5881b9e0ed41", size = 28421640, upload-time = "2026-08-11T20:59:14.33Z" },
     { url = "https://files.pythonhosted.org/packages/9c/38/76e8500c1c1fa110a7f0c3dcf3d035b4439427b260776a06c027d84a0892/ibm_db-3.3.0-cp313-cp313-macosx_10_15_x86_64.whl", hash = "sha256:52207e096ce82876eb52f734e8c4b32f61a43c6d7ffe46d29412820ff04b609d", size = 24195288, upload-time = "2026-08-11T20:59:18.277Z" },
+    { url = "https://files.pythonhosted.org/packages/40/5a/5c22f27aa512437ef7842e83a8ae8467c80ce863045900088d6d86d08462/ibm_db-3.3.0-cp313-cp313-macosx_14_0_arm64.whl", hash = "sha256:a349e175fe8da30986894be872287a160e4a28c29af3729fe9f1ce28ad4db314", size = 20865099, upload-time = "2026-08-11T20:59:21.774Z" },
+    { url = "https://files.pythonhosted.org/packages/34/10/fc67c404a6c605d0efee15b4f05d700c89c05381035e26d1acd9d54fffa8/ibm_db-3.3.0-cp313-cp313-manylinux_2_34_i686.whl", hash = "sha256:c69df4190577193afa3e12cadfd72011d08f2b53c456345e64a458790133ac53", size = 43810828, upload-time = "2026-08-11T20:59:27.046Z" },
     { url = "https://files.pythonhosted.org/packages/12/22/c1032bf3ab47ed702d0c7b49ecb54840e647d980373ec21361aae73f1980/ibm_db-3.3.0-cp313-cp313-manylinux_2_34_x86_64.whl", hash = "sha256:d12a9bb6f3a3eb4cd87e907b25efc2ad487e2e85e481fa5be590fa0722d86db8", size = 48156798, upload-time = "2026-08-11T20:59:33.147Z" },
+    { url = "https://files.pythonhosted.org/packages/d8/9a/762d92fc91dc68d3889e89898d0a21f2595718f4579fc3a35de655657f09/ibm_db-3.3.0-cp313-cp313-win32.whl", hash = "sha256:ae629b4c967bbc84c7993f5d023b7be1ffda1c54d7baf6968b5569657598ca15", size = 24601604, upload-time = "2026-08-11T20:59:37.222Z" },
     { url = "https://files.pythonhosted.org/packages/c2/5e/2d467702d09d64a048b1ec12bdf2d9f515c1279357d376235780eea06ea2/ibm_db-3.3.0-cp313-cp313-win_amd64.whl", hash = "sha256:29f55f6ee27c5f2005c1c24b3f70f2d0f67921cb4021c4227cc3620176c1cf3e", size = 28421649, upload-time = "2026-08-11T20:59:41.346Z" },
     { url = "https://files.pythonhosted.org/packages/30/05/ab600ea4f0f363a718301538d5486e78d8fe161cf43e54a11158894a829c/ibm_db-3.3.0-cp314-cp314-macosx_10_15_x86_64.whl", hash = "sha256:ca2b883ff25917e8d4dfed803237fbc4338f410c02a9903dfa7f520200949917", size = 24195267, upload-time = "2026-08-11T20:59:45.087Z" },
+    { url = "https://files.pythonhosted.org/packages/c8/0b/de56a5604863271d02e8ec9d0678624e539a16ada629b7e51099abc079a6/ibm_db-3.3.0-cp314-cp314-macosx_14_0_arm64.whl", hash = "sha256:d581fb7ee2f530c201421885449ec006f5aaf7f75777dece784fe814b837464a", size = 20865092, upload-time = "2026-08-11T20:59:48.855Z" },
+    { url = "https://files.pythonhosted.org/packages/e1/ff/d98118f15ba99833ac06ba5fac971b55ec4fdbf884bd41ccd616de6f0a20/ibm_db-3.3.0-cp314-cp314-manylinux_2_34_i686.whl", hash = "sha256:0a636f497ef04f91539f74f9fd87565ed5fdcbadfc0bfbb23f25cfafd9074c75", size = 43810863, upload-time = "2026-08-11T20:59:53.818Z" },
     { url = "https://files.pythonhosted.org/packages/86/03/01f4e2b5c24c215c617bcd7847fa2b1589af956ff54cbf2df647355db21b/ibm_db-3.3.0-cp314-cp314-manylinux_2_34_x86_64.whl", hash = "sha256:298601d9398e5607e0c5a6ff8e199c62f8022f40ef0539d7d0d049023027bb68", size = 48156194, upload-time = "2026-08-11T20:59:58.45Z" },
+    { url = "https://files.pythonhosted.org/packages/59/40/b51baa290894a1a03cda1bc9dcc2fa894646d6667104a2c5e20403a96cc3/ibm_db-3.3.0-cp314-cp314-win32.whl", hash = "sha256:5388f49c02b8c0a85b4185dda769c4c235bde834a4226c7702cf346c082d84cb", size = 25564711, upload-time = "2026-08-11T21:00:02.255Z" },
     { url = "https://files.pythonhosted.org/packages/8e/c6/56cd5755b4d8d8ada62892ae3e857242fe1c497f6e1ca8484c351e6cb728/ibm_db-3.3.0-cp314-cp314-win_amd64.whl", hash = "sha256:c546059d68a032f960b0e26208877cd79b1e3102928034998c5d40093be61dc9", size = 29016957, upload-time = "2026-08-11T21:00:06.427Z" },
 ]
 
@@ -1883,6 +1892,7 @@ docker-dbs = [
     { name = "teradatasqlalchemy" },
 ]
 integration-tests = [
+    { name = "ibm-db-sa" },
     { name = "mysqlclient" },
     { name = "oracledb" },
     { name = "psycopg2-binary" },
@@ -1893,6 +1903,7 @@ integration-tests = [
     { name = "requests" },
 ]
 integration-tests-dbs = [
+    { name = "ibm-db-sa" },
     { name = "mysqlclient" },
     { name = "oracledb" },
     { name = "psycopg2-binary" },
@@ -1942,6 +1953,7 @@ docker-dbs = [
     { name = "teradatasqlalchemy" },
 ]
 integration-tests = [
+    { name = "ibm-db-sa" },
     { name = "mysqlclient" },
     { name = "oracledb" },
     { name = "psycopg2-binary" },
@@ -1952,6 +1964,7 @@ integration-tests = [
     { name = "requests" },
 ]
 integration-tests-dbs = [
+    { name = "ibm-db-sa" },
     { name = "mysqlclient" },
     { name = "oracledb" },
     { name = "psycopg2-binary" },
