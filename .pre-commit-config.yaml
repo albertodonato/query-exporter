@@ -1,13 +1,13 @@
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: f368fb366ff7f2f808dd324b83a6d32267799e19  # frozen: v0.17.2
+    rev: 9026c9127e153371d7a78dfcb0c45ae2046a3d10  # frozen: v0.17.6
     hooks:
       - id: ruff-check
         args: [ --fix ]
       - id: ruff-format
 
   - repo: https://github.com/tox-dev/pyproject-fmt
-    rev: 50e0f3aee9dc5747a5f173f79a7417403c18dda6  # frozen: v2.30.3
+    rev: 02ef6d1c28994054a843e58604e1a343faa42987  # frozen: v2.31.2
     hooks:
       - id: pyproject-fmt
 
@@ -17,7 +17,7 @@ repos:
       - id: codespell
 
   - repo: https://github.com/rstcheck/rstcheck
-    rev: 27a8027d6c6df787891a01b76e8298bac493fb58  # frozen: v6.3.0
+    rev: f10757576d6cfd0ac638cf0f0049c8b988ac553e  # frozen: v6.3.1
     hooks:
       - id: rstcheck
 
