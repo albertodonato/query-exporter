@@ -1,3 +1,10 @@
+v5.3.0 - 2026-11-28
+===================
+
+- feat: add support for timestamp in metrics (#408).
+- chore: dependencies updates.
+
+
 v5.2.3 - 2026-11-07
 ===================
 
