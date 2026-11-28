@@ -54,10 +54,12 @@ jobs:
       python-version: "3.15"
       tox-env: integration-tests
       env-args: -vv --db=${{ matrix.database }}
+      extra-packages: libxml2-16
 
     strategy:
       matrix:
         database:
+          - ibmdb2
           - mssql
           - mysql
           - oracle
